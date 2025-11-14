@@ -110,26 +110,26 @@
                     <tbody>
                         @forelse($volumes as $volume)
                             <tr>
-                                <td class="table-td">
+                                <td>
                                     <div class="table-cell-primary">{{ $volume->name }}</div>
                                 </td>
-                                <td class="table-td">
+                                <td>
                                     <x-table-badge>{{ $volume->type }}</x-table-badge>
                                 </td>
-                                <td class="table-td-text">
+                                <td>
                                     @if($volume->type === 's3')
                                         <div>Bucket: {{ $volume->config['bucket'] }}</div>
                                         @if(!empty($volume->config['prefix']))
-                                            <div class="table-cell-tertiary">Prefix: {{ $volume->config['prefix'] }}</div>
+                                            <div>Prefix: {{ $volume->config['prefix'] }}</div>
                                         @endif
                                     @elseif($volume->type === 'local')
                                         <div>{{ $volume->config['path'] }}</div>
                                     @endif
                                 </td>
-                                <td class="table-td-date">
+                                <td>
                                     {{ $volume->created_at->diffForHumans() }}
                                 </td>
-                                <td class="table-td-actions">
+                                <td class="text-right">
                                     <div class="table-actions">
                                         <flux:button size="sm" variant="ghost" :href="route('volumes.edit', $volume)" icon="pencil" wire:navigate>
                                             {{ __('Edit') }}
@@ -142,7 +142,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="5" class="table-td-empty">
+                                <td colspan="5" class="text-center">
                                     @if($search)
                                         {{ __('No volumes found matching your search.') }}
                                     @else

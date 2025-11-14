@@ -10,8 +10,11 @@
 .table-default tbody tr {
     @apply hover:bg-zinc-50 dark:hover:bg-zinc-800/50;
 }
+.table-default td {
+    @apply px-4 py-4 text-sm text-zinc-700 dark:text-zinc-300;
+}
 
-/* Table Header */
+    /* Table Header */
 .table-th {
     @apply px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-zinc-700 dark:text-zinc-300;
 }
@@ -24,42 +27,9 @@
     @apply px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-zinc-700 dark:text-zinc-300;
 }
 
-/* Table Cells */
-.table-td {
-    @apply px-4 py-4;
-}
-
-.table-td-text {
-    @apply px-4 py-4 text-sm text-zinc-700 dark:text-zinc-300;
-}
-
-.table-td-date {
-    @apply px-4 py-4 text-sm text-zinc-500 dark:text-zinc-400;
-}
-
-.table-td-actions {
-    @apply px-4 py-4 text-right;
-}
-
-.table-td-empty {
-    @apply px-4 py-8 text-center text-sm text-zinc-500 dark:text-zinc-400;
-}
-
 /* Table Cell Content */
 .table-cell-primary {
     @apply font-medium text-zinc-900 dark:text-zinc-100;
-}
-
-.table-cell-secondary {
-    @apply text-sm text-zinc-500 dark:text-zinc-400;
-}
-
-.table-cell-tertiary {
-    @apply text-xs text-zinc-500 dark:text-zinc-400;
-}
-
-.table-cell-empty {
-    @apply text-sm text-zinc-400 dark:text-zinc-500;
 }
 
 /* Action Buttons Container */

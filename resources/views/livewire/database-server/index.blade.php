@@ -135,33 +135,29 @@
                     <tbody>
                         @forelse($servers as $server)
                             <tr>
-                                <td class="table-td">
+                                <td>
                                     <div class="table-cell-primary">{{ $server->name }}</div>
                                     @if($server->description)
-                                        <div class="table-cell-secondary">{{ Str::limit($server->description, 50) }}</div>
+                                        <div>{{ Str::limit($server->description, 50) }}</div>
                                     @endif
                                 </td>
-                                <td class="table-td">
+                                <td >
                                     <x-table-badge>{{ $server->database_type }}</x-table-badge>
                                 </td>
-                                <td class="table-td-text">
+                                <td>
                                     {{ $server->host }}:{{ $server->port }}
                                 </td>
-                                <td class="table-td-text">
+                                <td>
                                     {{ $server->database_name ?? '-' }}
                                 </td>
-                                <td class="table-td">
-                                    @if($server->backup)
-                                        <div class="table-cell-primary">{{ $server->backup->volume->name }}</div>
-                                        <div class="table-cell-tertiary capitalize">{{ $server->backup->recurrence }}</div>
-                                    @else
-                                        <span class="table-cell-empty">-</span>
-                                    @endif
+                                <td>
+                                    <div class="table-cell-primary">{{ $server->backup->volume->name }}</div>
+                                    <div capitalize">{{ $server->backup->recurrence }}</div>
                                 </td>
-                                <td class="table-td-date">
+                                <td>
                                     {{ $server->created_at->diffForHumans() }}
                                 </td>
-                                <td class="table-td-actions">
+                                <td class="text-right">
                                     <div class="table-actions">
                                         <flux:button size="sm" variant="ghost" :href="route('database-servers.edit', $server)" icon="pencil" wire:navigate>
                                             {{ __('Edit') }}
@@ -174,7 +170,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="7" class="table-td-empty">
+                                <td colspan="7" class="text-center">
                                     @if($search)
                                         {{ __('No database servers found matching your search.') }}
                                     @else
