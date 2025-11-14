@@ -2,6 +2,8 @@
 
 namespace Database\Factories;
 
+use App\Models\Backup;
+use App\Models\Volume;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -26,5 +28,22 @@ class DatabaseServerFactory extends Factory
             'database_name' => fake()->optional()->word(),
             'description' => fake()->optional()->sentence(),
         ];
+    }
+
+    /**
+     * Configure the model factory.
+     */
+    public function configure(): static
+    {
+        return $this->afterCreating(function ($databaseServer) {
+            // Create a volume and backup for the database server
+            $volume = Volume::factory()->create();
+
+            Backup::create([
+                'database_server_id' => $databaseServer->id,
+                'volume_id' => $volume->id,
+                'recurrence' => fake()->randomElement(['daily', 'weekly']),
+            ]);
+        });
     }
 }
