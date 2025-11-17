@@ -90,19 +90,3 @@ test('can delete database server', function () {
         'id' => $server->id,
     ]);
 });
-
-test('can cancel delete confirmation', function () {
-    $user = User::factory()->create();
-    $server = DatabaseServer::factory()->create();
-
-    Livewire::actingAs($user)
-        ->test(Index::class)
-        ->call('confirmDelete', $server->id)
-        ->assertSet('deleteId', $server->id)
-        ->call('cancelDelete')
-        ->assertSet('deleteId', null);
-
-    $this->assertDatabaseHas('database_servers', [
-        'id' => $server->id,
-    ]);
-});

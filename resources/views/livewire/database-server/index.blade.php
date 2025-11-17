@@ -12,15 +12,15 @@
         </div>
 
         @if (session('status'))
-            <x-banner variant="success" dismissible class="mb-6">
+            <x-alert variant="success" dismissible class="mb-6">
                 {{ session('status') }}
-            </x-banner>
+            </x-alert>
         @endif
 
         @if (session('error'))
-            <x-banner variant="danger" dismissible class="mb-6">
+            <x-alert variant="error" dismissible class="mb-6">
                 {{ session('error') }}
-            </x-banner>
+            </x-alert>
         @endif
 
         <x-card :padding="false">
@@ -208,10 +208,8 @@
 
     <!-- Delete Confirmation Modal -->
     <x-delete-confirmation-modal
-        :show="(bool) $deleteId"
         :title="__('Delete Database Server')"
         :message="__('Are you sure you want to delete this database server? This action cannot be undone.')"
         onConfirm="delete"
-        onCancel="cancelDelete"
     />
 </div>

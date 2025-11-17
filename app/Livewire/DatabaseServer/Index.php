@@ -4,9 +4,11 @@ namespace App\Livewire\DatabaseServer;
 
 use App\Models\DatabaseServer;
 use App\Services\Backup\BackupTask;
+use Flux;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
+use Masmerise\Toaster\Toaster;
 
 class Index extends Component
 {
@@ -41,11 +43,7 @@ class Index extends Component
     public function confirmDelete(string $id)
     {
         $this->deleteId = $id;
-    }
-
-    public function cancelDelete()
-    {
-        $this->deleteId = null;
+        Flux::modal('delete-confirmation')->show();
     }
 
     public function delete()
@@ -55,6 +53,7 @@ class Index extends Component
             $this->deleteId = null;
 
             session()->flash('status', 'Database server deleted successfully!');
+            Flux::modal('delete-confirmation')->close();
         }
     }
 
@@ -64,16 +63,16 @@ class Index extends Component
             $server = DatabaseServer::with(['backup.volume'])->findOrFail($id);
 
             if (! $server->backup) {
-                session()->flash('error', 'No backup configuration found for this database server.');
+                Toaster::error('No backup configuration found for this database server.');
 
                 return;
             }
 
             $snapshot = $backupTask->run($server, 'manual', auth()->id());
 
-            session()->flash('status', "Backup completed successfully! Snapshot ID: {$snapshot->id}");
+            Toaster::success("Backup completed successfully! Snapshot ID: {$snapshot->id}");
         } catch (\Exception $e) {
-            session()->flash('error', 'Backup failed: '.$e->getMessage());
+            Toaster::error('Backup failed: '.$e->getMessage());
         }
     }
 

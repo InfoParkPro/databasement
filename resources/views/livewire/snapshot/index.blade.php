@@ -9,15 +9,15 @@
         </div>
 
         @if (session('status'))
-            <x-banner variant="success" dismissible class="mb-6">
+            <x-alert variant="success" dismissible class="mb-6">
                 {{ session('status') }}
-            </x-banner>
+            </x-alert>
         @endif
 
         @if (session('error'))
-            <x-banner variant="danger" dismissible class="mb-6">
+            <x-alert variant="danger" dismissible class="mb-6">
                 {{ session('error') }}
-            </x-banner>
+            </x-alert>
         @endif
 
         <x-card :padding="false">
@@ -173,10 +173,8 @@
 
     <!-- Delete Confirmation Modal -->
     <x-delete-confirmation-modal
-        :show="(bool) $deleteId"
         :title="__('Delete Snapshot')"
         :message="__('Are you sure you want to delete this snapshot? The backup file will be permanently removed.')"
         onConfirm="delete"
-        onCancel="cancelDelete"
     />
 </div>

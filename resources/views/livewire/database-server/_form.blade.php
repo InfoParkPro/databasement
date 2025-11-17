@@ -129,13 +129,13 @@
         @if($form->connectionTestMessage)
             <div class="mt-2">
                 @if($form->connectionTestSuccess)
-                    <x-banner variant="success">
+                    <x-alert variant="success">
                         {{ $form->connectionTestMessage }}
-                    </x-banner>
+                    </x-alert>
                 @else
-                    <x-banner variant="error">
+                    <x-alert variant="error">
                         {{ $form->connectionTestMessage }}
-                    </x-banner>
+                    </x-alert>
                 @endif
             </div>
         @endif
