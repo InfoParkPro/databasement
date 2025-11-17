@@ -4,9 +4,9 @@
         <flux:subheading class="mb-6">{{ __('Update storage volume configuration') }}</flux:subheading>
 
         @if (session('status'))
-            <x-banner variant="success" dismissible class="mb-6">
+            <x-alert variant="success" dismissible class="mb-6">
                 {{ session('status') }}
-            </x-banner>
+            </x-alert>
         @endif
 
         <x-card class="space-y-6">

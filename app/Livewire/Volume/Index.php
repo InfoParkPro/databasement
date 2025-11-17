@@ -3,6 +3,7 @@
 namespace App\Livewire\Volume;
 
 use App\Models\Volume;
+use Flux;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -40,11 +41,7 @@ class Index extends Component
     public function confirmDelete(string $id)
     {
         $this->deleteId = $id;
-    }
-
-    public function cancelDelete()
-    {
-        $this->deleteId = null;
+        Flux::modal('delete-confirmation')->show();
     }
 
     public function delete()
@@ -54,6 +51,7 @@ class Index extends Component
             $this->deleteId = null;
 
             session()->flash('status', 'Volume deleted successfully!');
+            Flux::modal('delete-confirmation')->close();
         }
     }
 
