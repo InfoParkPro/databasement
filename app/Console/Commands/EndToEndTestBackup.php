@@ -4,15 +4,17 @@ namespace App\Console\Commands;
 
 use App\Models\Backup;
 use App\Models\DatabaseServer;
+use App\Models\Snapshot;
 use App\Models\Volume;
 use App\Services\Backup\BackupTask;
+use App\Services\Backup\RestoreTask;
 use Illuminate\Console\Command;
 
 class EndToEndTestBackup extends Command
 {
-    protected $signature = 'test:backup-e2e {--type=mysql : Database type (mysql or postgres)}';
+    protected $signature = 'backup:test {--type=* : Database type(s) to test (mysql, postgres). Defaults to both}';
 
-    protected $description = 'End-to-end test of the backup system with real databases';
+    protected $description = 'End-to-end test of the backup and restore system with real databases';
 
     private ?Volume $volume = null;
 
@@ -20,53 +22,93 @@ class EndToEndTestBackup extends Command
 
     private ?Backup $backup = null;
 
+    private ?Snapshot $snapshot = null;
+
     private ?string $backupFilePath = null;
 
-    public function handle(BackupTask $backupTask): int
+    private ?string $restoredDatabaseName = null;
+
+    public function handle(BackupTask $backupTask, RestoreTask $restoreTask): int
     {
-        $type = $this->option('type');
+        $types = $this->option('type');
 
-        if (! in_array($type, ['mysql', 'postgres'])) {
-            $this->error('Invalid database type. Use --type=mysql or --type=postgres');
-
-            return self::FAILURE;
+        // If no types specified, default to both
+        if (empty($types)) {
+            $types = ['mysql', 'postgres'];
         }
 
-        $this->info("🧪 Starting end-to-end backup test for {$type}...\n");
+        // Validate types
+        foreach ($types as $type) {
+            if (! in_array($type, ['mysql', 'postgres'])) {
+                $this->error("Invalid database type: {$type}. Use mysql or postgres");
 
-        try {
-            // Step 1: Setup
-            $this->setupTestEnvironment();
+                return self::FAILURE;
+            }
+        }
 
-            // Step 2: Create models
-            $this->createModels($type);
+        $this->info('🧪 Starting end-to-end backup and restore tests...');
+        $this->info('Testing: '.implode(', ', $types)."\n");
 
-            // Step 3: Run backup
-            $this->runBackup($backupTask);
+        $overallSuccess = true;
 
-            // Step 4: Verify backup
-            $this->verifyBackup();
-
-            // Step 5: Cleanup
-            $this->cleanup();
-
-            $this->newLine();
-            $this->info('✅ End-to-end backup test completed successfully!');
-
-            return self::SUCCESS;
-        } catch (\Exception $e) {
-            $this->error("\n❌ Test failed: {$e->getMessage()}");
-            $this->error("Stack trace:\n{$e->getTraceAsString()}");
-
-            // Attempt cleanup even on failure
+        foreach ($types as $type) {
             try {
-                $this->cleanup();
-            } catch (\Exception $cleanupError) {
-                $this->warn("Cleanup failed: {$cleanupError->getMessage()}");
+                $this->runTestForType($type, $backupTask, $restoreTask);
+            } catch (\Exception $e) {
+                $this->error("\n❌ Test failed for {$type}: {$e->getMessage()}");
+                $this->error("Stack trace:\n{$e->getTraceAsString()}");
+                $overallSuccess = false;
+
+                // Attempt cleanup even on failure
+                try {
+                    $this->cleanup($type);
+                } catch (\Exception $cleanupError) {
+                    $this->warn("Cleanup failed: {$cleanupError->getMessage()}");
+                }
             }
 
+            $this->newLine();
+        }
+
+        if ($overallSuccess) {
+            $this->info('✅ All end-to-end tests completed successfully!');
+
+            return self::SUCCESS;
+        } else {
+            $this->error('❌ Some tests failed');
+
             return self::FAILURE;
         }
+    }
+
+    private function runTestForType(string $type, BackupTask $backupTask, RestoreTask $restoreTask): void
+    {
+        $this->info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        $this->info("🧪 Testing {$type}");
+        $this->info("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
+
+        // Step 1: Setup
+        $this->setupTestEnvironment();
+
+        // Step 2: Create models
+        $this->createModels($type);
+
+        // Step 3: Run backup
+        $this->runBackup($backupTask);
+
+        // Step 4: Verify backup
+        $this->verifyBackup();
+
+        // Step 5: Run restore
+        $this->runRestore($restoreTask, $type);
+
+        // Step 6: Verify restore
+        $this->verifyRestore($type);
+
+        // Step 7: Cleanup
+        $this->cleanup($type);
+
+        $this->info("✅ {$type} test completed successfully!");
     }
 
     private function setupTestEnvironment(): void
@@ -121,7 +163,7 @@ class EndToEndTestBackup extends Command
                 'host' => 'mysql',
                 'port' => 3306,
                 'database_type' => 'mysql',
-                'username' => 'admin',
+                'username' => 'root',
                 'password' => 'admin',
                 'database_name' => 'testdb',
                 'description' => 'End-to-end test MySQL database server',
@@ -144,23 +186,20 @@ class EndToEndTestBackup extends Command
     {
         $this->info("\n💾 Running backup task...");
 
-        $snapshot = $backupTask->run($this->databaseServer, 'manual');
+        $this->snapshot = $backupTask->run($this->databaseServer, 'manual');
 
-        $this->line("   ✓ Snapshot created (ID: {$snapshot->id})");
-        $this->line("   ✓ Status: {$snapshot->status}");
-        $this->line("   ✓ Duration: {$snapshot->getHumanDuration()}");
-        $this->line("   ✓ File size: {$snapshot->getHumanFileSize()}");
+        $this->line("   ✓ Snapshot created (ID: {$this->snapshot->id})");
+        $this->line("   ✓ Status: {$this->snapshot->status}");
+        $this->line("   ✓ Duration: {$this->snapshot->getHumanDuration()}");
+        $this->line("   ✓ File size: {$this->snapshot->getHumanFileSize()}");
 
-        if ($snapshot->database_size_bytes) {
-            $this->line("   ✓ Database size: {$snapshot->getHumanDatabaseSize()}");
+        if ($this->snapshot->database_size_bytes) {
+            $this->line("   ✓ Database size: {$this->snapshot->getHumanDatabaseSize()}");
         }
 
-        if ($snapshot->checksum) {
-            $this->line('   ✓ Checksum: '.substr($snapshot->checksum, 0, 16).'...');
+        if ($this->snapshot->checksum) {
+            $this->line('   ✓ Checksum: '.substr($this->snapshot->checksum, 0, 16).'...');
         }
-
-        // Store snapshot for cleanup
-        $this->backupFilePath = null; // We'll let snapshot deletion handle file cleanup
     }
 
     private function verifyBackup(): void
@@ -216,9 +255,91 @@ class EndToEndTestBackup extends Command
         }
     }
 
-    private function cleanup(): void
+    private function runRestore(RestoreTask $restoreTask, string $type): void
+    {
+        $this->info("\n🔄 Running restore task...");
+
+        if (! $this->snapshot) {
+            throw new \RuntimeException('No snapshot available for restore');
+        }
+
+        // Generate a unique database name for the restore test
+        $this->restoredDatabaseName = 'testdb_restored_'.time();
+
+        $this->line("   ℹ Restoring to new database: {$this->restoredDatabaseName}");
+
+        $restoreTask->run($this->databaseServer, $this->snapshot, $this->restoredDatabaseName);
+
+        $this->line('   ✓ Restore completed successfully!');
+    }
+
+    private function verifyRestore(string $type): void
+    {
+        $this->info("\n🔍 Verifying restored database...");
+
+        try {
+            $dsn = $this->buildDsn($type, $this->restoredDatabaseName);
+            $pdo = new \PDO(
+                $dsn,
+                $this->databaseServer->username,
+                $this->databaseServer->password,
+                [
+                    \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION,
+                ]
+            );
+
+            $this->line('   ✓ Connection to restored database successful');
+
+            // Check if database has tables/content
+            if ($type === 'mysql') {
+                $stmt = $pdo->query('SHOW TABLES');
+                $tables = $stmt->fetchAll(\PDO::FETCH_COLUMN);
+                $tableCount = count($tables);
+                $this->line("   ✓ Found {$tableCount} table(s) in restored database");
+            } elseif ($type === 'postgres') {
+                $stmt = $pdo->query("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public'");
+                $tableCount = $stmt->fetchColumn();
+                $this->line("   ✓ Found {$tableCount} table(s) in restored database");
+            }
+
+            $this->line('   ✓ Restored database is accessible and contains data');
+        } catch (\PDOException $e) {
+            throw new \RuntimeException("Failed to verify restored database: {$e->getMessage()}");
+        }
+    }
+
+    private function buildDsn(string $type, string $databaseName): string
+    {
+        return match ($type) {
+            'mysql' => sprintf(
+                'mysql:host=%s;port=%d;dbname=%s',
+                $this->databaseServer->host,
+                $this->databaseServer->port,
+                $databaseName
+            ),
+            'postgres' => sprintf(
+                'pgsql:host=%s;port=%d;dbname=%s',
+                $this->databaseServer->host,
+                $this->databaseServer->port,
+                $databaseName
+            ),
+            default => throw new \InvalidArgumentException("Unsupported database type: {$type}"),
+        };
+    }
+
+    private function cleanup(string $type): void
     {
         $this->info("\n🧹 Cleaning up...");
+
+        // Drop the restored database if it exists
+        if ($this->restoredDatabaseName) {
+            try {
+                $this->dropRestoredDatabase($type);
+                $this->line("   ✓ Dropped restored database: {$this->restoredDatabaseName}");
+            } catch (\Exception $e) {
+                $this->warn("   ⚠ Failed to drop restored database: {$e->getMessage()}");
+            }
+        }
 
         // Delete models (cascade will handle backup and snapshots)
         // Snapshot deletion will trigger file cleanup automatically
@@ -231,6 +352,52 @@ class EndToEndTestBackup extends Command
         if ($this->volume) {
             $this->volume->delete();
             $this->line('   ✓ Deleted Volume');
+        }
+
+        // Reset properties for next test
+        $this->volume = null;
+        $this->databaseServer = null;
+        $this->backup = null;
+        $this->snapshot = null;
+        $this->backupFilePath = null;
+        $this->restoredDatabaseName = null;
+    }
+
+    private function dropRestoredDatabase(string $type): void
+    {
+        if (! $this->restoredDatabaseName) {
+            return;
+        }
+
+        $dsn = match ($type) {
+            'mysql' => sprintf(
+                'mysql:host=%s;port=%d',
+                $this->databaseServer->host,
+                $this->databaseServer->port
+            ),
+            'postgres' => sprintf(
+                'pgsql:host=%s;port=%d;dbname=postgres',
+                $this->databaseServer->host,
+                $this->databaseServer->port
+            ),
+            default => throw new \InvalidArgumentException("Unsupported database type: {$type}"),
+        };
+
+        $pdo = new \PDO(
+            $dsn,
+            $this->databaseServer->username,
+            $this->databaseServer->password,
+            [
+                \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION,
+            ]
+        );
+
+        if ($type === 'mysql') {
+            $pdo->exec("DROP DATABASE IF EXISTS `{$this->restoredDatabaseName}`");
+        } elseif ($type === 'postgres') {
+            // Terminate existing connections first
+            $pdo->exec("SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '{$this->restoredDatabaseName}' AND pid <> pg_backend_pid()");
+            $pdo->exec("DROP DATABASE IF EXISTS \"{$this->restoredDatabaseName}\"");
         }
     }
 }

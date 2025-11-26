@@ -25,6 +25,8 @@ class Index extends Component
 
     public ?string $deleteId = null;
 
+    public ?string $restoreId = null;
+
     public function updatingSearch()
     {
         $this->resetPage();
@@ -55,6 +57,12 @@ class Index extends Component
             session()->flash('status', 'Database server deleted successfully!');
             Flux::modal('delete-confirmation')->close();
         }
+    }
+
+    public function confirmRestore(string $id)
+    {
+        $this->restoreId = $id;
+        $this->dispatch('open-restore-modal', targetServerId: $id);
     }
 
     public function runBackup(string $id, BackupTask $backupTask)

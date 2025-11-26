@@ -71,6 +71,8 @@ class MysqlDatabase implements DatabaseInterface
         $extras = [];
         if (array_key_exists('ssl', $this->config) && $this->config['ssl'] === true) {
             $extras[] = '--ssl';
+        } elseif ($this->mysqlCliUsed === 'mariadb') {
+            $extras[] = '--skip_ssl';
         }
 
         // Prepare a "params" string from our config

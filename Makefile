@@ -1,4 +1,4 @@
-.PHONY: help install start test lint-check lint-fix lint migrate migrate-fresh db-seed setup clean
+.PHONY: help install start test test-filter test-coverage backup-test lint-check lint-fix lint migrate migrate-fresh db-seed setup clean
 
 # Colors for output
 GREEN  := \033[0;32m
@@ -41,6 +41,9 @@ test-filter: ## Run tests with filter (usage: make test-filter FILTER=DatabaseSe
 
 test-coverage: ## Run tests with coverage
 	$(PHP_ARTISAN) test --coverage
+
+backup-test: ## Run end-to-end backup and restore tests (mysql + postgres)
+	$(PHP_ARTISAN) backup:test
 
 ##@ Code Quality
 

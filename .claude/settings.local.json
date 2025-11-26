@@ -10,7 +10,8 @@
       "Bash(php artisan route:list:*)",
       "Bash(make lint-check:*)",
       "Bash(make phpstan:*)",
-      "Bash(make test:*)"
+      "Bash(make test:*)",
+      "Bash(make help:*)"
     ],
     "deny": [],
     "ask": []

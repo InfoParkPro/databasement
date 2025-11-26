@@ -35,8 +35,13 @@ php artisan serve       # Run server only (http://localhost:8000)
 make test                           # Run all Pest tests
 make test-filter FILTER=DatabaseServer  # Run specific test class/method
 make test-coverage                  # Run tests with coverage report
+make backup-test                    # Run end-to-end backup and restore tests (requires Docker containers)
 php artisan test                    # Direct artisan command
+php artisan backup:test             # Direct backup test command
+php artisan backup:test --type=mysql     # Test specific database type only
 ```
+
+**IMPORTANT**: When modifying backup or restore logic (services in `app/Services/Backup/`), you MUST run `make backup-test` to verify the complete backup and restore workflow works correctly with real MySQL and PostgreSQL databases.
 
 ### Code Quality
 ```bash
@@ -82,7 +87,8 @@ The Docker setup provides test database servers:
 **Livewire Components**: Full-page components handle database server CRUD operations
 - `app/Livewire/DatabaseServer/Create.php` - Create new database servers with connection testing
 - `app/Livewire/DatabaseServer/Edit.php` - Edit existing database servers
-- `app/Livewire/DatabaseServer/Index.php` - List all database servers
+- `app/Livewire/DatabaseServer/Index.php` - List all database servers with backup/restore actions
+- `app/Livewire/DatabaseServer/RestoreModal.php` - 3-step restore wizard (select source, snapshot, destination)
 
 **Volt Components**: Single-file components for auth and settings (in `resources/views/livewire/`)
 - Auth flows: login, register, two-factor, password reset
@@ -90,9 +96,15 @@ The Docker setup provides test database servers:
 
 **Models**: Uses ULIDs for primary keys
 - `DatabaseServer` - Stores connection info (password hidden in responses)
+- `Backup` - Backup configuration (recurrence, volume)
+- `Snapshot` - Individual backup snapshots with metadata
+- `Volume` - Storage destinations (local, S3, etc.)
 
 **Services**:
 - `DatabaseConnectionTester` - Tests database connections via PDO with timeout/error handling
+- `BackupTask` - Executes database backups (dump, compress, transfer to volume)
+- `RestoreTask` - Restores database snapshots (download, decompress, drop/create DB, restore)
+- `DatabaseListService` - Lists databases from a server (for autocomplete in restore modal)
 
 ### Key Patterns
 
@@ -105,6 +117,13 @@ The Docker setup provides test database servers:
 4. **Form Validation**: Livewire components use `#[Validate]` attributes for real-time validation. The Create component validates connection fields separately when testing connections.
 
 5. **ULID Primary Keys**: Database models use ULIDs instead of auto-incrementing integers for better distributed system support.
+
+6. **Backup & Restore Workflow**:
+   - **Backup**: `BackupTask` uses database-specific dump commands (mysqldump/pg_dump), compresses with gzip, transfers to volume storage
+   - **Restore**: `RestoreTask` downloads snapshot, decompresses, validates compatibility, drops/creates target database, restores data
+   - **Cross-server restore**: Snapshots can be restored from one server to another (e.g., prod → staging) as long as database types match
+   - **Same-server restore**: Can restore old snapshots back to the same server (e.g., rollback)
+   - Both services handle MySQL, MariaDB, and PostgreSQL with appropriate SSL/connection handling
 
 ### Routing
 

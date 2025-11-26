@@ -170,6 +170,9 @@
                                                 {{ __('Backup Now') }}
                                             </flux:button>
                                         @endif
+                                        <flux:button size="sm" variant="ghost" icon="arrow-up-tray" wire:click="confirmRestore('{{ $server->id }}')" class="text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300">
+                                            {{ __('Restore') }}
+                                        </flux:button>
                                         <flux:button size="sm" variant="ghost" :href="route('database-servers.edit', $server)" icon="pencil" wire:navigate>
                                             {{ __('Edit') }}
                                         </flux:button>
@@ -212,4 +215,7 @@
         :message="__('Are you sure you want to delete this database server? This action cannot be undone.')"
         onConfirm="delete"
     />
+
+    <!-- Restore Modal -->
+    <livewire:database-server.restore-modal />
 </div>
