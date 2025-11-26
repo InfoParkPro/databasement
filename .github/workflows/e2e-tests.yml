@@ -54,19 +54,10 @@ jobs:
           tools: composer:v2
           extensions: pdo, pdo_mysql, pdo_pgsql
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'npm'
-
       - name: Install System Dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y mysql-client postgresql-client
-
-      - name: Install Node Dependencies
-        run: npm i
 
 #      - name: Add Flux Credentials Loaded From ENV
 #        run: composer config http-basic.composer.fluxui.dev "${{ secrets.FLUX_USERNAME }}" "${{ secrets.FLUX_LICENSE_KEY }}"
@@ -76,9 +67,6 @@ jobs:
 
       - name: Generate Application Key
         run: php artisan key:generate
-
-      - name: Build Assets
-        run: npm run build
 
       - name: Run Database Migrations
         run: php artisan migrate --force
