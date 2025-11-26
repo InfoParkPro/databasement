@@ -3,7 +3,7 @@
 ])
 
 @php
-    $baseClasses = 'rounded-xl border border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-900';
+    $baseClasses = 'card bg-base-100 border border-base-300';
     $paddingClass = $padding ? 'p-6' : '';
 @endphp
 

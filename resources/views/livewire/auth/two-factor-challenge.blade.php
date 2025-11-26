@@ -14,7 +14,7 @@
                     this.recovery_code = '';
 
                     $dispatch('clear-2fa-auth-code');
-            
+
                     $nextTick(() => {
                         this.showRecoveryInput
                             ? this.$refs.recovery_code?.focus()
@@ -23,18 +23,14 @@
                 },
             }"
         >
-            <div x-show="!showRecoveryInput">
-                <x-auth-header
-                    :title="__('Authentication Code')"
-                    :description="__('Enter the authentication code provided by your authenticator application.')"
-                />
+            <div x-show="!showRecoveryInput" class="flex w-full flex-col text-center">
+                <h1 class="text-2xl font-bold">{{ __('Authentication Code') }}</h1>
+                <p class="text-sm opacity-70">{{ __('Enter the authentication code provided by your authenticator application.') }}</p>
             </div>
 
-            <div x-show="showRecoveryInput">
-                <x-auth-header
-                    :title="__('Recovery Code')"
-                    :description="__('Please confirm access to your account by entering one of your emergency recovery codes.')"
-                />
+            <div x-show="showRecoveryInput" class="flex w-full flex-col text-center">
+                <h1 class="text-2xl font-bold">{{ __('Recovery Code') }}</h1>
+                <p class="text-sm opacity-70">{{ __('Please confirm access to your account by entering one of your emergency recovery codes.') }}</p>
             </div>
 
             <form method="POST" action="{{ route('two-factor.login.store') }}">
@@ -52,15 +48,15 @@
                         </div>
 
                         @error('code')
-                            <flux:text color="red">
+                            <p class="text-error text-sm">
                                 {{ $message }}
-                            </flux:text>
+                            </p>
                         @enderror
                     </div>
 
                     <div x-show="showRecoveryInput">
                         <div class="my-5">
-                            <flux:input
+                            <x-input
                                 type="text"
                                 name="recovery_code"
                                 x-ref="recovery_code"
@@ -71,19 +67,17 @@
                         </div>
 
                         @error('recovery_code')
-                            <flux:text color="red">
+                            <p class="text-error text-sm">
                                 {{ $message }}
-                            </flux:text>
+                            </p>
                         @enderror
                     </div>
 
-                    <flux:button
-                        variant="primary"
+                    <x-button
                         type="submit"
-                        class="w-full"
-                    >
-                        {{ __('Continue') }}
-                    </flux:button>
+                        class="btn-primary w-full"
+                        label="{{ __('Continue') }}"
+                    />
                 </div>
 
                 <div class="mt-5 space-x-0.5 text-sm leading-5 text-center">
