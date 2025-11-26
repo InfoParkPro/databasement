@@ -9,7 +9,7 @@ class MysqlDatabase implements DatabaseInterface
     private array $mysqlCli = [
         'mariadb' => [
             'dump' => 'mariadb-dump',
-            'restore' => 'mariadb-restore',
+            'restore' => 'mariadb',
         ],
         'mysql' => [
             'dump' => 'mysqldump',
@@ -17,7 +17,12 @@ class MysqlDatabase implements DatabaseInterface
         ],
     ];
 
-    private string $mysqlCliUsed = 'mariadb';
+    private string $mysqlCliUsed;
+
+    public function __construct()
+    {
+        $this->mysqlCliUsed = env('MYSQL_CLI_TYPE', 'mariadb');
+    }
 
     public function handles($type): bool
     {
@@ -85,7 +90,8 @@ class MysqlDatabase implements DatabaseInterface
         }
 
         return sprintf(
-            'mysql%s '.implode(' ', $extras).' %s -e "source %s"',
+            '%s%s '.implode(' ', $extras).' %s -e "source %s"',
+            $this->mysqlCli[$this->mysqlCliUsed]['restore'],
             $params,
             escapeshellarg($this->config['database']),
             $inputPath

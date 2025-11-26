@@ -11,7 +11,8 @@
       "Bash(make lint-check:*)",
       "Bash(make phpstan:*)",
       "Bash(make test:*)",
-      "Bash(make help:*)"
+      "Bash(make help:*)",
+      "Bash(make backup-test:*)"
     ],
     "deny": [],
     "ask": []

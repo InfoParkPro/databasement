@@ -85,6 +85,7 @@ jobs:
 
       - name: Run Backup & Restore E2E Tests
         env:
+          MYSQL_CLI_TYPE: mysql
           E2E_MYSQL_HOST: 127.0.0.1
           E2E_MYSQL_PORT: 3306
           E2E_MYSQL_USERNAME: root
