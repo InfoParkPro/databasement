@@ -1,7 +1,7 @@
 services:
   php:
     build:
-      dockerfile: docker/php/Dockerfile
+      context: docker/php
     user: 1000:1000
     volumes:
       - .:/app
@@ -10,18 +10,6 @@ services:
       SERVER_NAME: :8080
     ports:
       - "8081:8080"
-
-  queue:
-    build:
-      dockerfile: docker/php/Dockerfile
-    user: 1000:1000
-    volumes:
-      - .:/app
-    working_dir: /app
-    command: php artisan queue:work --queue=backups,default --tries=3 --timeout=3600 --sleep=3 --max-jobs=1000
-    restart: unless-stopped
-    depends_on:
-      - php
 
   mysql:
     image: mysql:8.0

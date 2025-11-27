@@ -1,6 +1,5 @@
 FROM dunglas/frankenphp:1.9-php8.4-alpine
 
-
 RUN install-php-extensions \
     ctype \
     curl \
@@ -24,8 +23,10 @@ COPY --from=composer/composer:latest-bin /composer /usr/bin/composer
 # Add DB CLI tools used by the app: mysqldump, mysql, pg_dump, psql
 RUN apk add --no-cache \
         mariadb-client mariadb-connector-c \
-        postgresql-client
+        postgresql-client \
+        supervisor
 
+COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 ENV USER_ID=1000
 ENV USER=application
 
@@ -35,3 +36,6 @@ RUN adduser -u ${USER_ID} -D -h /home/${USER} ${USER} && \
 RUN mkdir -p /app && chown -R ${USER}:${USER} /app && chmod -R 775 /app
 WORKDIR /app
 USER 1000
+
+ENTRYPOINT ["/usr/bin/supervisord"]
+CMD ["-c", "/etc/supervisor/conf.d/supervisord.conf"]
