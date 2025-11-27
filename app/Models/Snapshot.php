@@ -49,6 +49,7 @@ class Snapshot extends Model
         'database_server_id',
         'backup_id',
         'volume_id',
+        'job_id',
         'path',
         'file_size',
         'checksum',

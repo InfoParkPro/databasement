@@ -28,7 +28,7 @@ install: ## Install dependencies (composer + npm)
 setup: ## Full project setup (install, env, key, migrate, build)
 	$(PHP_COMPOSER) setup
 
-start: ## Start development server (all services: server, queue, logs, vite)
+start: ## Start development server (all services: php, queue, mysql, postgres)
 	docker compose up -d
 
 ##@ Testing

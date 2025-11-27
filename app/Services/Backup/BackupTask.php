@@ -37,7 +37,7 @@ class BackupTask
         return preg_replace('/\/$/', '', $path);
     }
 
-    public function run(DatabaseServer $databaseServer, string $method = 'manual', ?int $userId = null): Snapshot
+    public function run(DatabaseServer $databaseServer, string $method = 'manual', ?string $userId = null): Snapshot
     {
         // Create snapshot record
         $snapshot = $this->createSnapshot($databaseServer, $method, $userId);
@@ -164,7 +164,7 @@ class BackupTask
         };
     }
 
-    private function createSnapshot(DatabaseServer $databaseServer, string $method, ?int $userId): Snapshot
+    private function createSnapshot(DatabaseServer $databaseServer, string $method, ?string $userId): Snapshot
     {
         // Calculate database size
         $databaseSize = $this->databaseSizeCalculator->calculate($databaseServer);

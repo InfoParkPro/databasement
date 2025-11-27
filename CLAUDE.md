@@ -25,9 +25,10 @@ make install            # Install composer and npm dependencies only
 
 ### Running the Application
 ```bash
-make start              # Start all services concurrently: server, queue, logs, vite (composer dev)
-composer dev            # Alternative: runs concurrently with colored output
-php artisan serve       # Run server only (http://localhost:8000)
+make start              # Start all Docker services: php (FrankenPHP), queue worker, mysql, postgres
+docker compose up -d    # Alternative: direct docker compose command
+docker compose logs -f  # View logs from all services
+docker compose logs -f queue  # View queue worker logs only
 ```
 
 ### Testing
@@ -69,16 +70,23 @@ npm run dev             # Start Vite dev server for hot module replacement
 make build              # Alternative: build via Makefile
 ```
 
-### Docker (Test Databases)
+### Docker Services
 ```bash
-docker compose up -d             # Start MySQL and PostgreSQL test containers
-docker compose down              # Stop test containers
-docker compose down -v           # Stop and remove volumes
+make start                      # Start all services (php, queue worker, mysql, postgres)
+docker compose up -d            # Alternative: direct docker compose command
+docker compose down             # Stop all services
+docker compose down -v          # Stop and remove volumes
+docker compose logs -f queue    # View queue worker logs
+docker compose restart queue    # Restart queue worker (after code changes)
 ```
 
-The Docker setup provides test database servers:
-- MySQL 8.0 on port 3306 (user: admin, password: admin, db: testdb)
-- PostgreSQL 16 on port 5432 (user: admin, password: admin, db: testdb)
+The Docker setup provides:
+- **php**: FrankenPHP server on port 8081 (http://localhost:8081)
+- **queue**: Queue worker processing backup/restore jobs
+- **mysql**: MySQL 8.0 on port 3306 (user: admin, password: admin, db: testdb)
+- **postgres**: PostgreSQL 16 on port 5432 (user: admin, password: admin, db: testdb)
+
+**Queue Worker**: The queue service automatically starts with `make start` and processes jobs from the `backups` queue. It restarts automatically on failure and respects a max of 1000 jobs before auto-restarting (prevents memory leaks).
 
 ## Architecture
 
@@ -97,8 +105,13 @@ The Docker setup provides test database servers:
 **Models**: Uses ULIDs for primary keys
 - `DatabaseServer` - Stores connection info (password hidden in responses)
 - `Backup` - Backup configuration (recurrence, volume)
-- `Snapshot` - Individual backup snapshots with metadata
+- `Snapshot` - Individual backup snapshots with metadata (includes `job_id` for queue tracking)
+- `Restore` - Tracks restore operations with status, timing, and error handling
 - `Volume` - Storage destinations (local, S3, etc.)
+
+**Queue Jobs**:
+- `ProcessBackupJob` - Wraps `BackupTask` service for async execution (2 retries, 1hr timeout)
+- `ProcessRestoreJob` - Wraps `RestoreTask` service for async execution (no retries, 1hr timeout)
 
 **Services**:
 - `DatabaseConnectionTester` - Tests database connections via PDO with timeout/error handling
@@ -125,9 +138,12 @@ The Docker setup provides test database servers:
 
 6. **ULID Primary Keys**: Database models use ULIDs instead of auto-incrementing integers for better distributed system support.
 
-7. **Backup & Restore Workflow**:
-   - **Backup**: `BackupTask` uses database-specific dump commands (mysqldump/pg_dump), compresses with gzip, transfers to volume storage
-   - **Restore**: `RestoreTask` downloads snapshot, decompresses, validates compatibility, drops/creates target database, restores data
+7. **Backup & Restore Workflow** (Async via Queue):
+   - **Backup**: User clicks "Backup" → `ProcessBackupJob` dispatched to queue → Queue worker (Docker service) executes `BackupTask` service → Creates `Snapshot` record with status tracking
+   - **Restore**: User submits restore → `Restore` record created → `ProcessRestoreJob` dispatched to queue → Queue worker executes `RestoreTask` service
+   - **Queue Processing**: Jobs run asynchronously in the dedicated `queue` Docker service on the `backups` queue with proper error handling and status updates
+   - **BackupTask**: Uses database-specific dump commands (mysqldump/pg_dump), compresses with gzip, transfers to volume storage
+   - **RestoreTask**: Downloads snapshot, decompresses, validates compatibility, drops/creates target database, restores data
    - **Cross-server restore**: Snapshots can be restored from one server to another (e.g., prod → staging) as long as database types match
    - **Same-server restore**: Can restore old snapshots back to the same server (e.g., rollback)
    - Both services handle MySQL, MariaDB, and PostgreSQL with appropriate SSL/connection handling
@@ -200,4 +216,5 @@ php artisan test --filter=CreateTest
 - `.husky/pre-commit` - Git pre-commit hooks
 - `phpunit.xml` - Test configuration
 - `vite.config.js` - Asset bundling configuration
-- `composer.json` - Contains helpful script shortcuts (`composer dev`, `composer test`, `composer setup`)
+- `composer.json` - Contains helpful script shortcuts (`composer test`, `composer setup`)
+- `docker-compose.yml` - Defines services: php (FrankenPHP), queue worker, mysql, postgres

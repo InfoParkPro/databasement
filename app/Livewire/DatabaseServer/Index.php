@@ -2,8 +2,8 @@
 
 namespace App\Livewire\DatabaseServer;
 
+use App\Jobs\ProcessBackupJob;
 use App\Models\DatabaseServer;
-use App\Services\Backup\BackupTask;
 use Livewire\Component;
 use Livewire\WithPagination;
 use Mary\Traits\Toast;
@@ -78,7 +78,7 @@ class Index extends Component
         $this->dispatch('open-restore-modal', targetServerId: $id);
     }
 
-    public function runBackup(string $id, BackupTask $backupTask)
+    public function runBackup(string $id)
     {
         try {
             $server = DatabaseServer::with(['backup.volume'])->findOrFail($id);
@@ -89,11 +89,12 @@ class Index extends Component
                 return;
             }
 
-            $snapshot = $backupTask->run($server, 'manual', auth()->id());
+            // Dispatch the backup job
+            ProcessBackupJob::dispatch($id, 'manual', auth()->id());
 
-            $this->success("Backup completed successfully! Snapshot ID: {$snapshot->id}", position: 'toast-bottom');
+            $this->success('Backup queued successfully! You will see the snapshot in the list shortly.', position: 'toast-bottom');
         } catch (\Throwable $e) {
-            $this->error('Backup failed: '.$e->getMessage(), position: 'toast-bottom');
+            $this->error('Failed to queue backup: '.$e->getMessage(), position: 'toast-bottom');
         }
     }
 

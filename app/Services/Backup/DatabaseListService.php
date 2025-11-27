@@ -54,7 +54,7 @@ class DatabaseListService
         return $statement->fetchAll(PDO::FETCH_COLUMN, 0);
     }
 
-    private function createConnection(DatabaseServer $databaseServer): PDO
+    protected function createConnection(DatabaseServer $databaseServer): PDO
     {
         $dsn = $this->buildDsn($databaseServer);
 
@@ -69,7 +69,7 @@ class DatabaseListService
         );
     }
 
-    private function buildDsn(DatabaseServer $databaseServer): string
+    protected function buildDsn(DatabaseServer $databaseServer): string
     {
         return match ($databaseServer->database_type) {
             'mysql', 'mariadb' => sprintf(

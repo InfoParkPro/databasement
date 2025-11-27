@@ -16,7 +16,8 @@
       "WebFetch(domain:mary-ui.com)",
       "Bash(tree:*)",
       "Bash(docker compose exec:*)",
-      "Bash(make test-filter:*)"
+      "Bash(make test-filter:*)",
+      "Bash(php artisan:*)"
     ],
     "deny": [],
     "ask": []

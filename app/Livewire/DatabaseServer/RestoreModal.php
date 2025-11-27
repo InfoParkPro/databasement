@@ -2,10 +2,11 @@
 
 namespace App\Livewire\DatabaseServer;
 
+use App\Jobs\ProcessRestoreJob;
 use App\Models\DatabaseServer;
+use App\Models\Restore;
 use App\Models\Snapshot;
 use App\Services\Backup\DatabaseListService;
-use App\Services\Backup\RestoreTask;
 use Livewire\Attributes\On;
 use Livewire\Component;
 use Mary\Traits\Toast;
@@ -90,7 +91,7 @@ class RestoreModal extends Component
         }
     }
 
-    public function restore(RestoreTask $restoreTask): void
+    public function restore(): void
     {
         $this->validate([
             'selectedSourceServerId' => 'required',
@@ -104,15 +105,25 @@ class RestoreModal extends Component
         try {
             $snapshot = Snapshot::findOrFail($this->selectedSnapshotId);
 
-            $restoreTask->run($this->targetServer, $snapshot, $this->schemaName);
+            // Create a restore record to track the operation
+            $restore = Restore::create([
+                'snapshot_id' => $snapshot->id,
+                'target_server_id' => $this->targetServer->id,
+                'schema_name' => $this->schemaName,
+                'status' => 'queued',
+                'triggered_by_user_id' => auth()->id(),
+            ]);
 
-            $this->success("Database restored successfully to '{$this->schemaName}'!");
+            // Dispatch the restore job
+            ProcessRestoreJob::dispatch($restore->id);
+
+            $this->success("Restore queued successfully! You'll be notified when it completes.");
 
             $this->showModal = false;
 
             $this->dispatch('restore-completed');
         } catch (\Exception $e) {
-            $this->error('Restore failed: '.$e->getMessage());
+            $this->error('Failed to queue restore: '.$e->getMessage());
         }
     }
 
