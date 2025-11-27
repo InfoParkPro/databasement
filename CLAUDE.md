@@ -4,12 +4,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a Laravel application for managing database server backups. It uses Livewire for reactive components and Flux UI components. The application allows users to register database servers (MySQL, PostgreSQL, MariaDB, SQLite), test connections, and manage backup configurations.
+This is a Laravel application for managing database server backups. It uses Livewire for reactive components and Mary UI (built on daisyUI and Tailwind CSS). The application allows users to register database servers (MySQL, PostgreSQL, MariaDB, SQLite), test connections, and manage backup configurations.
 
 ## Technology Stack
 
 - **Backend**: Laravel 12, PHP 8.2+
-- **Frontend**: Livewire/Volt, Flux UI components, Vite, Tailwind CSS 4
+- **Frontend**: Livewire, Mary UI (robsontenorio/mary), daisyUI, Vite, Tailwind CSS 4
 - **Authentication**: Laravel Fortify (with two-factor support)
 - **Testing**: Pest PHP
 - **Database**: SQLite (development), supports managing MySQL, PostgreSQL, MariaDB servers
@@ -84,15 +84,15 @@ The Docker setup provides test database servers:
 
 ### Application Structure
 
-**Livewire Components**: Full-page components handle database server CRUD operations
-- `app/Livewire/DatabaseServer/Create.php` - Create new database servers with connection testing
-- `app/Livewire/DatabaseServer/Edit.php` - Edit existing database servers
-- `app/Livewire/DatabaseServer/Index.php` - List all database servers with backup/restore actions
+**Livewire Components**: Class-based components for all interactive pages
+- `app/Livewire/DatabaseServer/*` - CRUD operations for database servers with connection testing
 - `app/Livewire/DatabaseServer/RestoreModal.php` - 3-step restore wizard (select source, snapshot, destination)
+- `app/Livewire/Volume/*` - CRUD operations for storage volumes
+- `app/Livewire/Snapshot/Index.php` - List and manage backup snapshots
+- `app/Livewire/Settings/*` - User settings pages (Profile, Password, TwoFactor, Appearance, DeleteUserForm)
 
-**Volt Components**: Single-file components for auth and settings (in `resources/views/livewire/`)
-- Auth flows: login, register, two-factor, password reset
-- Settings: profile, password, two-factor, appearance
+**Volt Components**: Single-file components for authentication flows (in `resources/views/livewire/`)
+- Auth flows: login, register, two-factor, password reset, email verification
 
 **Models**: Uses ULIDs for primary keys
 - `DatabaseServer` - Stores connection info (password hidden in responses)
@@ -108,17 +108,24 @@ The Docker setup provides test database servers:
 
 ### Key Patterns
 
-1. **Livewire Architecture**: The app uses class-based Livewire components for complex pages (DatabaseServer CRUD) and Volt (single-file components) for simpler pages (auth, settings).
+1. **Livewire Architecture**: The app uses class-based Livewire components for all main pages (CRUD operations, settings) and Volt (single-file components) for authentication flows only.
 
-2. **Database Connection Testing**: The `DatabaseConnectionTester` service builds DSN strings dynamically based on database type (mysql, postgresql, mariadb, sqlite) and provides user-friendly error messages.
+2. **Mary UI Components**: All UI components use Mary UI (built on daisyUI). Components are used without prefixes (e.g., `<x-button>`, `<x-input>`, `<x-card>`). Key patterns:
+   - Modals use `wire:model` with boolean properties (e.g., `$showDeleteModal`)
+   - Tables use `<table class="table-default">` with custom styling
+   - Alerts use `class="alert-success"` format (not `variant`)
+   - Selects use `:options` prop with `[['id' => '', 'name' => '']]` format
+   - Dark mode follows system preference (`prefers-color-scheme`)
 
-3. **Authentication**: Laravel Fortify handles auth with optional two-factor authentication. All main routes require `auth` and `verified` middleware.
+3. **Database Connection Testing**: The `DatabaseConnectionTester` service builds DSN strings dynamically based on database type (mysql, postgresql, mariadb, sqlite) and provides user-friendly error messages.
 
-4. **Form Validation**: Livewire components use `#[Validate]` attributes for real-time validation. The Create component validates connection fields separately when testing connections.
+4. **Authentication**: Laravel Fortify handles auth with optional two-factor authentication. All main routes require `auth` and `verified` middleware.
 
-5. **ULID Primary Keys**: Database models use ULIDs instead of auto-incrementing integers for better distributed system support.
+5. **Form Validation**: Livewire components use `#[Validate]` attributes or inline validation in methods. Form objects (like `VolumeForm`, `DatabaseServerForm`) encapsulate validation logic.
 
-6. **Backup & Restore Workflow**:
+6. **ULID Primary Keys**: Database models use ULIDs instead of auto-incrementing integers for better distributed system support.
+
+7. **Backup & Restore Workflow**:
    - **Backup**: `BackupTask` uses database-specific dump commands (mysqldump/pg_dump), compresses with gzip, transfers to volume storage
    - **Restore**: `RestoreTask` downloads snapshot, decompresses, validates compatibility, drops/creates target database, restores data
    - **Cross-server restore**: Snapshots can be restored from one server to another (e.g., prod → staging) as long as database types match
@@ -129,9 +136,9 @@ The Docker setup provides test database servers:
 
 Routes are defined in `routes/web.php`:
 - Public: `/` (welcome page)
-- Authenticated: `/dashboard`, `/database-servers/*`, `/settings/*`
-- Volt routes use `Volt::route()` helper
-- Database server routes use Livewire component classes directly
+- Authenticated: `/dashboard`, `/database-servers/*`, `/volumes/*`, `/snapshots`, `/settings/*`
+- Auth routes use `Volt::route()` helper for single-file components
+- All other routes use Livewire component classes directly (e.g., `Route::get('database-servers', \App\Livewire\DatabaseServer\Index::class)`)
 
 ### Testing Strategy
 
@@ -170,10 +177,21 @@ php artisan test --filter=CreateTest
 ### Working with Livewire Components
 
 - Public properties are automatically bound to views
-- Use `#[Validate]` attributes for form validation
+- Use `#[Validate]` attributes or Form objects for validation
 - Call `$this->validate()` before processing data
-- Use `session()->flash()` for one-time messages
+- Use `Session::flash()` for one-time messages (shown via `@if (session('success'))`)
 - Return `$this->redirect()` with `navigate: true` for SPA-like navigation
+- Blade files contain only view markup; all PHP logic is in component classes
+
+### Working with Mary UI Components
+
+- All components are prefixed with `x-` (e.g., `<x-button>`, `<x-input>`, `<x-card>`)
+- Use Heroicons for icons (e.g., `icon="o-user"` for outline icons, `icon="s-user"` for solid)
+- Modal pattern: Add boolean property to component class, use `wire:model` in blade
+- Select pattern: Use `:options` prop with array format `[['id' => 'value', 'name' => 'Label']]`
+- Alert pattern: Use `class="alert-success"`, `class="alert-error"`, etc.
+- Form components: `<x-input>`, `<x-password>`, `<x-select>`, `<x-checkbox>`, etc.
+- Documentation: https://mary-ui.com/docs/components/button
 
 ## Important Files
 

@@ -129,7 +129,7 @@ Ensure tests pass before committing.
 ### Tech Stack
 
 - **Backend**: Laravel 12, PHP 8.4+
-- **Frontend**: Livewire/Volt, Flux UI, Tailwind CSS 4, Vite
+- **Frontend**: Livewire, Mary UI (robsontenorio/mary), daisyUI, Tailwind CSS 4, Vite
 - **Testing**: Pest PHP
 - **Database**: SQLite (dev), supports MySQL/PostgreSQL/MariaDB management
 - **Authentication**: Laravel Fortify with 2FA support
@@ -150,8 +150,11 @@ Ensure tests pass before committing.
 
 **Livewire Components**
 - `DatabaseServer/*` - CRUD operations for database servers
+- `Volume/*` - CRUD operations for storage volumes
+- `Snapshot/Index` - Snapshot listing and management
+- `Settings/*` - User settings pages (Profile, Password, TwoFactor, Appearance)
 - `RestoreModal` - 3-step wizard for snapshot restoration
-- Volt components for authentication and settings
+- Volt components for authentication flows
 
 ### Backup & Restore Workflow
 
