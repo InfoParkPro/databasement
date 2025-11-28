@@ -31,6 +31,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('snapshots', \App\Livewire\Snapshot\Index::class)
         ->name('snapshots.index');
+
+    Route::get('jobs', \App\Livewire\Job\Index::class)
+        ->name('jobs.index');
 });
 
 Route::middleware(['auth'])->group(function () {

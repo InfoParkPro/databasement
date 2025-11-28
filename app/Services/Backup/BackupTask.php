@@ -42,6 +42,9 @@ class BackupTask
         // Create snapshot record
         $snapshot = $this->createSnapshot($databaseServer, $method, $userId);
 
+        // Configure shell processor to log to snapshot
+        $this->shellProcessor->setLogger($snapshot);
+
         $workingFile = $this->getWorkingFile('local');
         $filesystem = $this->filesystemProvider->get($databaseServer->backup->volume->type);
 
@@ -51,15 +54,40 @@ class BackupTask
         try {
             // Mark as running
             $snapshot->update(['status' => 'running']);
+            $snapshot->log("Starting backup for database: {$databaseServer->database_name}", 'info', [
+                'server' => $databaseServer->name,
+                'database' => $databaseServer->database_name,
+                'database_type' => $databaseServer->database_type,
+                'method' => $method,
+            ]);
 
             // Execute backup
+            $snapshot->log('Dumping database to temporary file', 'info');
             $this->dumpDatabase($databaseServer, $workingFile);
+            $snapshot->log('Database dump completed successfully', 'success');
+
+            $snapshot->log('Compressing backup file with gzip', 'info');
             $archive = $this->compress($workingFile);
+            $snapshot->log('Compression completed successfully', 'success');
+
+            $snapshot->log("Transferring backup to volume: {$databaseServer->backup->volume->name}", 'info', [
+                'volume_type' => $databaseServer->backup->volume->type,
+            ]);
             $destinationPath = $this->transfer($databaseServer, $archive, $filesystem);
+            $snapshot->log('Transfer completed successfully', 'success', [
+                'destination_path' => $destinationPath,
+            ]);
 
             // Calculate file size and checksum
             $fileSize = filesize($archive);
             $checksum = hash_file('sha256', $archive);
+
+            $snapshot->log('Calculating file metadata', 'info');
+            $snapshot->log('Backup completed successfully', 'success', [
+                'file_size' => $fileSize,
+                'checksum' => substr($checksum, 0, 16).'...',
+                'destination' => $destinationPath,
+            ]);
 
             // Update snapshot with success
             $snapshot->update([
@@ -72,10 +100,16 @@ class BackupTask
 
             return $snapshot;
         } catch (\Throwable $e) {
+            $snapshot->log("Backup failed: {$e->getMessage()}", 'error', [
+                'exception' => get_class($e),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ]);
             $snapshot->markFailed($e);
             throw $e;
         } finally {
             // Clean up temporary files
+            $snapshot->log('Cleaning up temporary files', 'info');
             if (file_exists($workingFile)) {
                 unlink($workingFile);
             }

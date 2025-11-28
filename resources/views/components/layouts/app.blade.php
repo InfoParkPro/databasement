@@ -49,6 +49,7 @@
                 <x-menu-separator />
                 <x-menu-item title="{{ __('Dashboard') }}" icon="o-home" link="{{ route('dashboard') }}" wire:navigate />
                 <x-menu-item title="{{ __('Database Servers') }}" icon="o-server-stack" link="{{ route('database-servers.index') }}" wire:navigate />
+                <x-menu-item title="{{ __('Jobs') }}" icon="o-queue-list" link="{{ route('jobs.index') }}" wire:navigate />
                 <x-menu-item title="{{ __('Snapshots') }}" icon="o-camera" link="{{ route('snapshots.index') }}" wire:navigate />
                 <x-menu-item title="{{ __('Volumes') }}" icon="o-circle-stack" link="{{ route('volumes.index') }}" wire:navigate />
             </x-menu>

@@ -13,15 +13,14 @@ use App\Services\Backup\ShellProcessor;
 use App\Services\DatabaseConnectionTester;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use League\Flysystem\Filesystem;
-use Symfony\Component\Process\Process;
 
 uses(RefreshDatabase::class);
 
 beforeEach(function () {
-    // Mock dependencies
+    // Mock dependencies (but use REAL ShellProcessor!)
     $this->mysqlDatabase = Mockery::mock(MysqlDatabase::class);
     $this->postgresqlDatabase = Mockery::mock(PostgresqlDatabase::class);
-    $this->shellProcessor = Mockery::mock(ShellProcessor::class);
+    $this->shellProcessor = new ShellProcessor;  // Use REAL ShellProcessor ✓
     $this->filesystemProvider = Mockery::mock(FilesystemProvider::class);
     $this->compressor = Mockery::mock(GzipCompressor::class);
     $this->connectionTester = Mockery::mock(DatabaseConnectionTester::class);
@@ -106,7 +105,7 @@ function setupRestoreExpectations(
     test()->restoreTask
         ->shouldReceive('prepareDatabase')
         ->once()
-        ->with($targetServer, $schemaName)
+        ->with($targetServer, $schemaName, Mockery::any())
         ->andReturnNull();
 
     // Filesystem provider for working directory
@@ -132,21 +131,13 @@ function setupRestoreExpectations(
             return fopen($compressedFile, 'r');
         });
 
-    // Decompression
+    // Decompression - use real command that creates the file
     test()->compressor
         ->shouldReceive('getDecompressCommandLine')
         ->once()
-        ->andReturn('gzip -d');
-
-    test()->shellProcessor
-        ->shouldReceive('process')
-        ->once()
-        ->ordered()
-        ->with(Mockery::type(Process::class))
         ->andReturnUsing(function () use ($decompressedFile) {
-            file_put_contents($decompressedFile, 'decompressed backup data');
-
-            return '';
+            // Return a safe command that creates the decompressed file
+            return sprintf('echo "decompressed backup data" > %s', escapeshellarg($decompressedFile));
         });
 
     test()->compressor
@@ -166,18 +157,14 @@ function setupRestoreExpectations(
             'database' => $schemaName,
         ]);
 
-    // Restore command
+    // Restore command - use a safe real command
     $databaseInterface
         ->shouldReceive('getRestoreCommandLine')
         ->once()
-        ->andReturn($restoreCommand);
-
-    // Restore execution
-    test()->shellProcessor
-        ->shouldReceive('process')
-        ->once()
-        ->ordered()
-        ->with(Mockery::type(Process::class));
+        ->andReturnUsing(function () {
+            // Return a safe shell command that simulates a restore
+            return 'echo "fake database restore"';
+        });
 }
 
 afterEach(function () {
@@ -370,19 +357,17 @@ test('run throws exception for unsupported database type', function () {
         ->shouldReceive('readStream')
         ->andReturn(fopen('php://memory', 'r'));
 
+    $decompressedFile = $this->tempDir.'/test.sql';
     $this->compressor
         ->shouldReceive('getDecompressCommandLine')
-        ->andReturn('gzip -d');
-
-    $this->shellProcessor
-        ->shouldReceive('process')
-        ->once();
+        ->andReturnUsing(function () use ($decompressedFile) {
+            // Create the file with a real command
+            return sprintf('echo "test data" > %s', escapeshellarg($decompressedFile));
+        });
 
     $this->compressor
         ->shouldReceive('getDecompressedPath')
-        ->andReturn($this->tempDir.'/test.sql');
-
-    file_put_contents($this->tempDir.'/test.sql', 'test');
+        ->andReturn($decompressedFile);
 
     // Act & Assert
     expect(fn () => $this->restoreTask->run($targetServer, $snapshot, 'restored_db'))

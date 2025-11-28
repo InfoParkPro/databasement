@@ -49,14 +49,23 @@ class ProcessRestoreJob implements ShouldQueue
         $restore->markRunning();
 
         try {
+            // Log restore start
+            $restore->log('Starting restore operation', 'info', [
+                'snapshot_id' => $restore->snapshot_id,
+                'target_server' => $restore->targetServer->name,
+                'schema_name' => $restore->schema_name,
+            ]);
+
             // Run the restore task
             $restoreTask->run(
                 $restore->targetServer,
                 $restore->snapshot,
-                $restore->schema_name
+                $restore->schema_name,
+                $restore
             );
 
             // Mark as completed
+            $restore->log('Restore operation completed successfully', 'success');
             $restore->markCompleted();
 
             Log::info('Restore completed successfully', [

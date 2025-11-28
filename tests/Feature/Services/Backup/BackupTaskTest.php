@@ -12,15 +12,14 @@ use App\Services\Backup\GzipCompressor;
 use App\Services\Backup\ShellProcessor;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use League\Flysystem\Filesystem;
-use Symfony\Component\Process\Process;
 
 uses(RefreshDatabase::class);
 
 beforeEach(function () {
-    // Mock dependencies
+    // Mock dependencies (but use REAL ShellProcessor!)
     $this->mysqlDatabase = Mockery::mock(MysqlDatabase::class);
     $this->postgresqlDatabase = Mockery::mock(PostgresqlDatabase::class);
-    $this->shellProcessor = Mockery::mock(ShellProcessor::class);
+    $this->shellProcessor = new ShellProcessor;  // Use REAL ShellProcessor ✓
     $this->filesystemProvider = Mockery::mock(FilesystemProvider::class);
     $this->compressor = Mockery::mock(GzipCompressor::class);
     $this->databaseSizeCalculator = Mockery::mock(DatabaseSizeCalculator::class);
@@ -95,31 +94,11 @@ function setupCommonExpectations(DatabaseServer $databaseServer, ?int $databaseS
         ->with($databaseServer->backup->volume->type)
         ->andReturn($filesystem);
 
-    // Shell processor will be called twice: once for dump, once for compress
-    // We'll set up expectations for both calls in order
-    test()->shellProcessor
-        ->shouldReceive('process')
-        ->once()
-        ->ordered()
-        ->with(Mockery::type(Process::class));
-
-    // Compression
     test()->compressor
         ->shouldReceive('getCompressCommandLine')
         ->once()
-        ->andReturn('gzip');
-
-    test()->shellProcessor
-        ->shouldReceive('process')
-        ->once()
-        ->ordered()
-        ->with(Mockery::type(Process::class))
-        ->andReturnUsing(function () use ($compressedFile) {
-            file_put_contents($compressedFile, 'compressed backup data');
-            // Note: Can't modify test()->createdFiles from closure due to Pest limitation
-            // The file will be cleaned up in the finally block of BackupTask
-
-            return '';
+        ->andReturnUsing(function ($path) use ($compressedFile) {
+            return sprintf('echo "compressed backup data" > %s', escapeshellarg($compressedFile));
         });
 
     test()->compressor
@@ -140,7 +119,7 @@ function setupCommonExpectations(DatabaseServer $databaseServer, ?int $databaseS
 }
 
 // Helper function to setup database interface expectations
-function setupDatabaseExpectations(DatabaseServer $databaseServer, $databaseInterface, string $dumpCommand = 'mysqldump')
+function setupDatabaseExpectations(DatabaseServer $databaseServer, $databaseInterface)
 {
     $databaseInterface
         ->shouldReceive('setConfig')
@@ -156,9 +135,9 @@ function setupDatabaseExpectations(DatabaseServer $databaseServer, $databaseInte
     $databaseInterface
         ->shouldReceive('getDumpCommandLine')
         ->once()
-        ->andReturn($dumpCommand);
-
-    // Note: shellProcessor->process() expectations are now handled in setupCommonExpectations
+        ->andReturnUsing(function ($outputPath) {
+            return sprintf('echo "fake database dump output" > %s', escapeshellarg($outputPath));
+        });
 }
 
 afterEach(function () {

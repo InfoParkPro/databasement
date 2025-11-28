@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Contracts\JobInterface;
+use App\Models\Concerns\HasJob;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -28,6 +30,7 @@ use League\Flysystem\Filesystem;
  * @property string $compression_type
  * @property string $method
  * @property string|null $triggered_by_user_id
+ * @property array|null $logs
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @property-read \App\Models\DatabaseServer $databaseServer
@@ -41,8 +44,9 @@ use League\Flysystem\Filesystem;
  *
  * @mixin \Eloquent
  */
-class Snapshot extends Model
+class Snapshot extends Model implements JobInterface
 {
+    use HasJob;
     use HasUlids;
 
     protected $fillable = [
@@ -66,6 +70,7 @@ class Snapshot extends Model
         'compression_type',
         'method',
         'triggered_by_user_id',
+        'logs',
     ];
 
     protected function casts(): array
@@ -76,6 +81,7 @@ class Snapshot extends Model
             'file_size' => 'integer',
             'database_port' => 'integer',
             'database_size_bytes' => 'integer',
+            'logs' => 'array',
         ];
     }
 
@@ -105,45 +111,6 @@ class Snapshot extends Model
     public function triggeredBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'triggered_by_user_id');
-    }
-
-    /**
-     * Calculate the duration of the backup in milliseconds
-     */
-    public function getDurationMs(): ?int
-    {
-        if ($this->completed_at === null) {
-            return null;
-        }
-
-        return (int) $this->started_at->diffInMilliseconds($this->completed_at);
-    }
-
-    /**
-     * Get human-readable duration
-     */
-    public function getHumanDuration(): ?string
-    {
-        $ms = $this->getDurationMs();
-
-        if ($ms === null) {
-            return null;
-        }
-
-        if ($ms < 1000) {
-            return "{$ms}ms";
-        }
-
-        $seconds = round($ms / 1000, 2);
-
-        if ($seconds < 60) {
-            return "{$seconds}s";
-        }
-
-        $minutes = floor($seconds / 60);
-        $remainingSeconds = round($seconds % 60, 2);
-
-        return "{$minutes}m {$remainingSeconds}s";
     }
 
     /**
@@ -211,7 +178,7 @@ class Snapshot extends Model
     }
 
     /**
-     * Mark snapshot as completed
+     * Mark snapshot as completed with optional checksum
      */
     public function markCompleted(?string $checksum = null): void
     {
@@ -220,35 +187,6 @@ class Snapshot extends Model
             'completed_at' => now(),
             'checksum' => $checksum,
         ]);
-    }
-
-    /**
-     * Mark snapshot as failed
-     */
-    public function markFailed(\Throwable $exception): void
-    {
-        $this->update([
-            'status' => 'failed',
-            'completed_at' => now(),
-            'error_message' => $exception->getMessage(),
-            'error_trace' => $exception->getTraceAsString(),
-        ]);
-    }
-
-    /**
-     * Scope to filter by status
-     */
-    public function scopeCompleted($query)
-    {
-        return $query->where('status', 'completed');
-    }
-
-    /**
-     * Scope to filter by status
-     */
-    public function scopeFailed($query)
-    {
-        return $query->where('status', 'failed');
     }
 
     /**

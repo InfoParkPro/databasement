@@ -31,6 +31,11 @@ setup: ## Full project setup (install, env, key, migrate, build)
 start: ## Start development server (all services: php, queue, mysql, postgres)
 	docker compose up -d
 
+migrate:
+	$(PHP_ARTISAN) migrate
+
+logs:
+	$(DOCKER_COMPOSE) logs -f php
 ##@ Testing
 
 test: ## Run all tests

@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Contracts\JobInterface;
+use App\Models\Concerns\HasJob;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -18,6 +20,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string|null $error_message
  * @property string|null $error_trace
  * @property string|null $triggered_by_user_id
+ * @property array|null $logs
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @property-read \App\Models\Snapshot $snapshot
@@ -30,8 +33,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  *
  * @mixin \Eloquent
  */
-class Restore extends Model
+class Restore extends Model implements JobInterface
 {
+    use HasJob;
     use HasUlids;
 
     protected $fillable = [
@@ -45,6 +49,7 @@ class Restore extends Model
         'error_message',
         'error_trace',
         'triggered_by_user_id',
+        'logs',
     ];
 
     protected function casts(): array
@@ -52,6 +57,7 @@ class Restore extends Model
         return [
             'started_at' => 'datetime',
             'completed_at' => 'datetime',
+            'logs' => 'array',
         ];
     }
 
@@ -71,108 +77,10 @@ class Restore extends Model
     }
 
     /**
-     * Calculate the duration of the restore in milliseconds
-     */
-    public function getDurationMs(): ?int
-    {
-        if ($this->completed_at === null || $this->started_at === null) {
-            return null;
-        }
-
-        return (int) $this->started_at->diffInMilliseconds($this->completed_at);
-    }
-
-    /**
-     * Get human-readable duration
-     */
-    public function getHumanDuration(): ?string
-    {
-        $ms = $this->getDurationMs();
-
-        if ($ms === null) {
-            return null;
-        }
-
-        if ($ms < 1000) {
-            return "{$ms}ms";
-        }
-
-        $seconds = round($ms / 1000, 2);
-
-        if ($seconds < 60) {
-            return "{$seconds}s";
-        }
-
-        $minutes = floor($seconds / 60);
-        $remainingSeconds = round($seconds % 60, 2);
-
-        return "{$minutes}m {$remainingSeconds}s";
-    }
-
-    /**
-     * Mark restore as running
-     */
-    public function markRunning(): void
-    {
-        $this->update([
-            'status' => 'running',
-            'started_at' => now(),
-        ]);
-    }
-
-    /**
-     * Mark restore as completed
-     */
-    public function markCompleted(): void
-    {
-        $this->update([
-            'status' => 'completed',
-            'completed_at' => now(),
-        ]);
-    }
-
-    /**
-     * Mark restore as failed
-     */
-    public function markFailed(\Throwable $exception): void
-    {
-        $this->update([
-            'status' => 'failed',
-            'completed_at' => now(),
-            'error_message' => $exception->getMessage(),
-            'error_trace' => $exception->getTraceAsString(),
-        ]);
-    }
-
-    /**
-     * Scope to filter by status
-     */
-    public function scopeCompleted($query)
-    {
-        return $query->where('status', 'completed');
-    }
-
-    /**
-     * Scope to filter by status
-     */
-    public function scopeFailed($query)
-    {
-        return $query->where('status', 'failed');
-    }
-
-    /**
      * Scope to filter by status
      */
     public function scopeQueued($query)
     {
         return $query->where('status', 'queued');
-    }
-
-    /**
-     * Scope to filter by status
-     */
-    public function scopeRunning($query)
-    {
-        return $query->where('status', 'running');
     }
 }
