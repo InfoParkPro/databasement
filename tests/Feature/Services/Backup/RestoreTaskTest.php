@@ -303,6 +303,7 @@ test('run throws exception when restore command failed', function () {
         ->shouldAllowMockingProtectedMethods();
 
     // Mock prepareDatabase
+    $restoreTask->shouldAllowMockingProtectedMethods();
     $restoreTask
         ->shouldReceive('prepareDatabase')
         ->once()
