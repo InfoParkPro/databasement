@@ -48,21 +48,21 @@ return [
     |
     */
 
-    'e2e' => [
+    'backup_test' => [
         'mysql' => [
-            'host' => env('E2E_MYSQL_HOST', 'mysql'),
-            'port' => env('E2E_MYSQL_PORT', 3306),
-            'username' => env('E2E_MYSQL_USERNAME', 'root'),
-            'password' => env('E2E_MYSQL_PASSWORD', 'admin'),
-            'database' => env('E2E_MYSQL_DATABASE', 'testdb'),
+            'host' => env('BACKUP_TEST_MYSQL_HOST', 'mysql'),
+            'port' => env('BACKUP_TEST_MYSQL_PORT', 3306),
+            'username' => env('BACKUP_TEST_MYSQL_USERNAME', 'root'),
+            'password' => env('BACKUP_TEST_MYSQL_PASSWORD', 'root'),
+            'database' => env('BACKUP_TEST_MYSQL_DATABASE', 'testdb'),
         ],
 
         'postgres' => [
-            'host' => env('E2E_POSTGRES_HOST', 'postgres'),
-            'port' => env('E2E_POSTGRES_PORT', 5432),
-            'username' => env('E2E_POSTGRES_USERNAME', 'admin'),
-            'password' => env('E2E_POSTGRES_PASSWORD', 'admin'),
-            'database' => env('E2E_POSTGRES_DATABASE', 'testdb'),
+            'host' => env('BACKUP_TEST_POSTGRES_HOST', 'postgres'),
+            'port' => env('BACKUP_TEST_POSTGRES_PORT', 5432),
+            'username' => env('BACKUP_TEST_POSTGRES_USERNAME', 'root'),
+            'password' => env('BACKUP_TEST_POSTGRES_PASSWORD', 'root'),
+            'database' => env('BACKUP_TEST_POSTGRES_DATABASE', 'testdb'),
         ],
     ],
 ];

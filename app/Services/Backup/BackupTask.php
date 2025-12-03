@@ -63,13 +63,16 @@ class BackupTask
                 'volume_type' => $snapshot->volume->type,
             ]);
             $destinationPath = $this->generateBackupFilename($databaseServer);
+            $transferStart = microtime(true);
             $this->filesystemProvider->transfer(
                 $snapshot->volume,
                 $archive,
                 $destinationPath
             );
-            $job->log('Transfer completed successfully', 'success', [
+            $transferDuration = round(microtime(true) - $transferStart, 1);
+            $job->log('Transfer completed successfully in '.$transferDuration.'s', 'success', [
                 'destination_path' => $destinationPath,
+                'duration_seconds' => $transferDuration,
             ]);
 
             // Calculate file size and checksum

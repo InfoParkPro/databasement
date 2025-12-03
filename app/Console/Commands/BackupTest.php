@@ -11,7 +11,7 @@ use App\Services\Backup\BackupTask;
 use App\Services\Backup\RestoreTask;
 use Illuminate\Console\Command;
 
-class EndToEndTestBackup extends Command
+class BackupTest extends Command
 {
     protected $signature = 'backup:test {--type=* : Database type(s) to test (mysql, postgres). Defaults to both}';
 
@@ -164,22 +164,22 @@ class EndToEndTestBackup extends Command
         return match ($type) {
             'mysql' => [
                 'name' => 'E2E Test MySQL Server',
-                'host' => config('backup.e2e.mysql.host'),
-                'port' => config('backup.e2e.mysql.port'),
+                'host' => config('backup.backup_test.mysql.host'),
+                'port' => config('backup.backup_test.mysql.port'),
                 'database_type' => 'mysql',
-                'username' => config('backup.e2e.mysql.username'),
-                'password' => config('backup.e2e.mysql.password'),
-                'database_name' => config('backup.e2e.mysql.database'),
+                'username' => config('backup.backup_test.mysql.username'),
+                'password' => config('backup.backup_test.mysql.password'),
+                'database_name' => config('backup.backup_test.mysql.database'),
                 'description' => 'End-to-end test MySQL database server',
             ],
             'postgres' => [
                 'name' => 'E2E Test PostgreSQL Server',
-                'host' => config('backup.e2e.postgres.host'),
-                'port' => config('backup.e2e.postgres.port'),
+                'host' => config('backup.backup_test.postgres.host'),
+                'port' => config('backup.backup_test.postgres.port'),
                 'database_type' => 'postgresql',
-                'username' => config('backup.e2e.postgres.username'),
-                'password' => config('backup.e2e.postgres.password'),
-                'database_name' => config('backup.e2e.postgres.database'),
+                'username' => config('backup.backup_test.postgres.username'),
+                'password' => config('backup.backup_test.postgres.password'),
+                'database_name' => config('backup.backup_test.postgres.database'),
                 'description' => 'End-to-end test PostgreSQL database server',
             ],
             default => throw new \InvalidArgumentException("Unsupported database type: {$type}"),
@@ -384,10 +384,10 @@ class EndToEndTestBackup extends Command
     private function cleanupLeftoverTestData(string $type): void
     {
         // Clean up any leftover test data from previous failed runs
-        $volumeName = "E2E Test Local Volume ({$type})";
+        $volumeName = "Backup Test Local Volume ({$type})";
         $serverName = match ($type) {
-            'mysql' => 'E2E Test MySQL Server',
-            'postgres' => 'E2E Test PostgreSQL Server',
+            'mysql' => 'Backup Test MySQL Server',
+            'postgres' => 'Backup Test PostgreSQL Server',
             default => null,
         };
 

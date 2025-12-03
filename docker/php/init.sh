@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 
-if [ "$PHP_ENV" = "prod" ]; then
+if [ "$APP_ENV" = "production" ]; then
     php artisan optimize
     php artisan migrate --force
 fi

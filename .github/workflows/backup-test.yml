@@ -1,14 +1,6 @@
-name: e2e-tests
+name: backup-test
 
-on:
-  push:
-    branches:
-      - develop
-      - main
-  pull_request:
-    branches:
-      - develop
-      - main
+on: [push]
 
 jobs:
   backup-restore:
@@ -19,7 +11,7 @@ jobs:
       mysql:
         image: mysql:8.0
         env:
-          MYSQL_ROOT_PASSWORD: test_password
+          MYSQL_ROOT_PASSWORD: root
           MYSQL_DATABASE: testdb
         ports:
           - 3306:3306
@@ -32,8 +24,8 @@ jobs:
       postgres:
         image: postgres:16
         env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: test_password
+          POSTGRES_USER: root
+          POSTGRES_PASSWORD: root
           POSTGRES_DB: testdb
         ports:
           - 5432:5432
@@ -65,26 +57,17 @@ jobs:
       - name: Install Dependencies
         run: composer install --no-interaction --prefer-dist --optimize-autoloader
 
-      - name: Generate Application Key
-        run: php artisan key:generate
-
-      - name: Run Database Migrations
-        run: php artisan migrate --force
-
       - name: Run Backup & Restore E2E Tests
         env:
           MYSQL_CLI_TYPE: mysql
-          E2E_MYSQL_HOST: 127.0.0.1
-          E2E_MYSQL_PORT: 3306
-          E2E_MYSQL_USERNAME: root
-          E2E_MYSQL_PASSWORD: test_password
-          E2E_MYSQL_DATABASE: testdb
-          E2E_POSTGRES_HOST: 127.0.0.1
-          E2E_POSTGRES_PORT: 5432
-          E2E_POSTGRES_USERNAME: postgres
-          E2E_POSTGRES_PASSWORD: test_password
-          E2E_POSTGRES_DATABASE: testdb
-        run: php artisan backup:test
+          DB_HOST: 127.0.0.1
+          BACKUP_TEST_MYSQL_HOST: 127.0.0.1
+          BACKUP_TEST_POSTGRES_HOST: 127.0.0.1
+        run: |
+          php artisan key:generate
+          php artisan optimize
+          php artisan migrate --force
+          php artisan backup:test
 
       - name: Show Logs on Failure
         if: failure()

@@ -27,6 +27,7 @@ RUN apk add --no-cache \
         supervisor
 
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+COPY php-custom-production.ini /usr/local/etc/php/php-custom-production.ini
 ENV USER_ID=1000
 ENV USER=application
 
@@ -37,6 +38,9 @@ RUN mkdir -p /app && chown -R ${USER}:${USER} /app && chmod -R 775 /app
 COPY init.sh /
 WORKDIR /app
 USER 1000
+
+ENV WEB_DOCUMENT_ROOT=/app/public
+ENV SERVER_NAME=":8080"
 
 ENTRYPOINT ["/usr/bin/supervisord"]
 CMD ["-c", "/etc/supervisor/conf.d/supervisord.conf"]
