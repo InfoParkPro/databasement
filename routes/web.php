@@ -72,6 +72,8 @@ Route::middleware(['auth'])->group(function () {
         ->name('user-password.edit');
     Route::get('settings/appearance', \App\Livewire\Settings\Appearance::class)
         ->name('appearance.edit');
+    Route::get('settings/api-tokens', \App\Livewire\Settings\ApiTokens::class)
+        ->name('api-tokens.index');
 
     Route::get('settings/two-factor', \App\Livewire\Settings\TwoFactor::class)
         ->middleware(

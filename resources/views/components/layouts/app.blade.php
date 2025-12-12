@@ -67,6 +67,7 @@
                             <x-menu-item title="{{ __('Two-Factor Auth') }}" icon="o-shield-check" link="{{ route('two-factor.show') }}" wire:navigate />
                         @endif
                         <x-menu-item title="{{ __('Appearance') }}" icon="o-paint-brush" link="{{ route('appearance.edit') }}" wire:navigate />
+                        <x-menu-item title="{{ __('API Tokens') }}" icon="o-key" link="{{ route('api-tokens.index') }}" wire:navigate />
 
                         <form method="POST" action="{{ route('logout') }}" class="w-full">
                             @csrf
