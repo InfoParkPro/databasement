@@ -17,10 +17,14 @@ This is a Laravel application for managing database server backups. It uses Live
 
 ## Development Commands
 
+**IMPORTANT**: All PHP commands MUST be run through Docker. Never run `php`, `composer`, or `vendor/bin/*` commands directly on the host. Use the Makefile targets or `docker compose exec php <command>` instead.
+
 ### Setup and Installation
 ```bash
 make setup              # Full project setup: install deps, env setup, generate key, migrate, build assets
 make install            # Install composer and npm dependencies only
+docker compose exec php composer require <package>  # Install a composer package
+docker compose exec php composer remove <package>   # Remove a composer package
 ```
 
 ### Running the Application
@@ -37,9 +41,6 @@ make test                           # Run all Pest tests
 make test-filter FILTER=DatabaseServer  # Run specific test class/method
 make test-coverage                  # Run tests with coverage report
 make backup-test                    # Run end-to-end backup and restore tests (requires Docker containers)
-php artisan test                    # Direct artisan command
-php artisan backup:test             # Direct backup test command
-php artisan backup:test --type=mysql     # Test specific database type only
 ```
 ### Test Strategy
 - Focus on testing the behaviors
@@ -62,11 +63,9 @@ php artisan backup:test --type=mysql     # Test specific database type only
 ```bash
 make lint-fix           # Auto-fix code style with Laravel Pint (recommended)
 make lint-check         # Check code style without fixing
-vendor/bin/pint         # Direct Pint command
 
 make phpstan            # Run PHPStan static analysis
 make analyse            # Alias for phpstan
-vendor/bin/phpstan analyse --memory-limit=1G  # Direct PHPStan command
 ```
 
 ### Database Operations
@@ -194,7 +193,6 @@ Ensure tests pass and code is formatted before committing.
 # Filter by test name or class
 make test-filter FILTER=test_can_create_database_server
 make test-filter FILTER=DatabaseServerTest
-php artisan test --filter=CreateTest
 ```
 
 ### Adding a New Database Type
