@@ -6,5 +6,4 @@ if [ "$APP_ENV" = "production" ]; then
 fi
 php artisan db:wait --allow-missing-db
 php artisan migrate --force
-php artisan scribe:generate
-docker-php-entrypoint --config /etc/frankenphp/Caddyfile --adapter caddyfile
+frankenphp run --config /etc/frankenphp/Caddyfile --adapter caddyfile

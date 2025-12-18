@@ -36,7 +36,9 @@ RUN adduser -u ${USER_ID} -D -h /home/${USER} ${USER} && \
     chown -R ${USER}:${USER} /data/caddy && chown -R ${USER}:${USER} /config/caddy
 
 RUN mkdir -p /app && chown -R ${USER}:${USER} /app && chmod -R 775 /app
-COPY init.sh /
+COPY start-frankenphp.sh /usr/local/bin/
+COPY docker-entrypoint.sh /usr/local/bin/
+
 WORKDIR /app
 USER 1000
 
@@ -44,5 +46,5 @@ ENV WEB_DOCUMENT_ROOT=/app/public
 ENV SERVER_NAME=":8000"
 ENV MYSQL_CLI_TYPE="mariadb"
 
-ENTRYPOINT [""]
+ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
