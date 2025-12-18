@@ -122,7 +122,11 @@ class Index extends Component
             $stream = $filesystem->readStream($snapshot->path);
 
             return response()->streamDownload(function () use ($stream) {
-                fpassthru($stream);
+                // Read and output in 1MB chunks to avoid memory exhaustion
+                while (! feof($stream)) {
+                    echo fread($stream, 1024 * 1024); // 1MB chunks
+                    flush();
+                }
                 if (is_resource($stream)) {
                     fclose($stream);
                 }
