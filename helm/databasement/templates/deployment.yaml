@@ -6,6 +6,14 @@ metadata:
     {{- include "databasement.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.replicaCount }}
+  strategy:
+  {{- if .Values.deploymentStrategy }}
+    type: {{ .Values.deploymentStrategy }}
+  {{- else if .Values.persistence.enabled }}
+    type: Recreate
+  {{- else }}
+    type: RollingUpdate
+  {{- end }}
   selector:
     matchLabels:
       {{- include "databasement.selectorLabels" . | nindent 6 }}

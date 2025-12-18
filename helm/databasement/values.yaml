@@ -12,6 +12,8 @@ imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
 
+deploymentStrategy: ""
+
 # Application configuration
 app:
   name: Databasement
@@ -96,7 +98,7 @@ readinessProbe:
 
 
 serviceAccount:
-  create: true
+  create: false
   automount: true
   annotations: {}
   name: ""
