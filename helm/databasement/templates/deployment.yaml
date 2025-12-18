@@ -92,8 +92,6 @@ spec:
               value: {{ .Values.logging.channel | quote }}
             - name: LOG_LEVEL
               value: {{ .Values.logging.level | quote }}
-            - name: MYSQL_CLI_TYPE
-              value: {{ .Values.mysqlCliType | quote }}
             - name: QUEUE_CONNECTION
               value: "database"
             - name: SESSION_DRIVER
@@ -107,28 +105,15 @@ spec:
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
           volumeMounts:
-            - name: storage
-              mountPath: /app/storage
-            {{- if eq .Values.database.connection "sqlite" }}
-            - name: database
-              mountPath: /app/database
-            {{- end }}
-      volumes:
-        - name: storage
           {{- if .Values.persistence.enabled }}
+            - name: data
+              mountPath: {{ .Values.persistence.path | quote }}
+          {{- end }}
+      volumes:
+        {{- if .Values.persistence.enabled }}
+        - name: data
           persistentVolumeClaim:
             claimName: {{ include "databasement.fullname" . }}-storage
-          {{- else }}
-          emptyDir: {}
-          {{- end }}
-        {{- if eq .Values.database.connection "sqlite" }}
-        - name: database
-          {{- if .Values.persistence.enabled }}
-          persistentVolumeClaim:
-            claimName: {{ include "databasement.fullname" . }}-database
-          {{- else }}
-          emptyDir: {}
-          {{- end }}
         {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:

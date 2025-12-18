@@ -36,13 +36,11 @@ should render deployment with default values:
                 - name: DB_CONNECTION
                   value: sqlite
                 - name: DB_DATABASE
-                  value: /app/database/database.sqlite
+                  value: /data/database.sqlite
                 - name: LOG_CHANNEL
                   value: stderr
                 - name: LOG_LEVEL
                   value: warning
-                - name: MYSQL_CLI_TYPE
-                  value: mariadb
                 - name: QUEUE_CONNECTION
                   value: database
                 - name: SESSION_DRIVER
@@ -50,11 +48,11 @@ should render deployment with default values:
                 - name: CACHE_STORE
                   value: database
               image: davidcrty/databasement:latest
-              imagePullPolicy: IfNotPresent
+              imagePullPolicy: Always
               livenessProbe:
                 failureThreshold: 3
                 httpGet:
-                  path: /
+                  path: /health
                   port: http
                 initialDelaySeconds: 30
                 periodSeconds: 10
@@ -67,7 +65,7 @@ should render deployment with default values:
               readinessProbe:
                 failureThreshold: 3
                 httpGet:
-                  path: /
+                  path: /health
                   port: http
                 initialDelaySeconds: 10
                 periodSeconds: 5
@@ -84,20 +82,15 @@ should render deployment with default values:
                 runAsNonRoot: true
                 runAsUser: 1000
               volumeMounts:
-                - mountPath: /app/storage
-                  name: storage
-                - mountPath: /app/database
-                  name: database
+                - mountPath: /data
+                  name: data
           securityContext:
             fsGroup: 1000
           serviceAccountName: RELEASE-NAME-databasement
           volumes:
-            - name: storage
+            - name: data
               persistentVolumeClaim:
                 claimName: RELEASE-NAME-databasement-storage
-            - name: database
-              persistentVolumeClaim:
-                claimName: RELEASE-NAME-databasement-database
 should render deployment with mysql database:
   1: |
     apiVersion: apps/v1
@@ -152,8 +145,6 @@ should render deployment with mysql database:
                   value: stderr
                 - name: LOG_LEVEL
                   value: warning
-                - name: MYSQL_CLI_TYPE
-                  value: mariadb
                 - name: QUEUE_CONNECTION
                   value: database
                 - name: SESSION_DRIVER
@@ -161,11 +152,11 @@ should render deployment with mysql database:
                 - name: CACHE_STORE
                   value: database
               image: davidcrty/databasement:latest
-              imagePullPolicy: IfNotPresent
+              imagePullPolicy: Always
               livenessProbe:
                 failureThreshold: 3
                 httpGet:
-                  path: /
+                  path: /health
                   port: http
                 initialDelaySeconds: 30
                 periodSeconds: 10
@@ -178,7 +169,7 @@ should render deployment with mysql database:
               readinessProbe:
                 failureThreshold: 3
                 httpGet:
-                  path: /
+                  path: /health
                   port: http
                 initialDelaySeconds: 10
                 periodSeconds: 5
@@ -195,12 +186,12 @@ should render deployment with mysql database:
                 runAsNonRoot: true
                 runAsUser: 1000
               volumeMounts:
-                - mountPath: /app/storage
-                  name: storage
+                - mountPath: /data
+                  name: data
           securityContext:
             fsGroup: 1000
           serviceAccountName: RELEASE-NAME-databasement
           volumes:
-            - name: storage
+            - name: data
               persistentVolumeClaim:
                 claimName: RELEASE-NAME-databasement-storage

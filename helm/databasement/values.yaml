@@ -5,7 +5,7 @@ replicaCount: 1
 
 image:
   repository: davidcrty/databasement
-  pullPolicy: IfNotPresent
+  pullPolicy: Always
   tag: "latest"
 
 imagePullSecrets: []
@@ -31,7 +31,7 @@ database:
   # Database driver: sqlite, mysql, pgsql
   connection: sqlite
   # For SQLite
-  sqlitePath: /app/database/database.sqlite
+  sqlitePath: /data/database.sqlite
   # For MySQL/PostgreSQL
   host: ""
   port: 3306
@@ -47,31 +47,6 @@ database:
 logging:
   channel: stderr
   level: warning
-
-# MySQL CLI type for backup operations (mysql or mariadb)
-mysqlCliType: mariadb
-
-serviceAccount:
-  create: true
-  automount: true
-  annotations: {}
-  name: ""
-
-podAnnotations: {}
-podLabels: {}
-
-podSecurityContext:
-  fsGroup: 1000
-
-securityContext:
-  runAsNonRoot: true
-  runAsUser: 1000
-  runAsGroup: 1000
-
-service:
-  type: ClusterIP
-  port: 80
-  targetPort: 8000
 
 ingress:
   enabled: false
@@ -98,11 +73,12 @@ persistence:
     - ReadWriteOnce
   size: 10Gi
   annotations: {}
+  path: /data
 
 # Liveness and readiness probes
 livenessProbe:
   httpGet:
-    path: /
+    path: /health
     port: http
   initialDelaySeconds: 30
   periodSeconds: 10
@@ -111,12 +87,35 @@ livenessProbe:
 
 readinessProbe:
   httpGet:
-    path: /
+    path: /health
     port: http
   initialDelaySeconds: 10
   periodSeconds: 5
   timeoutSeconds: 3
   failureThreshold: 3
+
+
+serviceAccount:
+  create: true
+  automount: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+podLabels: {}
+
+podSecurityContext:
+  fsGroup: 1000
+
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8000
 
 nodeSelector: {}
 
