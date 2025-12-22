@@ -226,3 +226,50 @@ tests:
           content:
             name: cache
             mountPath: /tmp/cache
+
+  # Custom environment variables tests
+  - it: should add custom env vars to app container
+    set:
+      env:
+        AWS_REGION: us-east-1
+        CUSTOM_VAR: my-value
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: AWS_REGION
+            value: "us-east-1"
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: CUSTOM_VAR
+            value: "my-value"
+
+  - it: should add custom env vars to worker sidecar container
+    set:
+      worker:
+        enabled: true
+        separateDeployment: false
+      env:
+        AWS_REGION: eu-west-1
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[1].env
+          content:
+            name: AWS_REGION
+            value: "eu-west-1"
+
+  - it: should add custom env vars to separate worker deployment
+    set:
+      worker:
+        enabled: true
+        separateDeployment: true
+      env:
+        QUEUE_CONNECTION: redis
+    asserts:
+      - documentIndex: 1
+        contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: QUEUE_CONNECTION
+            value: "redis"

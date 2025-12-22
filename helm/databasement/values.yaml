@@ -97,6 +97,13 @@ persistence:
 extraVolumeMounts: {}
 extraVolumes: {}
 
+# Extra environment variables to add to app and worker containers
+# Example:
+#   env:
+#     AWS_REGION: us-east-1
+#     CUSTOM_VAR: value
+env: {}
+
 # Liveness and readiness probes
 livenessProbe:
   httpGet:

@@ -118,10 +118,8 @@ Common environment variables for app and worker containers
   value: {{ .Values.logging.channel | quote }}
 - name: LOG_LEVEL
   value: {{ .Values.logging.level | quote }}
-- name: QUEUE_CONNECTION
-  value: "database"
-- name: SESSION_DRIVER
-  value: "database"
-- name: CACHE_STORE
-  value: "database"
+{{- range $key, $value := .Values.env }}
+- name: {{ $key }}
+  value: {{ $value | quote }}
+{{- end }}
 {{- end }}

@@ -43,12 +43,6 @@ should render deployment with default values:
                   value: stderr
                 - name: LOG_LEVEL
                   value: warning
-                - name: QUEUE_CONNECTION
-                  value: database
-                - name: SESSION_DRIVER
-                  value: database
-                - name: CACHE_STORE
-                  value: database
               image: davidcrty/databasement:latest
               imagePullPolicy: Always
               livenessProbe:
@@ -107,12 +101,6 @@ should render deployment with default values:
                   value: stderr
                 - name: LOG_LEVEL
                   value: warning
-                - name: QUEUE_CONNECTION
-                  value: database
-                - name: SESSION_DRIVER
-                  value: database
-                - name: CACHE_STORE
-                  value: database
               image: davidcrty/databasement:latest
               imagePullPolicy: Always
               name: databasement-worker
@@ -193,12 +181,6 @@ should render deployment with mysql database:
                   value: stderr
                 - name: LOG_LEVEL
                   value: warning
-                - name: QUEUE_CONNECTION
-                  value: database
-                - name: SESSION_DRIVER
-                  value: database
-                - name: CACHE_STORE
-                  value: database
               image: davidcrty/databasement:latest
               imagePullPolicy: Always
               livenessProbe:
@@ -268,12 +250,6 @@ should render deployment with mysql database:
                   value: stderr
                 - name: LOG_LEVEL
                   value: warning
-                - name: QUEUE_CONNECTION
-                  value: database
-                - name: SESSION_DRIVER
-                  value: database
-                - name: CACHE_STORE
-                  value: database
               image: davidcrty/databasement:latest
               imagePullPolicy: Always
               name: databasement-worker
