@@ -47,65 +47,7 @@ spec:
               containerPort: {{ .Values.service.targetPort }}
               protocol: TCP
           env:
-            - name: APP_NAME
-              value: {{ .Values.app.name | quote }}
-            - name: APP_ENV
-              value: {{ .Values.app.env | quote }}
-            - name: APP_DEBUG
-              value: {{ .Values.app.debug | quote }}
-            - name: APP_URL
-              value: {{ .Values.app.url | quote }}
-            {{- if .Values.app.existingSecret }}
-            - name: APP_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.app.existingSecret }}
-                  key: {{ .Values.app.secretKeys.appKey }}
-            {{- else if .Values.app.key }}
-            - name: APP_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "databasement.fullname" . }}
-                  key: app-key
-            {{- end }}
-            - name: DB_CONNECTION
-              value: {{ .Values.database.connection | quote }}
-            {{- if eq .Values.database.connection "sqlite" }}
-            - name: DB_DATABASE
-              value: {{ .Values.database.sqlitePath | quote }}
-            {{- else }}
-            - name: DB_HOST
-              value: {{ .Values.database.host | quote }}
-            - name: DB_PORT
-              value: {{ .Values.database.port | quote }}
-            - name: DB_DATABASE
-              value: {{ .Values.database.name | quote }}
-            - name: DB_USERNAME
-              value: {{ .Values.database.username | quote }}
-            {{- if .Values.database.existingSecret }}
-            - name: DB_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.database.existingSecret }}
-                  key: {{ .Values.database.secretKeys.password }}
-            {{- else if .Values.database.password }}
-            - name: DB_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "databasement.fullname" . }}
-                  key: db-password
-            {{- end }}
-            {{- end }}
-            - name: LOG_CHANNEL
-              value: {{ .Values.logging.channel | quote }}
-            - name: LOG_LEVEL
-              value: {{ .Values.logging.level | quote }}
-            - name: QUEUE_CONNECTION
-              value: "database"
-            - name: SESSION_DRIVER
-              value: "database"
-            - name: CACHE_STORE
-              value: "database"
+            {{- include "databasement.envVars" . | nindent 12 }}
           livenessProbe:
             {{- toYaml .Values.livenessProbe | nindent 12 }}
           readinessProbe:
@@ -117,6 +59,23 @@ spec:
             - name: data
               mountPath: {{ .Values.persistence.path | quote }}
           {{- end }}
+        {{- if .Values.worker.enabled }}
+        - name: {{ .Chart.Name }}-worker
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["sh", "-c", "php artisan db:wait && {{ .Values.worker.command }}"]
+          env:
+            {{- include "databasement.envVars" . | nindent 12 }}
+          resources:
+            {{- toYaml .Values.worker.resources | nindent 12 }}
+          volumeMounts:
+          {{- if .Values.persistence.enabled }}
+            - name: data
+              mountPath: {{ .Values.persistence.path | quote }}
+          {{- end }}
+        {{- end }}
       volumes:
         {{- if .Values.persistence.enabled }}
         - name: data

@@ -76,6 +76,23 @@ ingress:
   tlsSecretName: databasement-tls
 ```
 
+## Worker Configuration
+
+By default, the Helm chart deploys a worker sidecar container alongside the main application in the same pod. This worker processes backup and restore jobs from the queue.
+
+```yaml title="values.yaml"
+worker:
+  enabled: true  # Set to false to disable the worker
+  command: "php artisan queue:work --queue=backups,default --tries=3 --timeout=3600 --sleep=3 --max-jobs=1000"
+  resources:
+    limits:
+      cpu: 300m
+      memory: 256Mi
+    requests:
+      cpu: 50m
+      memory: 128Mi
+```
+
 :::note
 Explore the full [`values.yaml`](https://github.com/david-crty/databasement/blob/main/helm/databasement/values.yaml) on GitHub to see all available configuration options.
 :::

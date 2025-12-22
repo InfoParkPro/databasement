@@ -60,3 +60,68 @@ Create the name of the service account to use
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}
 {{- end }}
+
+{{/*
+Common environment variables for app and worker containers
+*/}}
+{{- define "databasement.envVars" -}}
+- name: APP_NAME
+  value: {{ .Values.app.name | quote }}
+- name: APP_ENV
+  value: {{ .Values.app.env | quote }}
+- name: APP_DEBUG
+  value: {{ .Values.app.debug | quote }}
+- name: APP_URL
+  value: {{ .Values.app.url | quote }}
+{{- if .Values.app.existingSecret }}
+- name: APP_KEY
+  valueFrom:
+    secretKeyRef:
+      name: {{ .Values.app.existingSecret }}
+      key: {{ .Values.app.secretKeys.appKey }}
+{{- else if .Values.app.key }}
+- name: APP_KEY
+  valueFrom:
+    secretKeyRef:
+      name: {{ include "databasement.fullname" . }}
+      key: app-key
+{{- end }}
+- name: DB_CONNECTION
+  value: {{ .Values.database.connection | quote }}
+{{- if eq .Values.database.connection "sqlite" }}
+- name: DB_DATABASE
+  value: {{ .Values.database.sqlitePath | quote }}
+{{- else }}
+- name: DB_HOST
+  value: {{ .Values.database.host | quote }}
+- name: DB_PORT
+  value: {{ .Values.database.port | quote }}
+- name: DB_DATABASE
+  value: {{ .Values.database.name | quote }}
+- name: DB_USERNAME
+  value: {{ .Values.database.username | quote }}
+{{- if .Values.database.existingSecret }}
+- name: DB_PASSWORD
+  valueFrom:
+    secretKeyRef:
+      name: {{ .Values.database.existingSecret }}
+      key: {{ .Values.database.secretKeys.password }}
+{{- else if .Values.database.password }}
+- name: DB_PASSWORD
+  valueFrom:
+    secretKeyRef:
+      name: {{ include "databasement.fullname" . }}
+      key: db-password
+{{- end }}
+{{- end }}
+- name: LOG_CHANNEL
+  value: {{ .Values.logging.channel | quote }}
+- name: LOG_LEVEL
+  value: {{ .Values.logging.level | quote }}
+- name: QUEUE_CONNECTION
+  value: "database"
+- name: SESSION_DRIVER
+  value: "database"
+- name: CACHE_STORE
+  value: "database"
+{{- end }}

@@ -124,3 +124,15 @@ nodeSelector: {}
 tolerations: []
 
 affinity: {}
+
+# Worker configuration (sidecar container in same pod)
+worker:
+  enabled: true
+  command: "php artisan queue:work --queue=backups,default --tries=3 --timeout=3600 --sleep=3 --max-jobs=1000"
+  resources:
+    limits:
+      cpu: 300m
+      memory: 256Mi
+    requests:
+      cpu: 50m
+      memory: 128Mi

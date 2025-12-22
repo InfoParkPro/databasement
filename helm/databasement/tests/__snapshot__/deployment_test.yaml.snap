@@ -86,6 +86,50 @@ should render deployment with default values:
               volumeMounts:
                 - mountPath: /data
                   name: data
+            - command:
+                - sh
+                - -c
+                - php artisan db:wait && php artisan queue:work --queue=backups,default --tries=3 --timeout=3600 --sleep=3 --max-jobs=1000
+              env:
+                - name: APP_NAME
+                  value: Databasement
+                - name: APP_ENV
+                  value: production
+                - name: APP_DEBUG
+                  value: "false"
+                - name: APP_URL
+                  value: http://localhost:8000
+                - name: DB_CONNECTION
+                  value: sqlite
+                - name: DB_DATABASE
+                  value: /data/database.sqlite
+                - name: LOG_CHANNEL
+                  value: stderr
+                - name: LOG_LEVEL
+                  value: warning
+                - name: QUEUE_CONNECTION
+                  value: database
+                - name: SESSION_DRIVER
+                  value: database
+                - name: CACHE_STORE
+                  value: database
+              image: davidcrty/databasement:latest
+              imagePullPolicy: Always
+              name: databasement-worker
+              resources:
+                limits:
+                  cpu: 300m
+                  memory: 256Mi
+                requests:
+                  cpu: 50m
+                  memory: 128Mi
+              securityContext:
+                runAsGroup: 1000
+                runAsNonRoot: true
+                runAsUser: 1000
+              volumeMounts:
+                - mountPath: /data
+                  name: data
           securityContext:
             fsGroup: 1000
           serviceAccountName: default
@@ -185,6 +229,61 @@ should render deployment with mysql database:
                 requests:
                   cpu: 100m
                   memory: 256Mi
+              securityContext:
+                runAsGroup: 1000
+                runAsNonRoot: true
+                runAsUser: 1000
+              volumeMounts:
+                - mountPath: /data
+                  name: data
+            - command:
+                - sh
+                - -c
+                - php artisan db:wait && php artisan queue:work --queue=backups,default --tries=3 --timeout=3600 --sleep=3 --max-jobs=1000
+              env:
+                - name: APP_NAME
+                  value: Databasement
+                - name: APP_ENV
+                  value: production
+                - name: APP_DEBUG
+                  value: "false"
+                - name: APP_URL
+                  value: http://localhost:8000
+                - name: DB_CONNECTION
+                  value: mysql
+                - name: DB_HOST
+                  value: mysql.example.com
+                - name: DB_PORT
+                  value: "3306"
+                - name: DB_DATABASE
+                  value: mydb
+                - name: DB_USERNAME
+                  value: myuser
+                - name: DB_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      key: db-password
+                      name: RELEASE-NAME-databasement
+                - name: LOG_CHANNEL
+                  value: stderr
+                - name: LOG_LEVEL
+                  value: warning
+                - name: QUEUE_CONNECTION
+                  value: database
+                - name: SESSION_DRIVER
+                  value: database
+                - name: CACHE_STORE
+                  value: database
+              image: davidcrty/databasement:latest
+              imagePullPolicy: Always
+              name: databasement-worker
+              resources:
+                limits:
+                  cpu: 300m
+                  memory: 256Mi
+                requests:
+                  cpu: 50m
+                  memory: 128Mi
               securityContext:
                 runAsGroup: 1000
                 runAsNonRoot: true

@@ -25,9 +25,14 @@ docker run -d \
   -e APP_KEY=$APP_KEY \
   -e DB_CONNECTION=sqlite \
   -e DB_DATABASE=/data/database.sqlite \
+  -e ENABLE_QUEUE_WORKER=true \
   -v databasement-data:/data \
   davidcrty/databasement:latest
 ```
+
+:::note
+The `ENABLE_QUEUE_WORKER=true` environment variable enables the background queue worker inside the container. This is required for processing backup and restore jobs. When using Docker Compose, the worker runs as a separate service instead.
+:::
 
 Access the application at http://localhost:8000
 

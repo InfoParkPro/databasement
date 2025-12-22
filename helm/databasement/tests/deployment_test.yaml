@@ -19,3 +19,60 @@ tests:
         password: mypassword
     asserts:
       - matchSnapshot: {}
+
+  - it: should include worker sidecar container when enabled
+    set:
+      worker:
+        enabled: true
+        command: "php artisan queue:work --queue=backups"
+    asserts:
+      - lengthEqual:
+          path: spec.template.spec.containers
+          count: 2
+      - equal:
+          path: spec.template.spec.containers[1].name
+          value: databasement-worker
+
+  - it: should not include worker sidecar container when disabled
+    set:
+      worker:
+        enabled: false
+    asserts:
+      - lengthEqual:
+          path: spec.template.spec.containers
+          count: 1
+
+  - it: should use custom worker command
+    set:
+      worker:
+        enabled: true
+        command: "php artisan queue:work --queue=custom --tries=5"
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[1].name
+          value: databasement-worker
+      - equal:
+          path: spec.template.spec.containers[1].command
+          value: ["sh", "-c", "php artisan db:wait && php artisan queue:work --queue=custom --tries=5"]
+
+  - it: should apply worker resources
+    set:
+      worker:
+        enabled: true
+        resources:
+          limits:
+            cpu: 500m
+            memory: 512Mi
+          requests:
+            cpu: 100m
+            memory: 128Mi
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[1].name
+          value: databasement-worker
+      - equal:
+          path: spec.template.spec.containers[1].resources.limits.cpu
+          value: 500m
+      - equal:
+          path: spec.template.spec.containers[1].resources.limits.memory
+          value: 512Mi
