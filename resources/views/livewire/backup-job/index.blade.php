@@ -1,4 +1,4 @@
-<div>
+<div wire:poll.5s>
     <!-- HEADER -->
     <x-header title="{{ __('Jobs') }}" separator progress-indicator>
         <x-slot:middle class="!justify-end">

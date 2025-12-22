@@ -46,17 +46,11 @@
             <x-app-brand class="px-5 pt-4" />
 
             {{-- MAIN MENU --}}
-            @php
-                $activeJobsCount = \App\Models\BackupJob::whereIn('status', ['running', 'pending', 'queued'])->count();
-            @endphp
             <x-menu activate-by-route class="flex-1">
                 <x-menu-separator />
                 <x-menu-item title="{{ __('Dashboard') }}" icon="o-home" link="{{ route('dashboard') }}" wire:navigate />
                 <x-menu-item title="{{ __('Database Servers') }}" icon="o-server-stack" link="{{ route('database-servers.index') }}" wire:navigate />
-                <x-menu-item title="{{ __('Jobs') }}" icon="o-queue-list" link="{{ route('jobs.index') }}" wire:navigate
-                    :badge="$activeJobsCount > 0 ? $activeJobsCount : null"
-                    badge-classes="badge-warning badge-soft"
-                />
+                <livewire:menu.jobs-menu-item />
                 <x-menu-item title="{{ __('Volumes') }}" icon="o-circle-stack" link="{{ route('volumes.index') }}" wire:navigate />
                 <x-menu-item title="{{ __('Users') }}" icon="o-users" link="{{ route('users.index') }}" wire:navigate />
                 <x-menu-separator />
