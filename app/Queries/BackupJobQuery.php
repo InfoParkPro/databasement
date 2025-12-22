@@ -50,11 +50,12 @@ class BackupJobQuery
     /**
      * Build query from manual parameters (for Livewire).
      *
+     * @param  array<string>  $statusFilter
      * @return Builder<BackupJob>
      */
     public static function buildFromParams(
         ?string $search = null,
-        string $statusFilter = 'all',
+        array $statusFilter = [],
         string $typeFilter = 'all',
         string $sortColumn = 'created_at',
         string $sortDirection = 'desc'
@@ -64,8 +65,8 @@ class BackupJobQuery
             ->when($search, function (Builder $query) use ($search) {
                 self::applySearch($query, $search);
             })
-            ->when($statusFilter !== 'all', function (Builder $query) use ($statusFilter) {
-                $query->where('status', $statusFilter);
+            ->when(! empty($statusFilter), function (Builder $query) use ($statusFilter) {
+                $query->whereIn('status', $statusFilter);
             })
             ->when($typeFilter !== 'all', function (Builder $query) use ($typeFilter) {
                 if ($typeFilter === 'backup') {

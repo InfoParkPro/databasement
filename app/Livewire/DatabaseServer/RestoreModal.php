@@ -124,7 +124,7 @@ class RestoreModal extends Component
 
             ProcessRestoreJob::dispatch($restore->id);
 
-            $this->success('Restore queued successfully!');
+            $this->success('Restore started successfully!');
 
             $this->showModal = false;
 

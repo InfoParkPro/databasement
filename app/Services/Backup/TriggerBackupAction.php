@@ -40,8 +40,8 @@ class TriggerBackupAction
 
         $count = count($snapshots);
         $message = $count === 1
-            ? 'Backup queued successfully!'
-            : "{$count} database backups queued successfully!";
+            ? 'Backup started successfully!'
+            : "{$count} database backups started successfully!";
 
         return [
             'snapshots' => $snapshots,

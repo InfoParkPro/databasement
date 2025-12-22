@@ -59,9 +59,38 @@ test('can filter backup jobs by status', function () {
 
     Livewire::actingAs($user)
         ->test(Index::class)
-        ->set('statusFilter', 'completed')
+        ->set('statusFilter', ['completed'])
         ->assertSee('completed_db')
         ->assertDontSee('failed_db');
+});
+
+test('can filter backup jobs by multiple statuses', function () {
+    $user = User::factory()->create();
+    $factory = app(BackupJobFactory::class);
+
+    $server = DatabaseServer::factory()->create(['name' => 'Test Server', 'database_name' => 'test_db']);
+
+    $completedSnapshots = $factory->createSnapshots($server, 'manual', $user->id);
+    $completedSnapshot = $completedSnapshots[0];
+    $completedSnapshot->job->update(['status' => 'completed']);
+    $completedSnapshot->update(['database_name' => 'completed_db']);
+
+    $failedSnapshots = $factory->createSnapshots($server, 'scheduled', $user->id);
+    $failedSnapshot = $failedSnapshots[0];
+    $failedSnapshot->job->update(['status' => 'failed']);
+    $failedSnapshot->update(['database_name' => 'failed_db']);
+
+    $runningSnapshots = $factory->createSnapshots($server, 'manual', $user->id);
+    $runningSnapshot = $runningSnapshots[0];
+    $runningSnapshot->job->update(['status' => 'running']);
+    $runningSnapshot->update(['database_name' => 'running_db']);
+
+    Livewire::actingAs($user)
+        ->test(Index::class)
+        ->set('statusFilter', ['completed', 'failed'])
+        ->assertSee('completed_db')
+        ->assertSee('failed_db')
+        ->assertDontSee('running_db');
 });
 
 test('can filter backup jobs by type', function () {

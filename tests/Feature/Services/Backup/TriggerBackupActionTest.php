@@ -33,7 +33,7 @@ test('it creates a snapshot and dispatches backup job for single database', func
     $result = $action->execute($server);
 
     expect($result['snapshots'])->toHaveCount(1)
-        ->and($result['message'])->toBe('Backup queued successfully!')
+        ->and($result['message'])->toBe('Backup started successfully!')
         ->and($result['snapshots'][0]->database_name)->toBe('test_db')
         ->and($result['snapshots'][0]->method)->toBe('manual');
 
@@ -74,7 +74,7 @@ test('it returns correct message for multiple database backups', function () {
     $result = $action->execute($server);
 
     expect($result['snapshots'])->toHaveCount(3)
-        ->and($result['message'])->toBe('3 database backups queued successfully!');
+        ->and($result['message'])->toBe('3 database backups started successfully!');
 
     Queue::assertPushed(ProcessBackupJob::class, 3);
 });

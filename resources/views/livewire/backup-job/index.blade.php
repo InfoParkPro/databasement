@@ -14,7 +14,7 @@
         <x-table :headers="$headers" :rows="$jobs" :sort-by="$sortBy" with-pagination>
             <x-slot:empty>
                 <div class="text-center text-base-content/50 py-8">
-                    @if($search || $statusFilter !== 'all' || $typeFilter !== 'all')
+                    @if($search || !empty($statusFilter) || $typeFilter !== 'all')
                         {{ __('No jobs found matching your filters.') }}
                     @else
                         {{ __('No jobs yet. Backups and restores will appear here.') }}
@@ -70,9 +70,12 @@
                 @elseif($job->status === 'failed')
                     <x-badge value="{{ __('Failed') }}" class="badge-error" />
                 @elseif($job->status === 'running')
-                    <x-badge value="{{ __('Running') }}" class="badge-warning" />
-                @elseif($job->status === 'queued')
-                    <x-badge value="{{ __('Queued') }}" class="badge-info" />
+                    <div class="flex items-center gap-1">
+                        <div class="badge badge-warning">
+                            {{ __('Running') }}
+                            <x-loading class="loading-xs" />
+                        </div>
+                    </div>
                 @else
                     <x-badge value="{{ __('Pending') }}" class="badge-info" />
                 @endif
@@ -85,12 +88,16 @@
             @endscope
 
             @scope('cell_info', $job)
-                @if($job->getHumanDuration())
+                @if($job->status === 'running' && $job->started_at)
+                    <div class="text-warning">{{ $job->started_at->diffForHumans(null, true) }}</div>
+                @elseif($job->getHumanDuration())
                     <div>{{ $job->getHumanDuration() }}</div>
-                @endif
-                @if($job->snapshot && $job->status === 'completed')
+                    @if($job->snapshot && $job->status === 'completed')
+                        <div class="text-sm text-base-content/70">{{ $job->snapshot->getHumanFileSize() }}</div>
+                    @endif
+                @elseif($job->snapshot && $job->status === 'completed')
                     <div class="text-sm text-base-content/70">{{ $job->snapshot->getHumanFileSize() }}</div>
-                @elseif(!$job->getHumanDuration())
+                @else
                     <span class="text-base-content/50">-</span>
                 @endif
             @endscope
@@ -141,11 +148,13 @@
                 :options="$typeOptions"
                 icon="o-folder"
             />
-            <x-select
-                placeholder="{{ __('Filter by status') }}"
+            <x-choices
+                label="{{ __('Filter by status') }}"
                 wire:model.live="statusFilter"
                 :options="$statusOptions"
                 icon="o-funnel"
+                multiple
+                searchable
             />
         </div>
 

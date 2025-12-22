@@ -21,8 +21,9 @@ class Index extends Component
     #[Url]
     public string $search = '';
 
+    /** @var array<string> */
     #[Url]
-    public string $statusFilter = 'all';
+    public array $statusFilter = [];
 
     #[Url]
     public string $typeFilter = 'all';
@@ -99,12 +100,10 @@ class Index extends Component
     public function statusOptions(): array
     {
         return [
-            ['id' => 'all', 'name' => __('All Statuses')],
             ['id' => 'completed', 'name' => __('Completed')],
             ['id' => 'failed', 'name' => __('Failed')],
             ['id' => 'running', 'name' => __('Running')],
             ['id' => 'pending', 'name' => __('Pending')],
-            ['id' => 'queued', 'name' => __('Queued')],
         ];
     }
 

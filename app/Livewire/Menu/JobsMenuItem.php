@@ -9,7 +9,7 @@ class JobsMenuItem extends Component
 {
     public function getActiveJobsCountProperty(): int
     {
-        return BackupJob::whereIn('status', ['running', 'pending', 'queued'])->count();
+        return BackupJob::whereIn('status', ['running', 'pending'])->count();
     }
 
     public function render()
