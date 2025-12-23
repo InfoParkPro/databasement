@@ -43,9 +43,23 @@ make test-coverage                  # Run tests with coverage report
 make backup-test                    # Run end-to-end backup and restore tests (requires Docker containers)
 ```
 ### Test Strategy
-- Focus on testing the behaviors
-- Do not test the internals of the framework or related dependencies
-- Avoid testing implementation details 
+- Focus on testing business logic and behaviors
+- Do not test framework internals or trust that Laravel/Livewire works correctly
+- Keep tests minimal and focused - one test per behavior when possible
+
+#### What NOT to Test
+- **Form validation rules** - Laravel validation works, don't test `required`, `max:255`, etc.
+- **Eloquent relationships** - Don't test that `hasMany`/`belongsTo` work
+- **Eloquent cascades** - Don't test `onDelete('cascade')` behavior
+- **Session flash messages** - Don't test that `session('status')` contains a message
+- **Redirect responses** - Testing redirect URL once per flow is enough
+- **Multiple variations of the same thing** - e.g., don't test weekly AND daily recurrence separately
+
+#### What TO Test
+- **Authorization** - Who can access what (guests, users, admins)
+- **Business logic** - Core application behavior (backup works, restore works, cleanup deletes correct snapshots)
+- **Integration points** - External services, commands, scheduled tasks
+- **Edge cases in YOUR code** - Not edge cases in the framework
 
 #### Mocking Strategy
 

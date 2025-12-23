@@ -67,66 +67,7 @@ test('can create s3 volume with valid data', function () {
     ]);
 });
 
-test('can create s3 volume without prefix', function () {
-    $user = User::factory()->create();
 
-    Livewire::actingAs($user)
-        ->test(Create::class)
-        ->set('form.name', 'S3 Bucket No Prefix')
-        ->set('form.type', 's3')
-        ->set('form.bucket', 'my-bucket')
-        ->set('form.prefix', '')
-        ->call('save')
-        ->assertRedirect(route('volumes.index'));
-
-    $volume = Volume::where('name', 'S3 Bucket No Prefix')->first();
-    expect($volume->config)->toEqual([
-        'bucket' => 'my-bucket',
-        'prefix' => '',
-    ]);
-});
-
-// Validation Tests
-test('requires path for local type', function () {
-    $user = User::factory()->create();
-
-    Livewire::actingAs($user)
-        ->test(Create::class)
-        ->set('form.name', 'Local Volume')
-        ->set('form.type', 'local')
-        ->set('form.path', '')
-        ->call('save')
-        ->assertHasErrors(['form.path']);
-});
-
-test('requires bucket for s3 type', function () {
-    $user = User::factory()->create();
-
-    Livewire::actingAs($user)
-        ->test(Create::class)
-        ->set('form.name', 'S3 Volume')
-        ->set('form.type', 's3')
-        ->set('form.bucket', '')
-        ->call('save')
-        ->assertHasErrors(['form.bucket']);
-});
-
-test('requires unique volume name', function () {
-    $user = User::factory()->create();
-    Volume::create([
-        'name' => 'Existing Volume',
-        'type' => 'local',
-        'config' => ['path' => '/var/backups'],
-    ]);
-
-    Livewire::actingAs($user)
-        ->test(Create::class)
-        ->set('form.name', 'Existing Volume')
-        ->set('form.type', 'local')
-        ->set('form.path', '/var/backups2')
-        ->call('save')
-        ->assertHasErrors(['form.name']);
-});
 
 // Edit Tests
 test('can edit local volume', function () {

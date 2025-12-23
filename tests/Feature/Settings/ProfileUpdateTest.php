@@ -29,21 +29,6 @@ test('profile information can be updated', function () {
     expect($user->email)->toEqual('test@example.com');
 });
 
-test('email stays unchanged when email address is unchanged', function () {
-    $user = User::factory()->create();
-    $originalEmail = $user->email;
-
-    $this->actingAs($user);
-
-    $response = Livewire::test(Profile::class)
-        ->set('name', 'Test User')
-        ->set('email', $originalEmail)
-        ->call('updateProfileInformation');
-
-    $response->assertHasNoErrors();
-
-    expect($user->refresh()->email)->toEqual($originalEmail);
-});
 
 test('user can delete their account', function () {
     $user = User::factory()->create();

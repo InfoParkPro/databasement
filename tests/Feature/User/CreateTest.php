@@ -58,15 +58,3 @@ test('admin can create user with valid data', function () {
     expect($user->password)->toBeNull();
 });
 
-test('email must be unique', function () {
-    actingAs($this->admin);
-
-    User::factory()->create(['email' => 'existing@example.com']);
-
-    Livewire::test(Create::class)
-        ->set('form.name', 'Test User')
-        ->set('form.email', 'existing@example.com')
-        ->set('form.role', 'member')
-        ->call('save')
-        ->assertHasErrors(['form.email' => 'unique']);
-});

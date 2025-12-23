@@ -125,45 +125,6 @@ test('can queue restore job with valid data', function () {
     expect($pushedJob->restoreId)->toBe($restore->id);
 });
 
-test('validates schema name is required', function () {
-    $targetServer = DatabaseServer::factory()->create([
-        'database_type' => 'mysql',
-    ]);
-
-    $sourceServer = DatabaseServer::factory()->create([
-        'database_type' => 'mysql',
-    ]);
-
-    $snapshot = createSnapshotForServer($sourceServer);
-
-    Livewire::test(RestoreModal::class)
-        ->dispatch('open-restore-modal', targetServerId: $targetServer->id)
-        ->call('selectSourceServer', $sourceServer->id)
-        ->call('selectSnapshot', $snapshot->id)
-        ->set('schemaName', '')
-        ->call('restore')
-        ->assertHasErrors(['schemaName' => 'required']);
-});
-
-test('validates schema name format', function () {
-    $targetServer = DatabaseServer::factory()->create([
-        'database_type' => 'mysql',
-    ]);
-
-    $sourceServer = DatabaseServer::factory()->create([
-        'database_type' => 'mysql',
-    ]);
-
-    $snapshot = createSnapshotForServer($sourceServer);
-
-    Livewire::test(RestoreModal::class)
-        ->dispatch('open-restore-modal', targetServerId: $targetServer->id)
-        ->call('selectSourceServer', $sourceServer->id)
-        ->call('selectSnapshot', $snapshot->id)
-        ->set('schemaName', 'invalid-name-with-dashes!')
-        ->call('restore')
-        ->assertHasErrors(['schemaName' => 'regex']);
-});
 
 test('only shows compatible servers with same database type', function () {
     $targetServer = DatabaseServer::factory()->create([

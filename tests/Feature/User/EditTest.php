@@ -91,37 +91,6 @@ test('can change admin to non-admin when multiple admins exist', function () {
     expect($anotherAdmin->role)->toBe('member');
 });
 
-test('email must be unique except for current user', function () {
-    actingAs($this->admin);
-
-    User::factory()->create(['email' => 'existing@example.com']);
-    $userToEdit = User::factory()->create(['email' => 'original@example.com']);
-
-    // Try to use existing email - should fail validation
-    Livewire::test(Edit::class, ['user' => $userToEdit])
-        ->set('form.email', 'existing@example.com')
-        ->call('save')
-        ->assertHasErrors('form.email');
-
-    // Ensure email was not changed
-    $userToEdit->refresh();
-    expect($userToEdit->email)->toBe('original@example.com');
-});
-
-test('form is pre-populated with user data', function () {
-    actingAs($this->admin);
-
-    $userToEdit = User::factory()->create([
-        'name' => 'Test User',
-        'email' => 'test@example.com',
-        'role' => 'viewer',
-    ]);
-
-    Livewire::test(Edit::class, ['user' => $userToEdit])
-        ->assertSet('form.name', 'Test User')
-        ->assertSet('form.email', 'test@example.com')
-        ->assertSet('form.role', 'viewer');
-});
 
 test('can promote user to admin', function () {
     actingAs($this->admin);
