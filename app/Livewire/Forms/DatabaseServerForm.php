@@ -131,11 +131,6 @@ class DatabaseServerForm extends Form
     {
         $validated = $this->formValidate();
 
-        $this->testConnection();
-        if (! $this->connectionTestSuccess) {
-            return false;
-        }
-
         // Extract backup data
         /** @var array{volume_id: string, recurrence: string, retention_days: int|null} $backupData */
         $backupData = [

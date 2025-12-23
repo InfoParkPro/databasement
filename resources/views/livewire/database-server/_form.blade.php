@@ -223,7 +223,6 @@ $volumes = \App\Models\Volume::orderBy('name')->get()->map(fn($v) => [
         <x-button
             class="btn-primary"
             type="submit"
-            :disabled="!$form->connectionTestSuccess"
         >
             {{ __($submitLabel) }}
         </x-button>
