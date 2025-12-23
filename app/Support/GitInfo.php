@@ -23,13 +23,21 @@ class GitInfo
             return null;
         }
 
-        $head = trim(file_get_contents($gitHeadFile));
+        $headContent = file_get_contents($gitHeadFile);
+        if ($headContent === false) {
+            return null;
+        }
+        $head = trim($headContent);
 
         // Check if HEAD is a direct commit hash or a reference
         if (str_starts_with($head, 'ref: ')) {
             $refPath = base_path('.git/'.substr($head, 5));
             if (file_exists($refPath)) {
-                $hash = trim(file_get_contents($refPath));
+                $refContent = file_get_contents($refPath);
+                if ($refContent === false) {
+                    return null;
+                }
+                $hash = trim($refContent);
 
                 return substr($hash, 0, 7);
             }
@@ -56,12 +64,21 @@ class GitInfo
             return null;
         }
 
-        $head = trim(file_get_contents($gitHeadFile));
+        $headContent = file_get_contents($gitHeadFile);
+        if ($headContent === false) {
+            return null;
+        }
+        $head = trim($headContent);
 
         if (str_starts_with($head, 'ref: ')) {
             $refPath = base_path('.git/'.substr($head, 5));
             if (file_exists($refPath)) {
-                return trim(file_get_contents($refPath));
+                $refContent = file_get_contents($refPath);
+                if ($refContent === false) {
+                    return null;
+                }
+
+                return trim($refContent);
             }
 
             return null;

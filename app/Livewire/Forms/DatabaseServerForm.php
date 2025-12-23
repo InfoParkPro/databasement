@@ -6,7 +6,7 @@ use App\Facades\DatabaseConnectionTester;
 use App\Models\Backup;
 use App\Models\DatabaseServer;
 use App\Services\Backup\DatabaseListService;
-use Livewire\Attributes\Validate;
+use Illuminate\Validation\ValidationException;
 use Livewire\Form;
 
 class DatabaseServerForm extends Form
@@ -62,7 +62,7 @@ class DatabaseServerForm extends Form
 
         // Load backup data if exists
         if ($server->backup) {
-            /** @var \App\Models\Backup $backup */
+            /** @var Backup $backup */
             $backup = $server->backup;
             $this->volume_id = $backup->volume_id;
             $this->recurrence = $backup->recurrence;
@@ -105,6 +105,7 @@ class DatabaseServerForm extends Form
         }
 
         // Extract backup data
+        /** @var array{volume_id: string, recurrence: string} */
         $backupData = [
             'volume_id' => $validated['volume_id'],
             'recurrence' => $validated['recurrence'],
@@ -115,7 +116,8 @@ class DatabaseServerForm extends Form
         $server = DatabaseServer::create($validated);
 
         // Create backup
-        $server->backup()->create($backupData);
+        /** @var Backup $backup */
+        $backup = $server->backup()->create($backupData);
 
         return true;
     }
@@ -130,6 +132,7 @@ class DatabaseServerForm extends Form
         }
 
         // Extract backup data
+        /** @var array{volume_id: string, recurrence: string} */
         $backupData = [
             'volume_id' => $validated['volume_id'],
             'recurrence' => $validated['recurrence'],
@@ -147,7 +150,8 @@ class DatabaseServerForm extends Form
         if ($this->server->backup) {
             $this->server->backup()->update($backupData);
         } else {
-            $this->server->backup()->create($backupData);
+            /** @var Backup $backup */
+            $backup = $this->server->backup()->create($backupData);
         }
 
         return true;
@@ -168,7 +172,7 @@ class DatabaseServerForm extends Form
                 'username' => 'required|string|max:255',
                 'password' => (empty($this->server) ? 'required|string|max:255' : 'nullable'),
             ]);
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             $this->testingConnection = false;
             $this->connectionTestSuccess = false;
             $this->connectionTestMessage = 'Please fill in all required connection fields.';

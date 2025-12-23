@@ -65,6 +65,9 @@ class BackupTask
             $this->dumpDatabase($databaseServer, $databaseName, $workingFile);
             $archive = $this->compressor->compress($workingFile);
             $fileSize = filesize($archive);
+            if ($fileSize === false) {
+                throw new \RuntimeException("Failed to get file size for: {$archive}");
+            }
             $humanFileSize = Formatters::humanFileSize($fileSize);
             $job->log("Transferring backup ({$humanFileSize}) to volume: {$snapshot->volume->name}", 'info', [
                 'volume_type' => $snapshot->volume->type,
@@ -87,6 +90,9 @@ class BackupTask
             ]);
 
             $checksum = hash_file('sha256', $archive);
+            if ($checksum === false) {
+                throw new \RuntimeException("Failed to calculate checksum for: {$archive}");
+            }
 
             $job->log('Backup completed successfully', 'success', [
                 'file_size' => $humanFileSize,

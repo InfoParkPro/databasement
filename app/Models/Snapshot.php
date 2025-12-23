@@ -2,11 +2,14 @@
 
 namespace App\Models;
 
+use App\Services\Backup\Filesystems\FilesystemProvider;
 use App\Support\Formatters;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 
 /**
  * @property string $id
@@ -16,7 +19,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string $storage_uri
  * @property int $file_size
  * @property string|null $checksum
- * @property \Illuminate\Support\Carbon $started_at
+ * @property Carbon $started_at
  * @property string $database_name
  * @property string $database_type
  * @property string $database_host
@@ -24,37 +27,37 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string $compression_type
  * @property string $method
  * @property string|null $triggered_by_user_id
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
  * @property string $backup_job_id
- * @property-read \App\Models\Backup $backup
- * @property-read \App\Models\DatabaseServer $databaseServer
- * @property-read \App\Models\BackupJob $job
- * @property-read \App\Models\User|null $triggeredBy
- * @property-read \App\Models\Volume $volume
+ * @property-read Backup $backup
+ * @property-read DatabaseServer $databaseServer
+ * @property-read BackupJob $job
+ * @property-read User|null $triggeredBy
+ * @property-read Volume $volume
  *
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Snapshot forDatabaseServer(\App\Models\DatabaseServer $databaseServer)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Snapshot newModelQuery()
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Snapshot newQuery()
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Snapshot query()
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Snapshot whereBackupId($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Snapshot whereBackupJobId($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Snapshot whereChecksum($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Snapshot whereCompressionType($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Snapshot whereCreatedAt($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Snapshot whereDatabaseHost($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Snapshot whereDatabaseName($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Snapshot whereDatabasePort($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Snapshot whereDatabaseServerId($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Snapshot whereDatabaseType($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Snapshot whereFileSize($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Snapshot whereId($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Snapshot whereMethod($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Snapshot whereStorageUri($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Snapshot whereStartedAt($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Snapshot whereTriggeredByUserId($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Snapshot whereUpdatedAt($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Snapshot whereVolumeId($value)
+ * @method static Builder<static>|Snapshot forDatabaseServer(DatabaseServer $databaseServer)
+ * @method static Builder<static>|Snapshot newModelQuery()
+ * @method static Builder<static>|Snapshot newQuery()
+ * @method static Builder<static>|Snapshot query()
+ * @method static Builder<static>|Snapshot whereBackupId($value)
+ * @method static Builder<static>|Snapshot whereBackupJobId($value)
+ * @method static Builder<static>|Snapshot whereChecksum($value)
+ * @method static Builder<static>|Snapshot whereCompressionType($value)
+ * @method static Builder<static>|Snapshot whereCreatedAt($value)
+ * @method static Builder<static>|Snapshot whereDatabaseHost($value)
+ * @method static Builder<static>|Snapshot whereDatabaseName($value)
+ * @method static Builder<static>|Snapshot whereDatabasePort($value)
+ * @method static Builder<static>|Snapshot whereDatabaseServerId($value)
+ * @method static Builder<static>|Snapshot whereDatabaseType($value)
+ * @method static Builder<static>|Snapshot whereFileSize($value)
+ * @method static Builder<static>|Snapshot whereId($value)
+ * @method static Builder<static>|Snapshot whereMethod($value)
+ * @method static Builder<static>|Snapshot whereStorageUri($value)
+ * @method static Builder<static>|Snapshot whereStartedAt($value)
+ * @method static Builder<static>|Snapshot whereTriggeredByUserId($value)
+ * @method static Builder<static>|Snapshot whereUpdatedAt($value)
+ * @method static Builder<static>|Snapshot whereVolumeId($value)
  *
  * @mixin \Eloquent
  */
@@ -105,31 +108,49 @@ class Snapshot extends Model
         });
     }
 
+    /**
+     * @return BelongsTo<DatabaseServer, Snapshot>
+     */
     public function databaseServer(): BelongsTo
     {
         return $this->belongsTo(DatabaseServer::class);
     }
 
+    /**
+     * @return BelongsTo<Backup, Snapshot>
+     */
     public function backup(): BelongsTo
     {
         return $this->belongsTo(Backup::class);
     }
 
+    /**
+     * @return BelongsTo<Volume, Snapshot>
+     */
     public function volume(): BelongsTo
     {
         return $this->belongsTo(Volume::class);
     }
 
+    /**
+     * @return BelongsTo<User, Snapshot>
+     */
     public function triggeredBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'triggered_by_user_id');
     }
 
+    /**
+     * @return BelongsTo<BackupJob, Snapshot>
+     */
     public function job(): BelongsTo
     {
         return $this->belongsTo(BackupJob::class, 'backup_job_id');
     }
 
+    /**
+     * @return HasMany<Restore, Snapshot>
+     */
     public function restores(): HasMany
     {
         return $this->hasMany(Restore::class);
@@ -230,7 +251,7 @@ class Snapshot extends Model
     {
         try {
             // Get the filesystem for this volume
-            $filesystemProvider = app(\App\Services\Backup\Filesystems\FilesystemProvider::class);
+            $filesystemProvider = app(FilesystemProvider::class);
             $filesystem = $filesystemProvider->getForVolume($this->volume);
 
             // Get the path component from the URI for filesystem operations
@@ -271,8 +292,11 @@ class Snapshot extends Model
 
     /**
      * Scope to filter by database server
+     *
+     * @param  Builder<Snapshot>  $query
+     * @return Builder<Snapshot>
      */
-    public function scopeForDatabaseServer($query, DatabaseServer $databaseServer)
+    public function scopeForDatabaseServer(Builder $query, DatabaseServer $databaseServer): Builder
     {
         return $query->where('database_server_id', $databaseServer->id);
     }

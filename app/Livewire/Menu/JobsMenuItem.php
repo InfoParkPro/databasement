@@ -12,7 +12,7 @@ class JobsMenuItem extends Component
         return BackupJob::whereIn('status', ['running', 'pending'])->count();
     }
 
-    public function render()
+    public function render(): string
     {
         return <<<'HTML'
         <div wire:poll.5s>

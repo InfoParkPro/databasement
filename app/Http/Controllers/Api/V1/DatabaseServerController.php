@@ -57,7 +57,9 @@ class DatabaseServerController extends Controller
         $this->authorize('backup', $databaseServer);
 
         try {
-            $result = $action->execute($databaseServer, auth()->id());
+            /** @var int|null $userId */
+            $userId = auth()->id();
+            $result = $action->execute($databaseServer, $userId);
 
             return response()->json([
                 'message' => $result['message'],

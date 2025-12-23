@@ -9,11 +9,15 @@ use League\Flysystem\Filesystem;
 
 class FilesystemProvider
 {
+    /** @var array<string, mixed> */
     private array $config;
 
     /** @var FilesystemInterface[] */
     private array $filesystems = [];
 
+    /**
+     * @param  array<string, mixed>  $config
+     */
     public function __construct(array $config)
     {
         $this->config = $config;

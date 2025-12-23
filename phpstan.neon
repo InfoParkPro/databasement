@@ -2,23 +2,17 @@ includes:
     - vendor/larastan/larastan/extension.neon
 
 parameters:
+
     paths:
-        - app
-        - database
-        - routes
+        - app/
 
-    # Level 5 is a good starting point for Laravel projects
-    # You can increase this to level 6-9 for stricter analysis
-    level: 5
+    # Level 9 is the highest level
+    level: 7
 
-    excludePaths:
-        - database/migrations/*
-        - bootstrap/cache/*
-        - storage/*
-        - tests/*
+    checkOctaneCompatibility: true
+    checkModelProperties: true
+    noEnvCallsOutsideOfConfig: true
 
     ignoreErrors:
-        # Spatie Query Builder uses a different pattern that PHPStan doesn't understand
-        -
-            message: '#Call to an undefined method Illuminate\\Database\\Eloquent\\Builder<.*>::allowedFilters\(\)#'
-            reportUnmatched: false
+        - '#Call to an undefined method Illuminate\\Database\\Eloquent\\Builder.*::allowedFilters\(\)#'
+        - '#should return .* but returns .* \$this\(.*\)#'

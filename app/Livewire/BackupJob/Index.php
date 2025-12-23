@@ -6,6 +6,7 @@ use App\Models\BackupJob;
 use App\Models\Snapshot;
 use App\Queries\BackupJobQuery;
 use App\Services\Backup\Filesystems\Awss3Filesystem;
+use Illuminate\Contracts\View\View;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\Url;
@@ -28,6 +29,7 @@ class Index extends Component
     #[Url]
     public string $typeFilter = 'all';
 
+    /** @var array<string, string> */
     public array $sortBy = ['column' => 'created_at', 'direction' => 'desc'];
 
     public bool $drawer = false;
@@ -41,22 +43,25 @@ class Index extends Component
 
     public bool $showDeleteModal = false;
 
-    public function updatingSearch()
+    public function updatingSearch(): void
     {
         $this->resetPage();
     }
 
-    public function updatingStatusFilter()
+    public function updatingStatusFilter(): void
     {
         $this->resetPage();
     }
 
-    public function updatingTypeFilter()
+    public function updatingTypeFilter(): void
     {
         $this->resetPage();
     }
 
-    public function updated($property): void
+    /**
+     * @param  string|array<string, mixed>  $property
+     */
+    public function updated(string|array $property): void
     {
         if (! is_array($property) && $property != '') {
             $this->resetPage();
@@ -70,6 +75,9 @@ class Index extends Component
         $this->success('Filters cleared.', position: 'toast-bottom');
     }
 
+    /**
+     * @return array<int, array<string, mixed>>
+     */
     public function headers(): array
     {
         return [
@@ -87,7 +95,7 @@ class Index extends Component
         $this->showLogsModal = true;
     }
 
-    public function getSelectedJobProperty()
+    public function getSelectedJobProperty(): ?BackupJob
     {
         if (! $this->selectedJobId) {
             return null;
@@ -97,6 +105,9 @@ class Index extends Component
             ->find($this->selectedJobId);
     }
 
+    /**
+     * @return array<int, array<string, mixed>>
+     */
     public function statusOptions(): array
     {
         return [
@@ -107,6 +118,9 @@ class Index extends Component
         ];
     }
 
+    /**
+     * @return array<int, array<string, mixed>>
+     */
     public function typeOptions(): array
     {
         return [
@@ -199,7 +213,7 @@ class Index extends Component
         $this->success(__('Snapshot deleted successfully!'), position: 'toast-bottom');
     }
 
-    public function render()
+    public function render(): View
     {
         $jobs = BackupJobQuery::buildFromParams(
             search: $this->search,

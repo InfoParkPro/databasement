@@ -3,6 +3,7 @@
 namespace App\Livewire\Settings;
 
 use App\Models\User;
+use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Validation\Rule;
@@ -43,7 +44,7 @@ class Profile extends Component
         Session::flash('success', __('Profile updated successfully.'));
     }
 
-    public function render()
+    public function render(): View
     {
         return view('livewire.settings.profile')
             ->layout('components.layouts.app', ['title' => __('Profile')]);

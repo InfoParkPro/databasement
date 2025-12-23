@@ -3,6 +3,7 @@
 namespace App\Livewire\User;
 
 use App\Models\User;
+use Illuminate\Contracts\View\View;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\Url;
@@ -23,6 +24,7 @@ class Index extends Component
     #[Url]
     public string $statusFilter = 'all';
 
+    /** @var array<string, string> */
     public array $sortBy = ['column' => 'created_at', 'direction' => 'desc'];
 
     public bool $drawer = false;
@@ -41,7 +43,10 @@ class Index extends Component
         $this->resetPage();
     }
 
-    public function updated($property): void
+    /**
+     * @param  string|array<string, mixed>  $property
+     */
+    public function updated(string|array $property): void
     {
         if (! is_array($property) && $property != '') {
             $this->resetPage();
@@ -55,6 +60,9 @@ class Index extends Component
         $this->success('Filters cleared.', position: 'toast-bottom');
     }
 
+    /**
+     * @return array<int, array<string, mixed>>
+     */
     public function headers(): array
     {
         return [
@@ -66,6 +74,9 @@ class Index extends Component
         ];
     }
 
+    /**
+     * @return array<int, array<string, mixed>>
+     */
     public function roleFilterOptions(): array
     {
         return [
@@ -76,6 +87,9 @@ class Index extends Component
         ];
     }
 
+    /**
+     * @return array<int, array<string, mixed>>
+     */
     public function statusFilterOptions(): array
     {
         return [
@@ -122,7 +136,7 @@ class Index extends Component
         $this->success('User deleted successfully.', position: 'toast-bottom');
     }
 
-    public function render()
+    public function render(): View
     {
         $users = User::query()
             ->when($this->search, function ($query) {

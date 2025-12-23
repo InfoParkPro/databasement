@@ -4,19 +4,23 @@ namespace App\Services\Backup\Databases;
 
 class PostgresqlDatabase implements DatabaseInterface
 {
+    /** @var array<string, mixed> */
     private array $config;
 
-    public function handles($type): bool
+    public function handles(mixed $type): bool
     {
         return in_array(strtolower($type ?? ''), ['postgresql', 'postgres', 'pgsql']);
     }
 
+    /**
+     * @param  array<string, mixed>  $config
+     */
     public function setConfig(array $config): void
     {
         $this->config = $config;
     }
 
-    public function getDumpCommandLine($outputPath): string
+    public function getDumpCommandLine(string $outputPath): string
     {
         return sprintf(
             'PGPASSWORD=%s pg_dump --clean --host=%s --port=%s --username=%s %s -f %s',
@@ -29,7 +33,7 @@ class PostgresqlDatabase implements DatabaseInterface
         );
     }
 
-    public function getRestoreCommandLine($inputPath): string
+    public function getRestoreCommandLine(string $inputPath): string
     {
         return sprintf(
             'PGPASSWORD=%s psql --host=%s --port=%s --user=%s %s -f %s',

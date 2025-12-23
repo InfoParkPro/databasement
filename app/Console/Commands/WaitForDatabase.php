@@ -24,7 +24,7 @@ class WaitForDatabase extends Command
     /**
      * Execute the console command.
      */
-    public function handle()
+    public function handle(): int
     {
         $this->info('Waiting for database connection...');
 

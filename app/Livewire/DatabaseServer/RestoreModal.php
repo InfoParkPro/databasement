@@ -7,7 +7,10 @@ use App\Models\DatabaseServer;
 use App\Models\Snapshot;
 use App\Services\Backup\BackupJobFactory;
 use App\Services\Backup\DatabaseListService;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Contracts\View\View;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Support\Collection;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use Livewire\Component;
@@ -31,6 +34,7 @@ class RestoreModal extends Component
 
     public int $currentStep = 1;
 
+    /** @var array<int, string> */
     public array $existingDatabases = [];
 
     public bool $showModal = false;
@@ -42,6 +46,9 @@ class RestoreModal extends Component
         $this->resetPage('snapshots');
     }
 
+    /**
+     * @return array<int, string>
+     */
     public function getFilteredDatabasesProperty(): array
     {
         if (empty($this->schemaName)) {
@@ -59,7 +66,7 @@ class RestoreModal extends Component
         $this->schemaName = $database;
     }
 
-    public function mount(?string $targetServerId = null)
+    public function mount(?string $targetServerId = null): void
     {
         if ($targetServerId) {
             $this->targetServer = DatabaseServer::find($targetServerId);
@@ -143,11 +150,12 @@ class RestoreModal extends Component
         try {
             $snapshot = Snapshot::findOrFail($this->selectedSnapshotId);
 
+            $userId = auth()->id();
             $restore = $backupJobFactory->createRestore(
                 snapshot: $snapshot,
                 targetServer: $this->targetServer,
                 schemaName: $this->schemaName,
-                triggeredByUserId: auth()->id()
+                triggeredByUserId: is_int($userId) ? $userId : null
             );
 
             ProcessRestoreJob::dispatch($restore->id);
@@ -162,7 +170,10 @@ class RestoreModal extends Component
         }
     }
 
-    public function getCompatibleServersProperty()
+    /**
+     * @return \Illuminate\Database\Eloquent\Collection<int, DatabaseServer>|Collection<int, never>
+     */
+    public function getCompatibleServersProperty(): Collection|\Illuminate\Database\Eloquent\Collection
     {
         if (! $this->targetServer) {
             return collect();
@@ -171,30 +182,30 @@ class RestoreModal extends Component
         return DatabaseServer::query()
             ->where('database_type', $this->targetServer->database_type)
             ->whereHas('snapshots', function ($query) {
-                $query->whereHas('job', fn ($q) => $q->where('status', 'completed'));
+                $query->whereHas('job', fn ($q) => $q->whereRaw("status = 'completed'"));
             })
             ->with(['snapshots' => function ($query) {
-                $query->whereHas('job', fn ($q) => $q->where('status', 'completed'))
+                $query->whereHas('job', fn ($q) => $q->whereRaw("status = 'completed'"))
                     ->with('job')
                     ->orderBy('created_at', 'desc');
             }])
             ->get();
     }
 
-    public function getSelectedSourceServerProperty()
+    public function getSelectedSourceServerProperty(): ?DatabaseServer
     {
         if (! $this->selectedSourceServerId) {
             return null;
         }
 
         return DatabaseServer::with(['snapshots' => function ($query) {
-            $query->whereHas('job', fn ($q) => $q->where('status', 'completed'))
+            $query->whereHas('job', fn ($q) => $q->whereRaw("status = 'completed'"))
                 ->with('job')
                 ->orderBy('created_at', 'desc');
         }])->find($this->selectedSourceServerId);
     }
 
-    public function getSelectedSnapshotProperty()
+    public function getSelectedSnapshotProperty(): ?Snapshot
     {
         if (! $this->selectedSnapshotId) {
             return null;
@@ -203,7 +214,10 @@ class RestoreModal extends Component
         return Snapshot::find($this->selectedSnapshotId);
     }
 
-    public function getPaginatedSnapshotsProperty()
+    /**
+     * @return LengthAwarePaginator<int, Snapshot>|null
+     */
+    public function getPaginatedSnapshotsProperty(): ?LengthAwarePaginator
     {
         if (! $this->selectedSourceServerId) {
             return null;
@@ -211,7 +225,7 @@ class RestoreModal extends Component
 
         return Snapshot::query()
             ->where('database_server_id', $this->selectedSourceServerId)
-            ->whereHas('job', fn ($q) => $q->where('status', 'completed'))
+            ->whereHas('job', fn ($q) => $q->whereRaw("status = 'completed'"))
             ->when($this->snapshotSearch, function ($query) {
                 $query->where('database_name', 'like', '%'.$this->snapshotSearch.'%');
             })
@@ -220,7 +234,7 @@ class RestoreModal extends Component
             ->paginate(10, pageName: 'snapshots');
     }
 
-    public function render()
+    public function render(): View
     {
         return view('livewire.database-server.restore-modal');
     }

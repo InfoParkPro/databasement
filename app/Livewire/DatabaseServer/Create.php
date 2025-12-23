@@ -4,6 +4,7 @@ namespace App\Livewire\DatabaseServer;
 
 use App\Livewire\Forms\DatabaseServerForm;
 use App\Models\DatabaseServer;
+use Illuminate\Contracts\View\View;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Livewire\Component;
 
@@ -18,7 +19,7 @@ class Create extends Component
         $this->authorize('create', DatabaseServer::class);
     }
 
-    public function save()
+    public function save(): null
     {
         $this->authorize('create', DatabaseServer::class);
 
@@ -28,15 +29,15 @@ class Create extends Component
             return $this->redirect(route('database-servers.index'), navigate: true);
         }
 
-        return false;
+        return null;
     }
 
-    public function testConnection()
+    public function testConnection(): void
     {
         $this->form->testConnection();
     }
 
-    public function render()
+    public function render(): View
     {
         return view('livewire.database-server.create')
             ->layout('components.layouts.app', ['title' => __('Create Database Server')]);

@@ -2,6 +2,8 @@
 
 namespace App\Support;
 
+use Carbon\Carbon;
+
 class Formatters
 {
     /**
@@ -51,14 +53,14 @@ class Formatters
      * Format a date/datetime into human-readable format
      * Output format: Dec 19, 2025, 16:44
      */
-    public static function humanDate(\DateTimeInterface|\Carbon\Carbon|string|null $date): ?string
+    public static function humanDate(\DateTimeInterface|Carbon|string|null $date): ?string
     {
         if ($date === null) {
             return null;
         }
 
         if (is_string($date)) {
-            $date = \Carbon\Carbon::parse($date);
+            $date = Carbon::parse($date);
         }
 
         return $date->format('M j, Y, H:i');

@@ -5,6 +5,7 @@ namespace App\Livewire\DatabaseServer;
 use App\Models\DatabaseServer;
 use App\Queries\DatabaseServerQuery;
 use App\Services\Backup\TriggerBackupAction;
+use Illuminate\Contracts\View\View;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\Url;
@@ -19,6 +20,7 @@ class Index extends Component
     #[Url]
     public string $search = '';
 
+    /** @var array<string, string> */
     public array $sortBy = ['column' => 'created_at', 'direction' => 'desc'];
 
     public bool $drawer = false;
@@ -31,12 +33,15 @@ class Index extends Component
 
     public bool $showDeleteModal = false;
 
-    public function updatingSearch()
+    public function updatingSearch(): void
     {
         $this->resetPage();
     }
 
-    public function updated($property): void
+    /**
+     * @param  string|array<string, mixed>  $property
+     */
+    public function updated(string|array $property): void
     {
         if (! is_array($property) && $property != '') {
             $this->resetPage();
@@ -50,6 +55,9 @@ class Index extends Component
         $this->success('Filters cleared.', position: 'toast-bottom');
     }
 
+    /**
+     * @return array<int, array<string, mixed>>
+     */
     public function headers(): array
     {
         return [
@@ -60,7 +68,7 @@ class Index extends Component
         ];
     }
 
-    public function confirmDelete(string $id)
+    public function confirmDelete(string $id): void
     {
         $server = DatabaseServer::findOrFail($id);
 
@@ -70,7 +78,7 @@ class Index extends Component
         $this->showDeleteModal = true;
     }
 
-    public function delete()
+    public function delete(): void
     {
         if (! $this->deleteId) {
             return;
@@ -87,7 +95,7 @@ class Index extends Component
         session()->flash('status', 'Database server deleted successfully!');
     }
 
-    public function confirmRestore(string $id)
+    public function confirmRestore(string $id): void
     {
         $server = DatabaseServer::findOrFail($id);
 
@@ -97,21 +105,22 @@ class Index extends Component
         $this->dispatch('open-restore-modal', targetServerId: $id);
     }
 
-    public function runBackup(string $id, TriggerBackupAction $action)
+    public function runBackup(string $id, TriggerBackupAction $action): void
     {
         $server = DatabaseServer::with(['backup.volume'])->findOrFail($id);
 
         $this->authorize('backup', $server);
 
         try {
-            $result = $action->execute($server, auth()->id());
+            $userId = auth()->id();
+            $result = $action->execute($server, is_int($userId) ? $userId : null);
             $this->success($result['message'], position: 'toast-bottom');
         } catch (\Throwable $e) {
             $this->error($e->getMessage(), position: 'toast-bottom');
         }
     }
 
-    public function render()
+    public function render(): View
     {
         $servers = DatabaseServerQuery::buildFromParams(
             search: $this->search,

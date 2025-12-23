@@ -2,11 +2,12 @@
 
 namespace App\Http\Resources;
 
+use App\Models\BackupJob;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * @mixin \App\Models\BackupJob
+ * @mixin BackupJob
  */
 class BackupJobResource extends JsonResource
 {

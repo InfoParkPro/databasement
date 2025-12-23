@@ -4,6 +4,7 @@ namespace App\Livewire\User;
 
 use App\Livewire\Forms\UserForm;
 use App\Models\User;
+use Illuminate\Contracts\View\View;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Livewire\Component;
 use Mary\Traits\Toast;
@@ -21,14 +22,14 @@ class Edit extends Component
         $this->form->setUser($user);
     }
 
-    public function save()
+    public function save(): mixed
     {
         $this->authorize('update', $this->form->user);
 
         if (! $this->form->update()) {
             $this->error('Cannot change role. At least one administrator is required.', position: 'toast-bottom');
 
-            return;
+            return null;
         }
 
         session()->flash('status', 'User updated successfully!');
@@ -36,7 +37,7 @@ class Edit extends Component
         return $this->redirect(route('users.index'), navigate: true);
     }
 
-    public function render()
+    public function render(): View
     {
         return view('livewire.user.edit', [
             'roleOptions' => $this->form->roleOptions(),

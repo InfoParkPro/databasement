@@ -3,6 +3,7 @@
 namespace App\Livewire\Auth;
 
 use App\Models\User;
+use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Validate;
@@ -50,7 +51,7 @@ class AcceptInvitation extends Component
     }
 
     #[Layout('components.layouts.auth')]
-    public function render()
+    public function render(): View
     {
         return view('livewire.auth.accept-invitation');
     }

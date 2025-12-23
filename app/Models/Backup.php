@@ -2,32 +2,35 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 
 /**
  * @property string $id
  * @property string $database_server_id
  * @property string $volume_id
  * @property string $recurrence
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
- * @property-read \App\Models\DatabaseServer $databaseServer
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Snapshot> $snapshots
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property-read DatabaseServer $databaseServer
+ * @property-read Collection<int, Snapshot> $snapshots
  * @property-read int|null $snapshots_count
- * @property-read \App\Models\Volume $volume
+ * @property-read Volume $volume
  *
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Backup newModelQuery()
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Backup newQuery()
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Backup query()
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Backup whereCreatedAt($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Backup whereDatabaseServerId($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Backup whereId($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Backup whereRecurrence($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Backup whereUpdatedAt($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Backup whereVolumeId($value)
+ * @method static Builder<static>|Backup newModelQuery()
+ * @method static Builder<static>|Backup newQuery()
+ * @method static Builder<static>|Backup query()
+ * @method static Builder<static>|Backup whereCreatedAt($value)
+ * @method static Builder<static>|Backup whereDatabaseServerId($value)
+ * @method static Builder<static>|Backup whereId($value)
+ * @method static Builder<static>|Backup whereRecurrence($value)
+ * @method static Builder<static>|Backup whereUpdatedAt($value)
+ * @method static Builder<static>|Backup whereVolumeId($value)
  *
  * @mixin \Eloquent
  */
@@ -50,16 +53,25 @@ class Backup extends Model
         'recurrence',
     ];
 
+    /**
+     * @return BelongsTo<DatabaseServer, Backup>
+     */
     public function databaseServer(): BelongsTo
     {
         return $this->belongsTo(DatabaseServer::class);
     }
 
+    /**
+     * @return BelongsTo<Volume, Backup>
+     */
     public function volume(): BelongsTo
     {
         return $this->belongsTo(Volume::class);
     }
 
+    /**
+     * @return HasMany<Snapshot, Backup>
+     */
     public function snapshots(): HasMany
     {
         return $this->hasMany(Snapshot::class);

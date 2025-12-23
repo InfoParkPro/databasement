@@ -5,7 +5,7 @@ namespace App\Facades;
 use Illuminate\Support\Facades\Facade;
 
 /**
- * @method static array test(array $config)
+ * @method static array<string, mixed> test(array<string, mixed> $config)
  *
  * @see \App\Services\DatabaseConnectionTester
  */

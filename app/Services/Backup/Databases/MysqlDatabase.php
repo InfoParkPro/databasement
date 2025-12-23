@@ -4,8 +4,10 @@ namespace App\Services\Backup\Databases;
 
 class MysqlDatabase implements DatabaseInterface
 {
+    /** @var array<string, mixed> */
     private array $config;
 
+    /** @var array<string, array<string, string>> */
     private array $mysqlCli = [
         'mariadb' => [
             'dump' => 'mariadb-dump',
@@ -24,17 +26,20 @@ class MysqlDatabase implements DatabaseInterface
         $this->mysqlCliUsed = config('backup.mysql_cli_type', 'mariadb');
     }
 
-    public function handles($type): bool
+    public function handles(mixed $type): bool
     {
         return strtolower($type ?? '') == 'mysql';
     }
 
+    /**
+     * @param  array<string, mixed>  $config
+     */
     public function setConfig(array $config): void
     {
         $this->config = $config;
     }
 
-    public function getDumpCommandLine($outputPath): string
+    public function getDumpCommandLine(string $outputPath): string
     {
         $extras = [];
         if (array_key_exists('singleTransaction', $this->config) && $this->config['singleTransaction'] === true) {
@@ -71,7 +76,7 @@ class MysqlDatabase implements DatabaseInterface
         );
     }
 
-    public function getRestoreCommandLine($inputPath): string
+    public function getRestoreCommandLine(string $inputPath): string
     {
         $extras = [];
         if (array_key_exists('ssl', $this->config) && $this->config['ssl'] === true) {

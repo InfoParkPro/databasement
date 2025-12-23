@@ -72,6 +72,9 @@ class UserForm extends Form
         return true;
     }
 
+    /**
+     * @return array<int, array<string, string>>
+     */
     public function roleOptions(): array
     {
         return [

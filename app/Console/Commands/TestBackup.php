@@ -159,6 +159,9 @@ class TestBackup extends Command
         $this->databaseServer->load('backup.volume');
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     private function getDatabaseConfig(string $type): array
     {
         return match ($type) {
@@ -236,6 +239,9 @@ class TestBackup extends Command
 
         // Verify file size
         $fileSize = filesize($this->backupFilePath);
+        if ($fileSize === false) {
+            throw new \RuntimeException('Unable to get file size');
+        }
         $this->line('   ✓ File size: '.number_format($fileSize).' bytes ('.round($fileSize / 1024, 2).' KB)');
 
         if ($fileSize < 100) {
@@ -244,8 +250,15 @@ class TestBackup extends Command
 
         // Verify it's actually gzipped
         $handle = fopen($this->backupFilePath, 'r');
+        if ($handle === false) {
+            throw new \RuntimeException('Unable to open backup file');
+        }
         $header = fread($handle, 2);
         fclose($handle);
+
+        if ($header === false) {
+            throw new \RuntimeException('Unable to read backup file header');
+        }
 
         $isGzip = (bin2hex($header) === '1f8b');
         if (! $isGzip) {
@@ -257,15 +270,22 @@ class TestBackup extends Command
         // Try to decompress and check SQL content
         $this->line('   ℹ Checking SQL content...');
         $gzHandle = gzopen($this->backupFilePath, 'r');
+        if ($gzHandle === false) {
+            throw new \RuntimeException('Unable to open gzipped backup file');
+        }
         $firstLine = gzgets($gzHandle);
         gzclose($gzHandle);
 
-        $hasSqlContent = str_contains($firstLine, '--') || str_contains($firstLine, 'CREATE') || str_contains($firstLine, 'DROP');
-        if (! $hasSqlContent) {
-            $this->warn("   ⚠ Warning: File doesn't appear to contain SQL content");
-            $this->line("   First line: {$firstLine}");
+        if ($firstLine === false) {
+            $this->warn('   ⚠ Warning: Could not read first line from backup');
         } else {
-            $this->line('   ✓ SQL content verified');
+            $hasSqlContent = str_contains($firstLine, '--') || str_contains($firstLine, 'CREATE') || str_contains($firstLine, 'DROP');
+            if (! $hasSqlContent) {
+                $this->warn("   ⚠ Warning: File doesn't appear to contain SQL content");
+                $this->line("   First line: {$firstLine}");
+            } else {
+                $this->line('   ✓ SQL content verified');
+            }
         }
     }
 
@@ -314,13 +334,17 @@ class TestBackup extends Command
             // Check if database has tables/content
             if ($type === 'mysql') {
                 $stmt = $pdo->query('SHOW TABLES');
-                $tables = $stmt->fetchAll(\PDO::FETCH_COLUMN);
-                $tableCount = count($tables);
-                $this->line("   ✓ Found {$tableCount} table(s) in restored database");
+                if ($stmt !== false) {
+                    $tables = $stmt->fetchAll(\PDO::FETCH_COLUMN);
+                    $tableCount = count($tables);
+                    $this->line("   ✓ Found {$tableCount} table(s) in restored database");
+                }
             } elseif ($type === 'postgres') {
                 $stmt = $pdo->query("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public'");
-                $tableCount = $stmt->fetchColumn();
-                $this->line("   ✓ Found {$tableCount} table(s) in restored database");
+                if ($stmt !== false) {
+                    $tableCount = $stmt->fetchColumn();
+                    $this->line("   ✓ Found {$tableCount} table(s) in restored database");
+                }
             }
 
             $this->line('   ✓ Restored database is accessible and contains data');

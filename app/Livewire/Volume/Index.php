@@ -4,6 +4,7 @@ namespace App\Livewire\Volume;
 
 use App\Models\Volume;
 use App\Queries\VolumeQuery;
+use Illuminate\Contracts\View\View;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\Url;
@@ -18,6 +19,7 @@ class Index extends Component
     #[Url]
     public string $search = '';
 
+    /** @var array<string, string> */
     public array $sortBy = ['column' => 'created_at', 'direction' => 'desc'];
 
     public bool $drawer = false;
@@ -27,12 +29,15 @@ class Index extends Component
 
     public bool $showDeleteModal = false;
 
-    public function updatingSearch()
+    public function updatingSearch(): void
     {
         $this->resetPage();
     }
 
-    public function updated($property): void
+    /**
+     * @param  string|array<string, mixed>  $property
+     */
+    public function updated(string|array $property): void
     {
         if (! is_array($property) && $property != '') {
             $this->resetPage();
@@ -46,6 +51,9 @@ class Index extends Component
         $this->success('Filters cleared.', position: 'toast-bottom');
     }
 
+    /**
+     * @return array<int, array<string, mixed>>
+     */
     public function headers(): array
     {
         return [
@@ -56,7 +64,7 @@ class Index extends Component
         ];
     }
 
-    public function confirmDelete(string $id)
+    public function confirmDelete(string $id): void
     {
         $volume = Volume::findOrFail($id);
 
@@ -66,7 +74,7 @@ class Index extends Component
         $this->showDeleteModal = true;
     }
 
-    public function delete()
+    public function delete(): void
     {
         if (! $this->deleteId) {
             return;
@@ -83,7 +91,7 @@ class Index extends Component
         $this->success('Volume deleted successfully!', position: 'toast-bottom');
     }
 
-    public function render()
+    public function render(): View
     {
         $volumes = VolumeQuery::buildFromParams(
             search: $this->search,

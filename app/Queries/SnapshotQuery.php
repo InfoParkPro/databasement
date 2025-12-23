@@ -31,7 +31,7 @@ class SnapshotQuery
                 AllowedFilter::exact('database_type'),
                 AllowedFilter::exact('method'),
                 AllowedFilter::callback('status', function (Builder $query, $value) {
-                    $query->whereHas('job', fn (Builder $q) => $q->where('status', $value));
+                    $query->whereHas('job', fn (Builder $q) => $q->whereRaw('status = ?', [$value]));
                 }),
                 AllowedFilter::callback('search', function (Builder $query, $value) {
                     self::applySearch($query, $value);
@@ -63,7 +63,7 @@ class SnapshotQuery
                 self::applySearch($query, $search);
             })
             ->when($statusFilter !== 'all', function (Builder $query) use ($statusFilter) {
-                $query->whereHas('job', fn (Builder $q) => $q->where('status', $statusFilter));
+                $query->whereHas('job', fn (Builder $q) => $q->whereRaw('status = ?', [$statusFilter]));
             })
             ->orderBy($sortColumn, $sortDirection);
     }
@@ -75,7 +75,7 @@ class SnapshotQuery
     {
         $query->where(function (Builder $q) use ($search) {
             $q->whereHas('databaseServer', function (Builder $sq) use ($search) {
-                $sq->where('name', 'like', "%{$search}%");
+                $sq->whereRaw('name LIKE ?', ["%{$search}%"]);
             })
                 ->orWhere('database_name', 'like', "%{$search}%")
                 ->orWhere('database_host', 'like', "%{$search}%");

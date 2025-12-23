@@ -3,37 +3,39 @@
 namespace App\Models;
 
 use App\Support\Formatters;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Carbon;
 
 /**
  * @property string $id
  * @property string|null $job_id
  * @property string $status
- * @property \Illuminate\Support\Carbon|null $started_at
- * @property \Illuminate\Support\Carbon|null $completed_at
+ * @property Carbon|null $started_at
+ * @property Carbon|null $completed_at
  * @property string|null $error_message
  * @property string|null $error_trace
  * @property array<array-key, mixed>|null $logs
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
- * @property-read \App\Models\Restore|null $restore
- * @property-read \App\Models\Snapshot|null $snapshot
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property-read Restore|null $restore
+ * @property-read Snapshot|null $snapshot
  *
- * @method static \Illuminate\Database\Eloquent\Builder<static>|BackupJob newModelQuery()
- * @method static \Illuminate\Database\Eloquent\Builder<static>|BackupJob newQuery()
- * @method static \Illuminate\Database\Eloquent\Builder<static>|BackupJob query()
- * @method static \Illuminate\Database\Eloquent\Builder<static>|BackupJob whereCompletedAt($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|BackupJob whereCreatedAt($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|BackupJob whereErrorMessage($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|BackupJob whereErrorTrace($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|BackupJob whereId($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|BackupJob whereJobId($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|BackupJob whereLogs($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|BackupJob whereStartedAt($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|BackupJob whereStatus($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|BackupJob whereUpdatedAt($value)
+ * @method static Builder<static>|BackupJob newModelQuery()
+ * @method static Builder<static>|BackupJob newQuery()
+ * @method static Builder<static>|BackupJob query()
+ * @method static Builder<static>|BackupJob whereCompletedAt($value)
+ * @method static Builder<static>|BackupJob whereCreatedAt($value)
+ * @method static Builder<static>|BackupJob whereErrorMessage($value)
+ * @method static Builder<static>|BackupJob whereErrorTrace($value)
+ * @method static Builder<static>|BackupJob whereId($value)
+ * @method static Builder<static>|BackupJob whereJobId($value)
+ * @method static Builder<static>|BackupJob whereLogs($value)
+ * @method static Builder<static>|BackupJob whereStartedAt($value)
+ * @method static Builder<static>|BackupJob whereStatus($value)
+ * @method static Builder<static>|BackupJob whereUpdatedAt($value)
  *
  * @mixin \Eloquent
  */
@@ -60,11 +62,17 @@ class BackupJob extends Model
         ];
     }
 
+    /**
+     * @return HasOne<Snapshot, BackupJob>
+     */
     public function snapshot(): HasOne
     {
         return $this->hasOne(Snapshot::class);
     }
 
+    /**
+     * @return HasOne<Restore, BackupJob>
+     */
     public function restore(): HasOne
     {
         return $this->hasOne(Restore::class);
@@ -146,6 +154,8 @@ class BackupJob extends Model
 
     /**
      * Add a log entry
+     *
+     * @param  array<string, mixed>|null  $context
      */
     public function log(string $message, string $level = 'info', ?array $context = null): void
     {
@@ -169,6 +179,8 @@ class BackupJob extends Model
 
     /**
      * Get all logs
+     *
+     * @return array<int, array<string, mixed>>
      */
     public function getLogs(): array
     {
@@ -177,6 +189,8 @@ class BackupJob extends Model
 
     /**
      * Get logs filtered by type
+     *
+     * @return array<int, array<string, mixed>>
      */
     public function getLogsByType(string $type): array
     {
@@ -185,6 +199,8 @@ class BackupJob extends Model
 
     /**
      * Get command logs only
+     *
+     * @return array<int, array<string, mixed>>
      */
     public function getCommandLogs(): array
     {

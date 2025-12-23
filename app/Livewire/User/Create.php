@@ -4,6 +4,7 @@ namespace App\Livewire\User;
 
 use App\Livewire\Forms\UserForm;
 use App\Models\User;
+use Illuminate\Contracts\View\View;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Livewire\Component;
 use Mary\Traits\Toast;
@@ -23,7 +24,7 @@ class Create extends Component
         $this->authorize('create', User::class);
     }
 
-    public function save()
+    public function save(): void
     {
         $this->authorize('create', User::class);
 
@@ -33,12 +34,12 @@ class Create extends Component
         $this->showCopyModal = true;
     }
 
-    public function closeAndRedirect()
+    public function closeAndRedirect(): mixed
     {
         return $this->redirect(route('users.index'), navigate: true);
     }
 
-    public function render()
+    public function render(): View
     {
         return view('livewire.user.create', [
             'roleOptions' => $this->form->roleOptions(),

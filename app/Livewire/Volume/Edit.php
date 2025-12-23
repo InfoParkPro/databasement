@@ -4,6 +4,7 @@ namespace App\Livewire\Volume;
 
 use App\Livewire\Forms\VolumeForm;
 use App\Models\Volume;
+use Illuminate\Contracts\View\View;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Livewire\Component;
 
@@ -13,14 +14,14 @@ class Edit extends Component
 
     public VolumeForm $form;
 
-    public function mount(Volume $volume)
+    public function mount(Volume $volume): void
     {
         $this->authorize('update', $volume);
 
         $this->form->setVolume($volume);
     }
 
-    public function save()
+    public function save(): mixed
     {
         $this->authorize('update', $this->form->volume);
 
@@ -31,12 +32,12 @@ class Edit extends Component
         return $this->redirect(route('volumes.index'), navigate: true);
     }
 
-    public function testConnection()
+    public function testConnection(): void
     {
         $this->form->testConnection();
     }
 
-    public function render()
+    public function render(): View
     {
         return view('livewire.volume.edit')
             ->layout('components.layouts.app', ['title' => __('Edit Volume')]);

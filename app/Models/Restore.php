@@ -2,9 +2,11 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
 /**
  * @property string $id
@@ -12,25 +14,25 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string $target_server_id
  * @property string $schema_name
  * @property string|null $triggered_by_user_id
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
  * @property string $backup_job_id
- * @property-read \App\Models\BackupJob $job
- * @property-read \App\Models\Snapshot $snapshot
- * @property-read \App\Models\DatabaseServer $targetServer
- * @property-read \App\Models\User|null $triggeredBy
+ * @property-read BackupJob $job
+ * @property-read Snapshot $snapshot
+ * @property-read DatabaseServer $targetServer
+ * @property-read User|null $triggeredBy
  *
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Restore newModelQuery()
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Restore newQuery()
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Restore query()
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Restore whereBackupJobId($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Restore whereCreatedAt($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Restore whereId($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Restore whereSchemaName($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Restore whereSnapshotId($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Restore whereTargetServerId($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Restore whereTriggeredByUserId($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Restore whereUpdatedAt($value)
+ * @method static Builder<static>|Restore newModelQuery()
+ * @method static Builder<static>|Restore newQuery()
+ * @method static Builder<static>|Restore query()
+ * @method static Builder<static>|Restore whereBackupJobId($value)
+ * @method static Builder<static>|Restore whereCreatedAt($value)
+ * @method static Builder<static>|Restore whereId($value)
+ * @method static Builder<static>|Restore whereSchemaName($value)
+ * @method static Builder<static>|Restore whereSnapshotId($value)
+ * @method static Builder<static>|Restore whereTargetServerId($value)
+ * @method static Builder<static>|Restore whereTriggeredByUserId($value)
+ * @method static Builder<static>|Restore whereUpdatedAt($value)
  *
  * @mixin \Eloquent
  */
@@ -54,21 +56,33 @@ class Restore extends Model
         'triggered_by_user_id',
     ];
 
+    /**
+     * @return BelongsTo<Snapshot, Restore>
+     */
     public function snapshot(): BelongsTo
     {
         return $this->belongsTo(Snapshot::class);
     }
 
+    /**
+     * @return BelongsTo<DatabaseServer, Restore>
+     */
     public function targetServer(): BelongsTo
     {
         return $this->belongsTo(DatabaseServer::class, 'target_server_id');
     }
 
+    /**
+     * @return BelongsTo<User, Restore>
+     */
     public function triggeredBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'triggered_by_user_id');
     }
 
+    /**
+     * @return BelongsTo<BackupJob, Restore>
+     */
     public function job(): BelongsTo
     {
         return $this->belongsTo(BackupJob::class, 'backup_job_id');

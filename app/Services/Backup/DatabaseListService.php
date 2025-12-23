@@ -43,6 +43,9 @@ class DatabaseListService
     private function listMysqlDatabases(PDO $pdo): array
     {
         $statement = $pdo->query('SHOW DATABASES');
+        if ($statement === false) {
+            throw new \RuntimeException('Failed to execute query: SHOW DATABASES');
+        }
         $databases = $statement->fetchAll(PDO::FETCH_COLUMN, 0);
 
         // Filter out system databases
@@ -59,6 +62,9 @@ class DatabaseListService
         $statement = $pdo->query(
             'SELECT datname FROM pg_database WHERE datistemplate = false'
         );
+        if ($statement === false) {
+            throw new \RuntimeException('Failed to execute query: SELECT datname FROM pg_database');
+        }
 
         $databases = $statement->fetchAll(PDO::FETCH_COLUMN, 0);
 

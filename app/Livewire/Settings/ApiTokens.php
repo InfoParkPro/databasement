@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Settings;
 
+use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
@@ -81,7 +82,7 @@ class ApiTokens extends Component
         $this->success(__('API token revoked successfully.'), position: 'toast-bottom');
     }
 
-    public function render()
+    public function render(): View
     {
         $tokens = Auth::user()->tokens()->latest()->get();
 

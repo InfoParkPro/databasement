@@ -4,6 +4,7 @@ namespace App\Livewire\Volume;
 
 use App\Livewire\Forms\VolumeForm;
 use App\Models\Volume;
+use Illuminate\Contracts\View\View;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Livewire\Component;
 
@@ -18,7 +19,7 @@ class Create extends Component
         $this->authorize('create', Volume::class);
     }
 
-    public function save()
+    public function save(): mixed
     {
         $this->authorize('create', Volume::class);
 
@@ -29,12 +30,12 @@ class Create extends Component
         return $this->redirect(route('volumes.index'), navigate: true);
     }
 
-    public function testConnection()
+    public function testConnection(): void
     {
         $this->form->testConnection();
     }
 
-    public function render()
+    public function render(): View
     {
         return view('livewire.volume.create')
             ->layout('components.layouts.app', ['title' => __('Create Volume')]);

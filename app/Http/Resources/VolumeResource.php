@@ -2,11 +2,12 @@
 
 namespace App\Http\Resources;
 
+use App\Models\Volume;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * @mixin \App\Models\Volume
+ * @mixin Volume
  */
 class VolumeResource extends JsonResource
 {

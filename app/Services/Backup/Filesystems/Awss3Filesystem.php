@@ -27,6 +27,8 @@ class Awss3Filesystem implements FilesystemInterface
 
     /**
      * Generate a presigned URL for downloading a file from S3
+     *
+     * @param  array<string, mixed>  $config
      */
     public function getPresignedUrl(array $config, string $path, int $expiresInMinutes = 60): string
     {

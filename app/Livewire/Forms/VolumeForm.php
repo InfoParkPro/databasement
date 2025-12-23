@@ -4,6 +4,7 @@ namespace App\Livewire\Forms;
 
 use App\Models\Volume;
 use App\Services\VolumeConnectionTester;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Validate;
 use Livewire\Form;
 
@@ -35,7 +36,7 @@ class VolumeForm extends Form
 
     public bool $testingConnection = false;
 
-    public function setVolume(Volume $volume)
+    public function setVolume(Volume $volume): void
     {
         $this->volume = $volume;
         $this->name = $volume->name;
@@ -53,7 +54,7 @@ class VolumeForm extends Form
         }
     }
 
-    public function store()
+    public function store(): void
     {
         // Validate with unique rule for new volumes
         $this->validate([
@@ -73,7 +74,7 @@ class VolumeForm extends Form
         ]);
     }
 
-    public function update()
+    public function update(): void
     {
         // Add unique validation for name, ignoring current volume
         $this->validate([
@@ -93,6 +94,9 @@ class VolumeForm extends Form
         ]);
     }
 
+    /**
+     * @return array<string, string>
+     */
     protected function buildConfig(): array
     {
         return match ($this->type) {
@@ -123,7 +127,7 @@ class VolumeForm extends Form
                     'bucket' => 'required|string|max:255',
                 ]);
             }
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             $this->testingConnection = false;
             $this->connectionTestSuccess = false;
             $this->connectionTestMessage = 'Please fill in all required configuration fields.';

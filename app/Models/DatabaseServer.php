@@ -3,11 +3,14 @@
 namespace App\Models;
 
 use Database\Factories\DatabaseServerFactory;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Carbon;
 
 /**
  * @property string $id
@@ -20,27 +23,27 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property string|null $database_name
  * @property bool $backup_all_databases
  * @property string|null $description
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
- * @property-read \App\Models\Backup|null $backup
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Snapshot> $snapshots
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property-read Backup|null $backup
+ * @property-read Collection<int, Snapshot> $snapshots
  * @property-read int|null $snapshots_count
  *
- * @method static \Database\Factories\DatabaseServerFactory factory($count = null, $state = [])
- * @method static \Illuminate\Database\Eloquent\Builder<static>|DatabaseServer newModelQuery()
- * @method static \Illuminate\Database\Eloquent\Builder<static>|DatabaseServer newQuery()
- * @method static \Illuminate\Database\Eloquent\Builder<static>|DatabaseServer query()
- * @method static \Illuminate\Database\Eloquent\Builder<static>|DatabaseServer whereCreatedAt($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|DatabaseServer whereDatabaseName($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|DatabaseServer whereDatabaseType($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|DatabaseServer whereDescription($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|DatabaseServer whereHost($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|DatabaseServer whereId($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|DatabaseServer whereName($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|DatabaseServer wherePassword($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|DatabaseServer wherePort($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|DatabaseServer whereUpdatedAt($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|DatabaseServer whereUsername($value)
+ * @method static DatabaseServerFactory factory($count = null, $state = [])
+ * @method static Builder<static>|DatabaseServer newModelQuery()
+ * @method static Builder<static>|DatabaseServer newQuery()
+ * @method static Builder<static>|DatabaseServer query()
+ * @method static Builder<static>|DatabaseServer whereCreatedAt($value)
+ * @method static Builder<static>|DatabaseServer whereDatabaseName($value)
+ * @method static Builder<static>|DatabaseServer whereDatabaseType($value)
+ * @method static Builder<static>|DatabaseServer whereDescription($value)
+ * @method static Builder<static>|DatabaseServer whereHost($value)
+ * @method static Builder<static>|DatabaseServer whereId($value)
+ * @method static Builder<static>|DatabaseServer whereName($value)
+ * @method static Builder<static>|DatabaseServer wherePassword($value)
+ * @method static Builder<static>|DatabaseServer wherePort($value)
+ * @method static Builder<static>|DatabaseServer whereUpdatedAt($value)
+ * @method static Builder<static>|DatabaseServer whereUsername($value)
  *
  * @mixin \Eloquent
  */
@@ -87,11 +90,17 @@ class DatabaseServer extends Model
         ];
     }
 
+    /**
+     * @return HasOne<Backup, DatabaseServer>
+     */
     public function backup(): HasOne
     {
         return $this->hasOne(Backup::class);
     }
 
+    /**
+     * @return HasMany<Snapshot, DatabaseServer>
+     */
     public function snapshots(): HasMany
     {
         return $this->hasMany(Snapshot::class);

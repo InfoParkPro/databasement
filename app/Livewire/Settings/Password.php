@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Settings;
 
+use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Validation\Rules\Password as PasswordRule;
@@ -38,7 +39,7 @@ class Password extends Component
         Session::flash('success', __('Password updated successfully.'));
     }
 
-    public function render()
+    public function render(): View
     {
         return view('livewire.settings.password')
             ->layout('components.layouts.app', ['title' => __('Password')]);

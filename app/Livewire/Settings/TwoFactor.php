@@ -3,6 +3,7 @@
 namespace App\Livewire\Settings;
 
 use Exception;
+use Illuminate\Contracts\View\View;
 use Laravel\Fortify\Actions\ConfirmTwoFactorAuthentication;
 use Laravel\Fortify\Actions\DisableTwoFactorAuthentication;
 use Laravel\Fortify\Actions\EnableTwoFactorAuthentication;
@@ -129,6 +130,9 @@ class TwoFactor extends Component
         }
     }
 
+    /**
+     * @return array<string, string>
+     */
     #[Computed]
     public function modalConfig(): array
     {
@@ -155,7 +159,7 @@ class TwoFactor extends Component
         ];
     }
 
-    public function render()
+    public function render(): View
     {
         return view('livewire.settings.two-factor')
             ->layout('components.layouts.app', ['title' => __('Two Factor Authentication')]);
