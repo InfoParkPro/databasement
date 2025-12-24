@@ -252,6 +252,11 @@ class Snapshot extends Model
      */
     public function deleteBackupFile(): bool
     {
+        // Skip if no storage URI (backup file was never created)
+        if (empty($this->storage_uri)) {
+            return false;
+        }
+
         try {
             // Get the filesystem for this volume
             $filesystemProvider = app(FilesystemProvider::class);
