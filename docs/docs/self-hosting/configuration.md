@@ -88,11 +88,13 @@ Configure where backup files are stored temporarily during operations.
 |----------|-------------|---------|
 | `BACKUP_TMP_FOLDER` | Local temp directory for backups | `/tmp/backups` |
 
-### S3 Storage
+## S3 Storage
 
 Databasement supports AWS S3 and S3-compatible storage (MinIO, DigitalOcean Spaces, etc.) for backup volumes.
 
-## S3 IAM Permissions
+We use ENV variables to configure the S3 client.
+
+#### S3 IAM Permissions
 
 The AWS credentials need these permissions:
 
@@ -117,43 +119,31 @@ The AWS credentials need these permissions:
 }
 ```
 
-#### Basic Configuration (Static Credentials) (Optional)
+#### Access keys (Optional)
 
-For standard AWS access using access keys:
+This is not recommended but for standard AWS access using access keys:
 
 ```bash
 AWS_ACCESS_KEY_ID=your-access-key
 AWS_SECRET_ACCESS_KEY=your-secret-key
 AWS_REGION=us-east-1
 ```
-
-:::note
-The AWS SDK automatically picks up `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` from the environment.
-:::
 
 #### S3-Compatible Storage (MinIO, etc.)
 
 For S3-compatible storage providers, configure a custom endpoint:
 
 ```bash
-AWS_ACCESS_KEY_ID=your-access-key
-AWS_SECRET_ACCESS_KEY=your-secret-key
-AWS_REGION=us-east-1
 AWS_ENDPOINT_URL_S3=https://minio.yourdomain.com
 AWS_USE_PATH_STYLE_ENDPOINT=true
 ```
 
 #### IAM Role Assumption (Restricted Environments)
 
-For environments with restricted network access (VPC endpoints, private links), you can use IAM role assumption via STS:
+To force Databasement to assume an IAM role, set the `AWS_CUSTOM_ROLE_ARN` environment variable:
 
 ```bash
-AWS_REGION=eu-central-1
-AWS_ROLE_ARN=arn:aws:iam::123456789:role/your-role-name
-AWS_ROLE_SESSION_NAME=databasement
-AWS_ENDPOINT_URL_STS=https://vpce-xxx.sts.eu-central-1.vpce.amazonaws.com
-AWS_ENDPOINT_URL_S3=https://bucket.vpce-xxx.s3.eu-central-1.vpce.amazonaws.com
-AWS_USE_PATH_STYLE_ENDPOINT=true
+AWS_CUSTOM_ROLE_ARN=arn:aws:iam::123456789:role/your-role-name
 ```
 
 #### AWS Profile Support
@@ -162,7 +152,6 @@ If using AWS credential profiles (from `~/.aws/credentials`):
 
 ```bash
 AWS_S3_PROFILE=my-s3-profile
-AWS_STS_PROFILE=my-sts-profile
 ```
 
 #### All S3 Environment Variables
