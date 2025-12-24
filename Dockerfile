@@ -31,7 +31,7 @@ COPY --from=frontend-build /app/public/build /app/public/build
 USER root
 
 RUN cp /usr/local/etc/php/php.ini-production /usr/local/etc/php/php.ini
-RUN cp /usr/local/etc/php/php-custom-production.ini /usr/local/etc/php/conf.d/php-custom-production.ini
+RUN cp /usr/local/etc/php/php-custom-production.ini /usr/local/etc/php/conf.d/zz-php-custom-production.ini
 
 # fix permission for openshift
 RUN chmod -R 777 /app/storage /app/bootstrap/cache

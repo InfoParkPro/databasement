@@ -18,7 +18,8 @@ RUN install-php-extensions \
     pdo_pgsql \
     intl \
     pcntl \
-    opcache
+    opcache \
+    pcov
 
 COPY --from=composer/composer:latest-bin /composer /usr/bin/composer
 # Add DB CLI tools used by the app: mysqldump, mysql, pg_dump, psql
@@ -29,6 +30,7 @@ RUN apk add --no-cache \
 
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 COPY php-custom-production.ini /usr/local/etc/php/php-custom-production.ini
+COPY php-custom.ini /usr/local/etc/php/conf.d/zz-php-custom.ini
 ENV USER_ID=1000
 ENV USER=application
 
