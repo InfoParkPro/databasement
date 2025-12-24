@@ -36,6 +36,9 @@ migrate:
 
 logs:
 	$(DOCKER_COMPOSE) logs -f php
+
+create-bucket: ## Create S3 bucket in LocalStack (usage: make create-bucket BUCKET=my-bucket)
+	$(DOCKER_COMPOSE) exec -T localstack awslocal s3 mb s3://$(or $(BUCKET),test-bucket)
 ##@ Testing
 
 test: ## Run all tests

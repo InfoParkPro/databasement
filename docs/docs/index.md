@@ -40,6 +40,12 @@ Learn how to use Databasement:
 - [Snapshots](user-guide/snapshots) - Working with backup snapshots
 - [Storage Volumes](user-guide/volumes) - Configuring backup storage
 
+### Contributing
+
+Want to contribute to Databasement?
+
+- [Development Guide](contributing/development) - Set up a local development environment
+
 ## Quick Links
 
 - [GitHub Repository](https://github.com/David-Crty/databasement)
