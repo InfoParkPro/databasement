@@ -30,3 +30,5 @@ frankenphp
 frankenphp-worker.php
 
 .scribe
+
+coverage

@@ -106,11 +106,11 @@ should render deployment with default values:
               name: databasement-worker
               resources:
                 limits:
-                  cpu: 300m
-                  memory: 256Mi
+                  cpu: 500m
+                  memory: 512Mi
                 requests:
-                  cpu: 50m
-                  memory: 128Mi
+                  cpu: 100m
+                  memory: 256Mi
               securityContext:
                 runAsGroup: 1000
                 runAsNonRoot: true
@@ -255,11 +255,11 @@ should render deployment with mysql database:
               name: databasement-worker
               resources:
                 limits:
-                  cpu: 300m
-                  memory: 256Mi
+                  cpu: 500m
+                  memory: 512Mi
                 requests:
-                  cpu: 50m
-                  memory: 128Mi
+                  cpu: 100m
+                  memory: 256Mi
               securityContext:
                 runAsGroup: 1000
                 runAsNonRoot: true
