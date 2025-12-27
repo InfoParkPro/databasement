@@ -6,11 +6,7 @@ sidebar_position: 3
 
 This guide will help you deploy Databasement on Kubernetes using Helm.
 
-## Prerequisites
-
-- Kubernetes 1.19+
-- [Helm](https://helm.sh/docs/intro/install/) 3.x
-- [kubectl](https://kubernetes.io/docs/tasks/tools/) configured for your cluster
+[![Artifact Hub](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/databasement)](https://artifacthub.io/packages/search?repo=databasement)
 
 ## Installation
 
@@ -103,14 +99,6 @@ database:
 helm upgrade --install databasement databasement/databasement -f values.yaml
 ```
 
-### 5. Verify the Deployment
-
-```bash
-kubectl get pods
-kubectl get svc
-kubectl get ingress
-```
-
 ## Configuration
 
 For the full list of configurable parameters, see the [values.yaml](https://github.com/david-crty/databasement/blob/main/helm/databasement/values.yaml) file.
@@ -142,6 +130,19 @@ extraEnvFrom:
 
 This is useful for injecting credentials managed by external secret management tools (e.g., External Secrets Operator, Sealed Secrets).
 
+### Persistence
+
+By default, persistence is enabled with a 10Gi volume:
+
+```yaml
+persistence:
+  enabled: true
+  storageClass: ""  # Uses default storage class
+  size: 10Gi
+  accessModes:
+    - ReadWriteOnce
+```
+
 ### Worker Configuration
 
 The queue worker runs as a sidecar container by default. You can customize its behavior:
@@ -168,31 +169,5 @@ worker:
 ```
 
 :::note
-Separate worker deployment requires either ReadWriteMany storage or an external database (MySQL/PostgreSQL).
-:::
-
-### Persistence
-
-By default, persistence is enabled with a 10Gi volume:
-
-```yaml
-persistence:
-  enabled: true
-  storageClass: ""  # Uses default storage class
-  size: 10Gi
-  accessModes:
-    - ReadWriteOnce
-```
-
-## Uninstalling
-
-```bash
-helm uninstall databasement
-```
-
-:::caution
-This will not delete the PersistentVolumeClaim by default. To delete all data:
-```bash
-kubectl delete pvc -l app.kubernetes.io/name=databasement
-```
+Separate worker deployment requires either ReadWriteMany storage or AWS S3 storage + an external database (MySQL/PostgreSQL).
 :::

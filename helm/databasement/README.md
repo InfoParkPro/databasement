@@ -9,12 +9,6 @@ Deploy [Databasement](https://github.com/david-crty/databasement) on Kubernetes 
 - [Docker Hub](https://hub.docker.com/r/davidcrty/databasement)
 - [Artifact Hub](https://artifacthub.io/packages/helm/databasement/databasement)
 
-## Prerequisites
-
-- Kubernetes 1.19+
-- [Helm](https://helm.sh/docs/intro/install/) 3.x
-- [kubectl](https://kubernetes.io/docs/tasks/tools/) configured for your cluster
-
 ## Installation
 
 ### 1. Add the Helm Repository
@@ -106,14 +100,6 @@ database:
 helm upgrade --install databasement databasement/databasement -f values.yaml
 ```
 
-### 5. Verify the Deployment
-
-```bash
-kubectl get pods
-kubectl get svc
-kubectl get ingress
-```
-
 ## Configuration
 
 See [values.yaml](values.yaml) for the full list of configurable parameters.
@@ -143,16 +129,47 @@ extraEnvFrom:
       name: app-config
 ```
 
-## Uninstalling
+This is useful for injecting credentials managed by external secret management tools (e.g., External Secrets Operator, Sealed Secrets).
 
-```bash
-helm uninstall databasement
+### Persistence
+
+By default, persistence is enabled with a 10Gi volume:
+
+```yaml
+persistence:
+  enabled: true
+  storageClass: ""  # Uses default storage class
+  size: 10Gi
+  accessModes:
+    - ReadWriteOnce
 ```
 
-> **Caution:** This will not delete the PersistentVolumeClaim by default. To delete all data:
-> ```bash
-> kubectl delete pvc -l app.kubernetes.io/name=databasement
-> ```
+### Worker Configuration
+
+The queue worker runs as a sidecar container by default. You can customize its behavior:
+
+```yaml
+worker:
+  enabled: true
+  command: "php artisan queue:work --queue=backups,default --tries=3 --timeout=3600"
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 256Mi
+```
+
+For high-availability setups with an external database, you can run the worker as a separate deployment:
+
+```yaml
+worker:
+  separateDeployment: true
+  replicaCount: 2
+```
+
+ > ℹ️ Separate worker deployment requires either ReadWriteMany storage or AWS S3 storage + an external database (MySQL/PostgreSQL).
 
 ## License
 
