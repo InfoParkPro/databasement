@@ -109,13 +109,13 @@ Common environment variables for app and worker containers
   value: {{ .Values.database.name | quote }}
 - name: DB_USERNAME
   value: {{ .Values.database.username | quote }}
-{{- if .Values.database.existingSecret }}
+{{- if .Values.database.password.fromSecret }}
 - name: DB_PASSWORD
   valueFrom:
     secretKeyRef:
-      name: {{ .Values.database.existingSecret }}
-      key: {{ .Values.database.secretKeys.password }}
-{{- else if .Values.database.password }}
+      name: {{ .Values.database.password.fromSecret.secretName }}
+      key: {{ .Values.database.password.fromSecret.secretKey }}
+{{- else if .Values.database.password.value }}
 - name: DB_PASSWORD
   valueFrom:
     secretKeyRef:

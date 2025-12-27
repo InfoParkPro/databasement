@@ -4,8 +4,6 @@ chart:
   appVersion: 0.1.0
 templates:
   - templates/deployment.yaml
-values:
-  - ../values.yaml
 set:
   app.appKey.value: "base64:test-key-for-unit-tests"
 tests:
@@ -37,7 +35,8 @@ tests:
         port: 3306
         name: mydb
         username: myuser
-        password: mypassword
+        password:
+          value: mypassword
     asserts:
       - matchSnapshot: {}
 

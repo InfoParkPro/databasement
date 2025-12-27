@@ -57,11 +57,12 @@ database:
   port: 3306
   name: databasement
   username: databasement
-  password: ""
-  # Use existing secret for database password
-  existingSecret: ""
-  secretKeys:
-    password: DB_PASSWORD
+  password:
+    value: ""
+    # Use existing secret for database password
+#    fromSecret:
+#      secretName: ""
+#      secretKey: ""
 
 # Logging
 logging:
