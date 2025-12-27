@@ -50,6 +50,16 @@
                 placeholder="{{ __('Confirm password') }}"
             />
 
+            @if(\App\Models\User::count() === 0 && config('database.default') !== 'sqlite')
+            <!-- Demo Backup Option -->
+            <x-checkbox
+                name="create_demo_backup"
+                label="{{ __('Add Databasement\'s own database as a demo backup') }}"
+                hint="{{ __('Creates a local backup volume and schedules daily backups of this application\'s database') }}"
+                checked
+            />
+            @endif
+
             <div class="flex items-center justify-end">
                 <x-button type="submit" class="btn-primary w-full" label="{{ __('Create account') }}" data-test="register-user-button" />
             </div>

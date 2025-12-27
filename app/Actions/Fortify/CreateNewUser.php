@@ -3,6 +3,8 @@
 namespace App\Actions\Fortify;
 
 use App\Models\User;
+use App\Services\DemoBackupService;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Laravel\Fortify\Contracts\CreatesNewUsers;
@@ -10,6 +12,10 @@ use Laravel\Fortify\Contracts\CreatesNewUsers;
 class CreateNewUser implements CreatesNewUsers
 {
     use PasswordValidationRules;
+
+    public function __construct(
+        private readonly DemoBackupService $demoBackupService
+    ) {}
 
     /**
      * Validate and create a newly registered user.
@@ -31,13 +37,28 @@ class CreateNewUser implements CreatesNewUsers
         ])->validate();
 
         $isFirstUser = User::count() === 0;
+        $createDemoBackup = $isFirstUser && ! empty($input['create_demo_backup']);
 
-        return User::create([
+        $user = User::create([
             'name' => $input['name'],
             'email' => $input['email'],
             'password' => $input['password'],
             'role' => $isFirstUser ? User::ROLE_ADMIN : User::ROLE_MEMBER,
             'invitation_accepted_at' => now(),
         ]);
+
+        // Create demo backup if this is the first user and the user wants to create a demo backup
+        if ($createDemoBackup and User::count() === 1) {
+            try {
+                $this->demoBackupService->createDemoBackup();
+            } catch (\Throwable $e) {
+                // Log the error but don't fail registration
+                Log::warning('Failed to create demo backup during registration', [
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        return $user;
     }
 }
