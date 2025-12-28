@@ -40,6 +40,8 @@ RUN adduser -u ${USER_ID} -D -h /home/${USER} ${USER} && \
 
 RUN mkdir -p /app && chown -R ${USER}:${USER} /app && chmod -R 775 /app
 RUN mkdir -p /data && chown -R ${USER}:${USER} /data && chmod -R 775 /data
+RUN mkdir -p /tmp/backups && chown -R ${USER}:${USER} /tmp/backups && chmod -R 777 /tmp/backups
+
 COPY start-frankenphp.sh /usr/local/bin/
 COPY docker-entrypoint.sh /usr/local/bin/
 
