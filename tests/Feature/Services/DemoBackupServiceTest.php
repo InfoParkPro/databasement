@@ -11,7 +11,7 @@ test('creates demo backup for sqlite database', function () {
     config(['database.connections.sqlite.database' => '/data/database.sqlite']);
 
     $service = new DemoBackupService;
-    $databaseServer = $service->createDemoBackup();
+    $databaseServer = $service->createDemoBackup('sqlite');
 
     expect($databaseServer)->toBeInstanceOf(DatabaseServer::class)
         ->and($databaseServer->database_type)->toBe('sqlite')
