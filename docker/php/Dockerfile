@@ -52,6 +52,7 @@ ENV WEB_DOCUMENT_ROOT=/app/public
 ENV SERVER_NAME=":8000"
 ENV MYSQL_CLI_TYPE="mariadb"
 ENV ENABLE_QUEUE_WORKER="false"
+ENV ENABLE_DATABASE_MIGRATION="true"
 
 ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]

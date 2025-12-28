@@ -50,6 +50,8 @@ should render deployment with default values:
                   value: stderr
                 - name: LOG_LEVEL
                   value: warning
+                - name: ENABLE_DATABASE_MIGRATION
+                  value: "false"
               image: davidcrty/databasement:latest
               imagePullPolicy: Always
               livenessProbe:
@@ -57,7 +59,6 @@ should render deployment with default values:
                 httpGet:
                   path: /health
                   port: http
-                initialDelaySeconds: 30
                 periodSeconds: 10
                 timeoutSeconds: 5
               name: databasement
@@ -70,7 +71,6 @@ should render deployment with default values:
                 httpGet:
                   path: /health
                   port: http
-                initialDelaySeconds: 10
                 periodSeconds: 5
                 timeoutSeconds: 3
               resources: null
@@ -78,6 +78,14 @@ should render deployment with default values:
                 runAsGroup: 1000
                 runAsNonRoot: true
                 runAsUser: 1000
+              startupProbe:
+                failureThreshold: 30
+                httpGet:
+                  path: /health
+                  port: http
+                initialDelaySeconds: 5
+                periodSeconds: 3
+                timeoutSeconds: 3
               volumeMounts:
                 - mountPath: /data
                   name: data
@@ -107,6 +115,8 @@ should render deployment with default values:
                   value: stderr
                 - name: LOG_LEVEL
                   value: warning
+                - name: ENABLE_DATABASE_MIGRATION
+                  value: "false"
               image: davidcrty/databasement:latest
               imagePullPolicy: Always
               name: databasement-worker
@@ -117,6 +127,45 @@ should render deployment with default values:
                 requests:
                   cpu: 100m
                   memory: 256Mi
+              securityContext:
+                runAsGroup: 1000
+                runAsNonRoot: true
+                runAsUser: 1000
+              volumeMounts:
+                - mountPath: /data
+                  name: data
+          initContainers:
+            - command:
+                - sh
+                - -c
+                - php artisan db:wait && php artisan migrate --force
+              env:
+                - name: APP_NAME
+                  value: Databasement
+                - name: APP_ENV
+                  value: production
+                - name: APP_DEBUG
+                  value: "false"
+                - name: APP_URL
+                  value: http://localhost:8000
+                - name: APP_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      key: app-key
+                      name: RELEASE-NAME-databasement
+                - name: DB_CONNECTION
+                  value: sqlite
+                - name: DB_DATABASE
+                  value: /data/database.sqlite
+                - name: LOG_CHANNEL
+                  value: stderr
+                - name: LOG_LEVEL
+                  value: warning
+                - name: ENABLE_DATABASE_MIGRATION
+                  value: "false"
+              image: davidcrty/databasement:latest
+              imagePullPolicy: Always
+              name: databasement-migrations
               securityContext:
                 runAsGroup: 1000
                 runAsNonRoot: true
@@ -194,6 +243,8 @@ should render deployment with mysql database:
                   value: stderr
                 - name: LOG_LEVEL
                   value: warning
+                - name: ENABLE_DATABASE_MIGRATION
+                  value: "false"
               image: davidcrty/databasement:latest
               imagePullPolicy: Always
               livenessProbe:
@@ -201,7 +252,6 @@ should render deployment with mysql database:
                 httpGet:
                   path: /health
                   port: http
-                initialDelaySeconds: 30
                 periodSeconds: 10
                 timeoutSeconds: 5
               name: databasement
@@ -214,7 +264,6 @@ should render deployment with mysql database:
                 httpGet:
                   path: /health
                   port: http
-                initialDelaySeconds: 10
                 periodSeconds: 5
                 timeoutSeconds: 3
               resources: null
@@ -222,6 +271,14 @@ should render deployment with mysql database:
                 runAsGroup: 1000
                 runAsNonRoot: true
                 runAsUser: 1000
+              startupProbe:
+                failureThreshold: 30
+                httpGet:
+                  path: /health
+                  port: http
+                initialDelaySeconds: 5
+                periodSeconds: 3
+                timeoutSeconds: 3
               volumeMounts:
                 - mountPath: /data
                   name: data
@@ -262,6 +319,8 @@ should render deployment with mysql database:
                   value: stderr
                 - name: LOG_LEVEL
                   value: warning
+                - name: ENABLE_DATABASE_MIGRATION
+                  value: "false"
               image: davidcrty/databasement:latest
               imagePullPolicy: Always
               name: databasement-worker
@@ -272,6 +331,56 @@ should render deployment with mysql database:
                 requests:
                   cpu: 100m
                   memory: 256Mi
+              securityContext:
+                runAsGroup: 1000
+                runAsNonRoot: true
+                runAsUser: 1000
+              volumeMounts:
+                - mountPath: /data
+                  name: data
+          initContainers:
+            - command:
+                - sh
+                - -c
+                - php artisan db:wait && php artisan migrate --force
+              env:
+                - name: APP_NAME
+                  value: Databasement
+                - name: APP_ENV
+                  value: production
+                - name: APP_DEBUG
+                  value: "false"
+                - name: APP_URL
+                  value: http://localhost:8000
+                - name: APP_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      key: app-key
+                      name: RELEASE-NAME-databasement
+                - name: DB_CONNECTION
+                  value: mysql
+                - name: DB_HOST
+                  value: mysql.example.com
+                - name: DB_PORT
+                  value: "3306"
+                - name: DB_DATABASE
+                  value: mydb
+                - name: DB_USERNAME
+                  value: myuser
+                - name: DB_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      key: db-password
+                      name: RELEASE-NAME-databasement
+                - name: LOG_CHANNEL
+                  value: stderr
+                - name: LOG_LEVEL
+                  value: warning
+                - name: ENABLE_DATABASE_MIGRATION
+                  value: "false"
+              image: davidcrty/databasement:latest
+              imagePullPolicy: Always
+              name: databasement-migrations
               securityContext:
                 runAsGroup: 1000
                 runAsNonRoot: true
