@@ -1,4 +1,7 @@
 import copy from 'copy-to-clipboard';
+import Chart from 'chart.js/auto';
+
+window.Chart = Chart;
 
 document.addEventListener('alpine:init', () => {
     Alpine.directive('clipboard', (el, { expression }, { evaluate }) => {
