@@ -48,13 +48,13 @@ afterEach(function () {
     $this->volume?->delete();
 });
 
-test('mysql backup and restore workflow', function () {
+test('client-server database backup and restore workflow', function (string $type) {
     integrationSetupTestEnvironment();
-    integrationCleanupLeftoverTestData('mysql');
+    integrationCleanupLeftoverTestData($type);
 
     // Create models
-    $this->volume = integrationCreateVolume('mysql');
-    $this->databaseServer = integrationCreateDatabaseServer('mysql');
+    $this->volume = integrationCreateVolume($type);
+    $this->databaseServer = integrationCreateDatabaseServer($type);
     $this->backup = integrationCreateBackup($this->databaseServer, $this->volume);
     $this->databaseServer->load('backup.volume');
 
@@ -88,59 +88,16 @@ test('mysql backup and restore workflow', function () {
     $this->restoreTask->run($restore);
 
     // Verify restore
-    $pdo = integrationConnectToDatabase('mysql', $this->databaseServer, $this->restoredDatabaseName);
+    $pdo = integrationConnectToDatabase($type, $this->databaseServer, $this->restoredDatabaseName);
     expect($pdo)->toBeInstanceOf(PDO::class);
 
-    $stmt = $pdo->query('SHOW TABLES');
+    $verifyQuery = match ($type) {
+        'mysql' => 'SHOW TABLES',
+        'postgres' => "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public'",
+    };
+    $stmt = $pdo->query($verifyQuery);
     expect($stmt)->not->toBeFalse();
-});
-
-test('postgresql backup and restore workflow', function () {
-    integrationSetupTestEnvironment();
-    integrationCleanupLeftoverTestData('postgres');
-
-    // Create models
-    $this->volume = integrationCreateVolume('postgres');
-    $this->databaseServer = integrationCreateDatabaseServer('postgres');
-    $this->backup = integrationCreateBackup($this->databaseServer, $this->volume);
-    $this->databaseServer->load('backup.volume');
-
-    // Run backup
-    $snapshots = $this->backupJobFactory->createSnapshots(
-        server: $this->databaseServer,
-        method: 'manual',
-        triggeredByUserId: null
-    );
-    $this->snapshot = $snapshots[0];
-    $this->backupTask->run($this->snapshot);
-    $this->snapshot->refresh();
-    $this->snapshot->load('job');
-
-    expect($this->snapshot->job->status)->toBe('completed');
-    expect($this->snapshot->file_size)->toBeGreaterThan(0);
-
-    // Verify backup file
-    $backupFile = integrationFindLatestBackupFile();
-    expect($backupFile)->not->toBeNull();
-    expect(filesize($backupFile))->toBeGreaterThan(100);
-    expect(integrationIsGzipped($backupFile))->toBeTrue();
-
-    // Run restore
-    $this->restoredDatabaseName = 'testdb_restored_'.time();
-    $restore = $this->backupJobFactory->createRestore(
-        snapshot: $this->snapshot,
-        targetServer: $this->databaseServer,
-        schemaName: $this->restoredDatabaseName,
-    );
-    $this->restoreTask->run($restore);
-
-    // Verify restore
-    $pdo = integrationConnectToDatabase('postgres', $this->databaseServer, $this->restoredDatabaseName);
-    expect($pdo)->toBeInstanceOf(PDO::class);
-
-    $stmt = $pdo->query("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public'");
-    expect($stmt)->not->toBeFalse();
-});
+})->with(['mysql', 'postgres']);
 
 test('sqlite backup and restore workflow', function () {
     integrationSetupTestEnvironment();

@@ -1,8 +1,8 @@
 -- PostgreSQL Initialization Script
 -- This script creates a test table with sample data
 
--- Connect to testdb
-\c testdb;
+-- Connect to databasement_test
+\c databasement_test;
 
 -- Create users table
 CREATE TABLE IF NOT EXISTS users (

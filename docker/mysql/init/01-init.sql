@@ -1,7 +1,7 @@
 -- MySQL Initialization Script
 -- This script creates a test table with sample data
 
-USE testdb;
+USE databasement_test;
 
 -- Create users table
 CREATE TABLE IF NOT EXISTS users (
