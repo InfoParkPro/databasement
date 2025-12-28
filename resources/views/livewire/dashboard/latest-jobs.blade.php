@@ -76,9 +76,17 @@
                         </div>
 
                         {{-- Time --}}
-                        <div class="text-xs text-base-content/50 w-20 text-right shrink-0">
+                        <div class="text-xs text-base-content/50 w-16 text-right shrink-0">
                             {{ $job->created_at->diffForHumans(short: true) }}
                         </div>
+
+                        {{-- Logs Button --}}
+                        <x-button
+                            icon="o-document-text"
+                            wire:click="viewLogs('{{ $job->id }}')"
+                            tooltip="{{ __('View Logs') }}"
+                            class="btn-ghost btn-xs"
+                        />
                     </div>
                 @endforeach
             </div>
@@ -92,4 +100,7 @@
             </div>
         @endif
     </x-card>
+
+    {{-- Logs Modal --}}
+    @include('livewire.backup-job._logs-modal')
 </div>
