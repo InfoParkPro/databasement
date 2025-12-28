@@ -54,7 +54,7 @@
             <!-- Demo Backup Option -->
             <x-checkbox
                 name="create_demo_backup"
-                label="{{ __('Add Databasement\'s own database as a demo backup') }}"
+                label="{{ __('Add Databasement`s own database as a demo backup') }}"
                 hint="{{ __('Creates a local backup volume and schedules daily backups of this application\'s database') }}"
                 checked
             />

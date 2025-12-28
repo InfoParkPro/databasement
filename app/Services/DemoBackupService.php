@@ -12,11 +12,13 @@ class DemoBackupService
     /**
      * Create a demo backup configuration for the application's own database.
      *
+     * @param  string|null  $connectionName  Optional connection name to use (defaults to database.default config)
+     *
      * @throws RuntimeException If database connection type is unsupported
      */
-    public function createDemoBackup(): DatabaseServer
+    public function createDemoBackup(?string $connectionName = null): DatabaseServer
     {
-        $connection = config('database.default');
+        $connection = $connectionName ?? config('database.default');
         $dbConfig = config("database.connections.{$connection}");
 
         $databaseType = match ($connection) {

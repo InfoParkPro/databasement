@@ -47,8 +47,7 @@ class CreateNewUser implements CreatesNewUsers
             'invitation_accepted_at' => now(),
         ]);
 
-        // Create demo backup if this is the first user and the user wants to create a demo backup
-        if ($createDemoBackup and User::count() === 1) {
+        if ($createDemoBackup) {
             try {
                 $this->demoBackupService->createDemoBackup();
             } catch (\Throwable $e) {
