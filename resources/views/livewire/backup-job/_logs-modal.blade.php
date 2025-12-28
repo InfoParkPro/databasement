@@ -114,8 +114,10 @@
                                                     <span class="text-sm truncate {{ $isError ? 'text-error' : '' }}">
                                                         @if($log['type'] === 'command')
                                                             <div class="flex items-center gap-2">
-                                                                <x-devicon-bash class="w-8 h-8"/>
-                                                                <code class="text-primary">{{ Str::limit($log['command'], 80) }}</code>
+                                                                <code class="bg-neutral text-neutral-content px-2 py-1 rounded text-xs font-mono truncate max-w-xl">
+                                                                    <span class="text-success">$</span> {{ Str::limit($log['command'], 80) }}
+                                                                </code>
+                                                                <x-badge value="{{ __('Command') }}" class="badge-neutral badge-sm" />
                                                                 @if($isRunning)
                                                                     <x-loading class="loading-spinner loading-xs text-warning" />
                                                                 @endif
