@@ -162,7 +162,7 @@ test('run executes postgresql backup workflow successfully', function () {
     $sqlFile = $workingDir.'/dump.sql';
 
     $expectedCommands = [
-        "PGPASSWORD='pg_secret' pg_dump --clean --host='db.example.com' --port='5432' --username='postgres' 'staging_db' -f '$sqlFile'",
+        "PGPASSWORD='pg_secret' pg_dump --clean --if-exists --no-owner --no-privileges --quote-all-identifiers --host='db.example.com' --port='5432' --username='postgres' 'staging_db' -f '$sqlFile'",
         "gzip '$sqlFile'",
     ];
     $commands = $this->shellProcessor->getCommands();

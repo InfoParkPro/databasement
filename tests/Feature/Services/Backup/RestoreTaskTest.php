@@ -209,7 +209,7 @@ test('run executes postgresql restore workflow successfully', function () {
     // Expected commands (PostgreSQL uses escapeshellarg on paths, adding quotes)
     $expectedCommands = [
         "gzip -d '$compressedFile'",
-        "PGPASSWORD='secret' psql --host='target.localhost' --port='5432' --user='postgres' 'restored_db' -f '$decompressedFile'",
+        "PGPASSWORD='secret' psql --host='target.localhost' --port='5432' --username='postgres' 'restored_db' -f '$decompressedFile'",
     ];
 
     $commands = $this->shellProcessor->getCommands();

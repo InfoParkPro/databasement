@@ -23,10 +23,10 @@ class PostgresqlDatabase implements DatabaseInterface
     public function getDumpCommandLine(string $outputPath): string
     {
         return sprintf(
-            'PGPASSWORD=%s pg_dump --clean --host=%s --port=%s --username=%s %s -f %s',
+            'PGPASSWORD=%s pg_dump --clean --if-exists --no-owner --no-privileges --quote-all-identifiers --host=%s --port=%s --username=%s %s -f %s',
             escapeshellarg($this->config['pass']),
             escapeshellarg($this->config['host']),
-            escapeshellarg($this->config['port']),
+            escapeshellarg((string) $this->config['port']),
             escapeshellarg($this->config['user']),
             escapeshellarg($this->config['database']),
             escapeshellarg($outputPath)
@@ -36,10 +36,10 @@ class PostgresqlDatabase implements DatabaseInterface
     public function getRestoreCommandLine(string $inputPath): string
     {
         return sprintf(
-            'PGPASSWORD=%s psql --host=%s --port=%s --user=%s %s -f %s',
+            'PGPASSWORD=%s psql --host=%s --port=%s --username=%s %s -f %s',
             escapeshellarg($this->config['pass']),
             escapeshellarg($this->config['host']),
-            escapeshellarg($this->config['port']),
+            escapeshellarg((string) $this->config['port']),
             escapeshellarg($this->config['user']),
             escapeshellarg($this->config['database']),
             escapeshellarg($inputPath)
