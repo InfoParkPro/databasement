@@ -5,7 +5,6 @@ namespace App\Services\Backup;
 use App\Models\BackupJob;
 use App\Models\DatabaseServer;
 use App\Models\Snapshot;
-use App\Models\Volume;
 use App\Services\Backup\Databases\MysqlDatabase;
 use App\Services\Backup\Databases\PostgresqlDatabase;
 use App\Services\Backup\Filesystems\FilesystemProvider;
@@ -52,7 +51,7 @@ class BackupTask
                 throw new \RuntimeException("Failed to get file size for: {$archive}");
             }
             $humanFileSize = Formatters::humanFileSize($fileSize);
-            $filename = $this->generateFilename($snapshot->volume, $databaseServer, $databaseName);
+            $filename = $this->generateFilename($databaseServer, $databaseName);
             $job->log("Transferring backup ({$humanFileSize}) to volume: {$snapshot->volume->name}", 'info', [
                 'volume_type' => $snapshot->volume->type,
                 'source' => $archive,
@@ -136,26 +135,16 @@ class BackupTask
 
     /**
      * Generate the filename to store in the volume.
-     * For S3, this includes the prefix path. For local, it's just the filename.
+     * Always just the filename - S3 prefix is handled by the Flysystem adapter.
      */
-    private function generateFilename(Volume $volume, DatabaseServer $databaseServer, string $databaseName): string
+    private function generateFilename(DatabaseServer $databaseServer, string $databaseName): string
     {
         $timestamp = now()->format('Y-m-d-His');
         $serverName = preg_replace('/[^a-zA-Z0-9-_]/', '-', $databaseServer->name);
         $sanitizedDbName = preg_replace('/[^a-zA-Z0-9-_]/', '-', $databaseName);
         $extension = $databaseServer->database_type === 'sqlite' ? 'db.gz' : 'sql.gz';
 
-        $baseFilename = sprintf('%s-%s-%s.%s', $serverName, $sanitizedDbName, $timestamp, $extension);
-
-        // For S3 volumes with a prefix, prepend the prefix
-        if ($volume->type === 's3') {
-            $prefix = $volume->config['prefix'] ?? '';
-            if ($prefix) {
-                return rtrim($prefix, '/').'/'.$baseFilename;
-            }
-        }
-
-        return $baseFilename;
+        return sprintf('%s-%s-%s.%s', $serverName, $sanitizedDbName, $timestamp, $extension);
     }
 
     private function configureDatabaseInterface(DatabaseServer $databaseServer, string $databaseName): void

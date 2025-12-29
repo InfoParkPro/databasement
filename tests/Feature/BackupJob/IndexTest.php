@@ -172,12 +172,13 @@ test('can download snapshot from s3 storage redirects to presigned url', functio
     $snapshots = $factory->createSnapshots($server, 'manual', $user->id);
     $snapshot = $snapshots[0];
     $snapshot->update([
-        'filename' => 'backups/test-backup.sql.gz',
+        'filename' => 'test-backup.sql.gz',
         'file_size' => 1024,
     ]);
     $snapshot->job->markCompleted();
 
     // Mock the S3 filesystem to return a presigned URL
+    // Note: The S3 adapter handles the prefix automatically, so we just pass the filename
     $mockS3Filesystem = Mockery::mock(Awss3Filesystem::class);
     $mockS3Filesystem->shouldReceive('getPresignedUrl')
         ->once()
@@ -186,14 +187,14 @@ test('can download snapshot from s3 storage redirects to presigned url', functio
             $snapshot->filename,
             Mockery::any()
         )
-        ->andReturn('https://test-bucket.s3.amazonaws.com/backups/test-backup.sql.gz?presigned=token');
+        ->andReturn('https://test-bucket.s3.amazonaws.com/test-backup.sql.gz?presigned=token');
 
     app()->instance(Awss3Filesystem::class, $mockS3Filesystem);
 
     Livewire::actingAs($user)
         ->test(Index::class)
         ->call('download', $snapshot->id)
-        ->assertRedirect('https://test-bucket.s3.amazonaws.com/backups/test-backup.sql.gz?presigned=token');
+        ->assertRedirect('https://test-bucket.s3.amazonaws.com/test-backup.sql.gz?presigned=token');
 });
 
 test('can delete snapshot', function () {
