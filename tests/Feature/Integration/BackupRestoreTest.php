@@ -75,7 +75,7 @@ test('client-server database backup and restore workflow', function (string $typ
 
     expect($this->snapshot->job->status)->toBe('completed')
         ->and($this->snapshot->file_size)->toBeGreaterThan(0)
-        ->and($filesystem->fileExists($this->snapshot->getStoragePath()))->toBeTrue();
+        ->and($filesystem->fileExists($this->snapshot->filename))->toBeTrue();
 
     // Run restore
     $this->restoredDatabaseName = 'testdb_restored_'.time();
@@ -131,7 +131,7 @@ test('sqlite backup and restore workflow', function () {
     expect($this->snapshot->job->status)->toBe('completed')
         ->and($this->snapshot->file_size)->toBeGreaterThan(0)
         ->and($this->snapshot->getDatabaseServerMetadata()['host'])->toBeNull()
-        ->and($filesystem->fileExists($this->snapshot->getStoragePath()))->toBeTrue();
+        ->and($filesystem->fileExists($this->snapshot->filename))->toBeTrue();
 
     // Create a target server for restore (different sqlite file)
     $targetServer = integrationCreateSqliteDatabaseServer($restoredSqlitePath);

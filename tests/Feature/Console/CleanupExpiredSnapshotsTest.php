@@ -28,7 +28,7 @@ function createSnapshot(DatabaseServer $server, string $status, \Carbon\Carbon $
         'database_server_id' => $server->id,
         'backup_id' => $server->backup->id,
         'volume_id' => $volume->id,
-        'storage_uri' => 'local://'.$filePath,
+        'filename' => basename($filePath),
         'file_size' => filesize($filePath),
         'started_at' => now(),
         'database_name' => $databaseName,
@@ -50,7 +50,8 @@ test('command deletes only expired completed snapshots', function () {
 
     // Should be deleted: completed and expired (10 days old)
     $expiredCompleted = createSnapshot($server, 'completed', now()->subDays(10));
-    $expiredFilePath = $expiredCompleted->getStoragePath();
+    $volumePath = $expiredCompleted->volume->config['path'];
+    $expiredFilePath = $volumePath.'/'.$expiredCompleted->filename;
 
     // Should NOT be deleted: completed but not expired (3 days old)
     $recentCompleted = createSnapshot($server, 'completed', now()->subDays(3));
@@ -79,7 +80,8 @@ test('command dry-run mode does not delete snapshots', function () {
     $server->backup->update(['retention_days' => 7]);
 
     $expiredSnapshot = createSnapshot($server, 'completed', now()->subDays(10));
-    $filePath = $expiredSnapshot->getStoragePath();
+    $volumePath = $expiredSnapshot->volume->config['path'];
+    $filePath = $volumePath.'/'.$expiredSnapshot->filename;
 
     artisan('snapshots:cleanup', ['--dry-run' => true])
         ->expectsOutput('Running in dry-run mode. No snapshots will be deleted.')

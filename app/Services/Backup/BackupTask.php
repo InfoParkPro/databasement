@@ -52,12 +52,11 @@ class BackupTask
                 throw new \RuntimeException("Failed to get file size for: {$archive}");
             }
             $humanFileSize = Formatters::humanFileSize($fileSize);
-            $filename = $this->generateBackupFilename($databaseServer, $databaseName);
-            $storageUri = $this->buildStorageUri($snapshot->volume, $filename);
+            $filename = $this->generateFilename($snapshot->volume, $databaseServer, $databaseName);
             $job->log("Transferring backup ({$humanFileSize}) to volume: {$snapshot->volume->name}", 'info', [
                 'volume_type' => $snapshot->volume->type,
                 'source' => $archive,
-                'destination' => $storageUri,
+                'destination' => $filename,
             ]);
             $transferStart = microtime(true);
             $this->filesystemProvider->transfer(
@@ -76,12 +75,12 @@ class BackupTask
             $job->log('Backup completed successfully', 'success', [
                 'file_size' => $humanFileSize,
                 'checksum' => substr($checksum, 0, 16).'...',
-                'storage_uri' => $storageUri,
+                'filename' => $filename,
             ]);
 
             // Update snapshot with success
             $snapshot->update([
-                'storage_uri' => $storageUri,
+                'filename' => $filename,
                 'file_size' => $fileSize,
                 'checksum' => $checksum,
             ]);
@@ -135,36 +134,28 @@ class BackupTask
         return sprintf("cp '%s' '%s'", $sourcePath, $outputPath);
     }
 
-    private function generateBackupFilename(DatabaseServer $databaseServer, string $databaseName): string
+    /**
+     * Generate the filename to store in the volume.
+     * For S3, this includes the prefix path. For local, it's just the filename.
+     */
+    private function generateFilename(Volume $volume, DatabaseServer $databaseServer, string $databaseName): string
     {
         $timestamp = now()->format('Y-m-d-His');
         $serverName = preg_replace('/[^a-zA-Z0-9-_]/', '-', $databaseServer->name);
         $sanitizedDbName = preg_replace('/[^a-zA-Z0-9-_]/', '-', $databaseName);
         $extension = $databaseServer->database_type === 'sqlite' ? 'db.gz' : 'sql.gz';
 
-        return sprintf('%s-%s-%s.%s', $serverName, $sanitizedDbName, $timestamp, $extension);
-    }
+        $baseFilename = sprintf('%s-%s-%s.%s', $serverName, $sanitizedDbName, $timestamp, $extension);
 
-    /**
-     * Build a storage URI for the given volume and filename
-     */
-    private function buildStorageUri(Volume $volume, string $filename): string
-    {
-        $config = $volume->config;
-
+        // For S3 volumes with a prefix, prepend the prefix
         if ($volume->type === 's3') {
-            $bucket = $config['bucket'] ?? '';
-            $prefix = $config['prefix'] ?? '';
-            $path = $prefix ? rtrim($prefix, '/').'/'.$filename : $filename;
-
-            return Snapshot::buildStorageUri('s3', $path, $bucket);
+            $prefix = $volume->config['prefix'] ?? '';
+            if ($prefix) {
+                return rtrim($prefix, '/').'/'.$baseFilename;
+            }
         }
 
-        // Local filesystem
-        $basePath = $config['path'] ?? '';
-        $fullPath = rtrim($basePath, '/').'/'.$filename;
-
-        return Snapshot::buildStorageUri('local', $fullPath);
+        return $baseFilename;
     }
 
     private function configureDatabaseInterface(DatabaseServer $databaseServer, string $databaseName): void

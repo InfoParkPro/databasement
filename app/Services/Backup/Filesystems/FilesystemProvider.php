@@ -97,9 +97,8 @@ class FilesystemProvider
     public function download(Snapshot $snapshot, string $destination): void
     {
         $filesystem = $this->getForVolume($snapshot->volume);
-        // Use the parsed path from the storage URI
-        $storagePath = $snapshot->getStoragePath();
-        $stream = $filesystem->readStream($storagePath);
+        // Use the filename directly
+        $stream = $filesystem->readStream($snapshot->filename);
         $localStream = fopen($destination, 'w');
 
         if ($localStream === false) {

@@ -137,15 +137,14 @@ class Index extends Component
         $this->authorize('download', $snapshot);
 
         try {
-            $storageType = $snapshot->getStorageType();
-            $storagePath = $snapshot->getStoragePath();
+            $volumeType = $snapshot->volume->type;
 
-            if ($storageType === 'local') {
-                return $this->downloadLocal($snapshot, $storagePath);
+            if ($volumeType === 'local') {
+                return $this->downloadLocal($snapshot);
             }
 
-            if ($storageType === 's3') {
-                $this->downloadS3($snapshot, $storagePath);
+            if ($volumeType === 's3') {
+                $this->downloadS3($snapshot);
 
                 return null;
             }
@@ -160,26 +159,30 @@ class Index extends Component
         }
     }
 
-    private function downloadLocal(Snapshot $snapshot, string $storagePath): ?BinaryFileResponse
+    private function downloadLocal(Snapshot $snapshot): ?BinaryFileResponse
     {
-        if (! file_exists($storagePath)) {
+        // Build full path from volume root and filename
+        $volumeRoot = $snapshot->volume->config['path'] ?? $snapshot->volume->config['root'] ?? '';
+        $fullPath = rtrim($volumeRoot, '/').'/'.$snapshot->filename;
+
+        if (! file_exists($fullPath)) {
             $this->error(__('Backup file not found.'), position: 'toast-bottom');
 
             return null;
         }
 
-        return response()->file($storagePath, [
+        return response()->file($fullPath, [
             'Content-Type' => 'application/gzip',
-            'Content-Disposition' => 'attachment; filename="'.$snapshot->getFilename().'"',
+            'Content-Disposition' => 'attachment; filename="'.basename($snapshot->filename).'"',
         ]);
     }
 
-    private function downloadS3(Snapshot $snapshot, string $storagePath): void
+    private function downloadS3(Snapshot $snapshot): void
     {
         $s3Filesystem = app(Awss3Filesystem::class);
         $presignedUrl = $s3Filesystem->getPresignedUrl(
             $snapshot->volume->config,
-            $storagePath,
+            $snapshot->filename,
             expiresInMinutes: 15
         );
 

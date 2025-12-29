@@ -128,7 +128,7 @@ test('run executes mysql restore workflow successfully', function (string $cliTy
     // Create snapshot and update path for restore test
     $snapshots = $this->backupJobFactory->createSnapshots($sourceServer, 'manual');
     $snapshot = $snapshots[0];
-    $snapshot->update(['storage_uri' => 'local:///tmp/backup.sql.gz']);
+    $snapshot->update(['filename' => 'backup.sql.gz']);
     $snapshot->job->markCompleted();
 
     // Create restore job
@@ -189,7 +189,7 @@ test('run executes postgresql restore workflow successfully', function () {
     // Create snapshot and update path for restore test
     $snapshots = $this->backupJobFactory->createSnapshots($sourceServer, 'manual');
     $snapshot = $snapshots[0];
-    $snapshot->update(['storage_uri' => 'local:///tmp/pg_backup.sql.gz']);
+    $snapshot->update(['filename' => 'pg_backup.sql.gz']);
     $snapshot->job->markCompleted();
 
     // Create restore job
@@ -241,7 +241,7 @@ test('run throws exception when database types are incompatible', function () {
     // Create snapshot and mark as completed
     $snapshots = $this->backupJobFactory->createSnapshots($sourceServer, 'manual');
     $snapshot = $snapshots[0];
-    $snapshot->update(['storage_uri' => 'local:///tmp/backup.sql.gz']);
+    $snapshot->update(['filename' => 'backup.sql.gz']);
     $snapshot->job->markCompleted();
 
     // Create restore job
@@ -278,7 +278,7 @@ test('run throws exception when restore command failed', function () {
     // Create snapshot and mark as completed
     $snapshots = $this->backupJobFactory->createSnapshots($sourceServer, 'manual');
     $snapshot = $snapshots[0];
-    $snapshot->update(['storage_uri' => 'local:///tmp/backup.sql.gz']);
+    $snapshot->update(['filename' => 'backup.sql.gz']);
     $snapshot->job->markCompleted();
 
     // Create restore job
@@ -382,7 +382,7 @@ test('run executes sqlite restore workflow successfully', function () {
     // Create snapshot and update path for restore test
     $snapshots = $this->backupJobFactory->createSnapshots($sourceServer, 'manual');
     $snapshot = $snapshots[0];
-    $snapshot->update(['storage_uri' => 'local:///tmp/backup.db.gz']);
+    $snapshot->update(['filename' => 'backup.db.gz']);
     $snapshot->job->markCompleted();
 
     // Create restore job

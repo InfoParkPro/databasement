@@ -133,7 +133,7 @@ test('can download snapshot from local storage', function () {
     $snapshots = $factory->createSnapshots($server, 'manual', $user->id);
     $snapshot = $snapshots[0];
     $snapshot->update([
-        'storage_uri' => "local://{$tempFile}",
+        'filename' => basename($tempFile),
         'file_size' => filesize($tempFile),
     ]);
     $snapshot->job->markCompleted();
@@ -143,7 +143,7 @@ test('can download snapshot from local storage', function () {
         ->test(Index::class)
         ->call('download', $snapshot->id);
 
-    $response->assertFileDownloaded($snapshot->getFilename());
+    $response->assertFileDownloaded($snapshot->filename);
 
     // Cleanup
     unlink($tempFile);
@@ -172,7 +172,7 @@ test('can download snapshot from s3 storage redirects to presigned url', functio
     $snapshots = $factory->createSnapshots($server, 'manual', $user->id);
     $snapshot = $snapshots[0];
     $snapshot->update([
-        'storage_uri' => 's3://test-bucket/backups/test-backup.sql.gz',
+        'filename' => 'backups/test-backup.sql.gz',
         'file_size' => 1024,
     ]);
     $snapshot->job->markCompleted();
@@ -183,7 +183,7 @@ test('can download snapshot from s3 storage redirects to presigned url', functio
         ->once()
         ->with(
             $volume->config,
-            'backups/test-backup.sql.gz',
+            $snapshot->filename,
             Mockery::any()
         )
         ->andReturn('https://test-bucket.s3.amazonaws.com/backups/test-backup.sql.gz?presigned=token');

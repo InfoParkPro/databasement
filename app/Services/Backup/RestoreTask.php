@@ -65,7 +65,7 @@ class RestoreTask
 
             // Download snapshot from volume
             $job->log("Downloading snapshot from volume: {$snapshot->volume->name}", 'info', [
-                'storage_uri' => $snapshot->storage_uri,
+                'filename' => $snapshot->filename,
                 'volume_type' => $snapshot->volume->type,
             ]);
             $compressedFile = $workingDirectory.'/snapshot.gz';

@@ -322,7 +322,7 @@ test('run executes backup for each database when backup_all_databases is enabled
     foreach ($snapshots as $snapshot) {
         $snapshot->refresh();
         expect($snapshot->job->status)->toBe('completed')
-            ->and($snapshot->storage_uri)->not->toBeEmpty()
+            ->and($snapshot->filename)->not->toBeEmpty()
             ->and($snapshot->file_size)->toBeGreaterThan(0);
     }
 });
@@ -394,5 +394,5 @@ test('run executes sqlite backup workflow successfully', function () {
     // Verify snapshot is completed
     $snapshot->refresh();
     expect($snapshot->job->status)->toBe('completed')
-        ->and($snapshot->storage_uri)->toContain('.db.gz');
+        ->and($snapshot->filename)->toContain('.db.gz');
 });
