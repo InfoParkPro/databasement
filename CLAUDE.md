@@ -8,7 +8,7 @@ This is a Laravel application for managing database server backups. It uses Live
 
 ## Technology Stack
 
-- **Backend**: Laravel 12, PHP 8.2+
+- **Backend**: Laravel 12, PHP 8.4+
 - **Frontend**: Livewire, Mary UI (robsontenorio/mary), daisyUI, Vite, Tailwind CSS 4
 - **Authentication**: Laravel Fortify (with two-factor support)
 - **Testing**: Pest PHP
