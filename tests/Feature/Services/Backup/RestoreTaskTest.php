@@ -47,7 +47,7 @@ beforeEach(function () {
     // Create temp directory for test files and set it as the backup tmp folder
     $this->tempDir = sys_get_temp_dir().'/restore-task-test-'.uniqid();
     mkdir($this->tempDir, 0777, true);
-    config(['backup.tmp_folder' => $this->tempDir]);
+    config(['backup.working_directory' => $this->tempDir]);
 });
 
 // Helper function to create a database server with backup and volume for restore tests

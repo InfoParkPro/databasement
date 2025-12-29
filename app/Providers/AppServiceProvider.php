@@ -60,7 +60,7 @@ class AppServiceProvider extends ServiceProvider
 
     private function ensureBackupTmpFolderExists(): void
     {
-        $backupTmpFolder = config('backup.tmp_folder');
+        $backupTmpFolder = config('backup.working_directory');
 
         if ($backupTmpFolder && ! is_dir($backupTmpFolder)) {
             mkdir($backupTmpFolder, 0755, true);

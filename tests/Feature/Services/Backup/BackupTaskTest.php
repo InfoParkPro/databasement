@@ -42,7 +42,7 @@ beforeEach(function () {
     // Create temp directory for test files and set config
     $this->tempDir = sys_get_temp_dir().'/backup-task-test-'.uniqid();
     mkdir($this->tempDir, 0777, true);
-    config(['backup.tmp_folder' => $this->tempDir]);
+    config(['backup.working_directory' => $this->tempDir]);
 });
 
 // Helper function to create a database server with backup and volume

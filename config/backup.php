@@ -11,7 +11,7 @@ return [
     |
     */
 
-    'tmp_folder' => env('BACKUP_TMP_FOLDER', '/tmp/backups'),
+    'working_directory' => env('BACKUP_WORKING_DIRECTORY', '/tmp/backups'),
 
     /*
     |--------------------------------------------------------------------------

@@ -84,9 +84,9 @@ DB_PASSWORD=your-secure-password
 
 Configure where backup files are stored temporarily during operations.
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `BACKUP_TMP_FOLDER` | Local temp directory for backups | `/tmp/backups` |
+| Variable                   | Description                      | Default        |
+|----------------------------|----------------------------------|----------------|
+| `BACKUP_WORKING_DIRECTORY` | Local temp directory for backups | `/tmp/backups` |
 
 ## S3 Storage
 

@@ -17,7 +17,7 @@ class Filesystem
      */
     public static function createWorkingDirectory(string $prefix, string $id): string
     {
-        $baseDirectory = rtrim(config('backup.tmp_folder'), '/');
+        $baseDirectory = rtrim(config('backup.working_directory'), '/');
         $workingDirectory = $baseDirectory.'/'.$prefix.'-'.$id;
 
         if (! mkdir($workingDirectory, 0755, true) && ! is_dir($workingDirectory)) {

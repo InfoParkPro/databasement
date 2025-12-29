@@ -98,7 +98,7 @@ test('client-server database backup and restore workflow', function (string $typ
 
 test('sqlite backup and restore workflow', function () {
     // Create a test SQLite database with some data
-    $backupDir = config('backup.tmp_folder');
+    $backupDir = config('backup.working_directory');
     $sourceSqlitePath = "{$backupDir}/test_source.sqlite";
     $restoredSqlitePath = "{$backupDir}/test_restored_".time().'.sqlite';
     integrationCreateTestSqliteDatabase($sourceSqlitePath);
@@ -159,7 +159,7 @@ test('sqlite backup and restore workflow', function () {
 
 function integrationCreateVolume(string $type): Volume
 {
-    $storageDir = config('backup.tmp_folder').'/storage';
+    $storageDir = config('backup.working_directory').'/storage';
     if (! is_dir($storageDir)) {
         mkdir($storageDir, 0755, true);
     }
