@@ -66,8 +66,8 @@
                             @elseif($job->status === 'failed')
                                 <x-badge value="{{ __('Failed') }}" class="badge-error badge-sm" />
                             @elseif($job->status === 'running')
-                                <div class="badge badge-warning badge-sm">
-                                    <x-loading class="loading-xs mr-1" />
+                                <div class="badge badge-warning badge-sm gap-1">
+                                    <x-loading class="loading-spinner loading-xs" />
                                     {{ __('Running') }}
                                 </div>
                             @else
@@ -76,9 +76,17 @@
                         </div>
 
                         {{-- Time --}}
-                        <div class="text-xs text-base-content/50 w-20 text-right shrink-0">
+                        <div class="text-xs text-base-content/50 w-16 text-right shrink-0">
                             {{ $job->created_at->diffForHumans(short: true) }}
                         </div>
+
+                        {{-- Logs Button --}}
+                        <x-button
+                            icon="o-document-text"
+                            wire:click="viewLogs('{{ $job->id }}')"
+                            tooltip="{{ __('View Logs') }}"
+                            class="btn-ghost btn-xs"
+                        />
                     </div>
                 @endforeach
             </div>
@@ -92,4 +100,7 @@
             </div>
         @endif
     </x-card>
+
+    {{-- Logs Modal --}}
+    @include('livewire.backup-job._logs-modal')
 </div>

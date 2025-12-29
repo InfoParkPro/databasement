@@ -31,8 +31,8 @@ class BackupJobResource extends JsonResource
             'type' => $this->whenLoaded('snapshot', fn () => 'backup', fn () => $this->whenLoaded('restore', fn () => 'restore', null)),
             'snapshot' => $this->whenLoaded('snapshot', fn () => [
                 'id' => $this->snapshot->id,
+                'metadata' => $this->snapshot->metadata,
                 'database_name' => $this->snapshot->database_name,
-                'database_host' => $this->snapshot->database_host,
                 'database_type' => $this->snapshot->database_type,
                 'server' => $this->whenLoaded('snapshot', fn () => $this->snapshot->relationLoaded('databaseServer') ? [
                     'id' => $this->snapshot->databaseServer->id,

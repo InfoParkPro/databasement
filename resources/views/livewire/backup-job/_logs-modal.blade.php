@@ -1,9 +1,10 @@
 <x-modal wire:model="showLogsModal" title="{{ __('Job Logs') }}" class="backdrop-blur" box-class="w-11/12 max-w-6xl max-h-[90vh]">
     @if($this->selectedJob)
-        <div class="space-y-4">
+        <div class="space-y-4" x-data="{ showMetadata: false }">
             <!-- Job Info Header -->
             @php
                 $triggeredBy = $this->selectedJob->snapshot?->triggeredBy ?? $this->selectedJob->restore?->triggeredBy;
+                $snapshot = $this->selectedJob->snapshot ?? $this->selectedJob->restore?->snapshot;
             @endphp
             <div class="p-4 bg-base-200 rounded-lg space-y-2">
                 <div class="flex items-center justify-between">
@@ -26,17 +27,30 @@
                             </div>
                         </div>
                     </div>
-                    <div class="text-right">
-                        <div class="text-sm text-base-content/70">{{ __('Status') }}</div>
-                        @if($this->selectedJob->status === 'completed')
-                            <x-badge value="{{ __('Completed') }}" class="badge-success" />
-                        @elseif($this->selectedJob->status === 'failed')
-                            <x-badge value="{{ __('Failed') }}" class="badge-error" />
-                        @elseif($this->selectedJob->status === 'running')
-                            <x-badge value="{{ __('Running') }}" class="badge-warning" />
-                        @else
-                            <x-badge value="{{ ucfirst($this->selectedJob->status) }}" class="badge-info" />
+                    <div class="flex items-center gap-4">
+                        @if($snapshot?->metadata)
+                            <x-button
+                                label="{{ __('Metadata') }}"
+                                icon="o-document-text"
+                                class="btn-ghost btn-sm"
+                                x-on:click="showMetadata = !showMetadata"
+                                ::class="showMetadata && 'btn-active'"
+                            />
                         @endif
+                        <div class="text-right">
+                            @if($this->selectedJob->status === 'completed')
+                                <x-badge value="{{ __('Completed') }}" class="badge-success" />
+                            @elseif($this->selectedJob->status === 'failed')
+                                <x-badge value="{{ __('Failed') }}" class="badge-error" />
+                            @elseif($this->selectedJob->status === 'running')
+                                <div class="badge badge-warning gap-1">
+                                    <x-loading class="loading-spinner loading-xs" />
+                                    {{ __('Running') }}
+                                </div>
+                            @else
+                                <x-badge value="{{ ucfirst($this->selectedJob->status) }}" class="badge-info" />
+                            @endif
+                        </div>
                     </div>
                 </div>
                 <div class="text-sm text-base-content/70">
@@ -52,6 +66,15 @@
                     @endif
                 </div>
             </div>
+
+            <!-- Metadata Panel -->
+            @if($snapshot?->metadata)
+                <div x-show="showMetadata" x-collapse>
+                    <div class="p-4 bg-base-300 rounded-lg">
+                        <pre class="text-xs font-mono whitespace-pre-wrap overflow-x-auto">{{ json_encode($snapshot->metadata, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) }}</pre>
+                    </div>
+                </div>
+            @endif
 
             <!-- Logs Table -->
             @php
@@ -70,16 +93,27 @@
                     <div class="max-h-[60vh] overflow-y-auto divide-y divide-base-300">
                         @foreach($logs as $index => $log)
                             @php
-                                $isRunning = $log['type'] === 'command' && ($log['status'] ?? null) === 'running';
-                                $isError = ($log['type'] === 'command' && isset($log['exit_code']) && $log['exit_code'] !== 0) ||
-                                           ($log['type'] !== 'command' && ($log['level'] ?? '') === 'error');
-                                $isWarning = ($log['type'] !== 'command' && ($log['level'] ?? '') === 'warning') || $isRunning;
-                                $isSuccess = ($log['type'] === 'command' && isset($log['exit_code']) && $log['exit_code'] === 0) ||
-                                             ($log['type'] !== 'command' && ($log['level'] ?? '') === 'success');
                                 $timestamp = \Carbon\Carbon::parse($log['timestamp']);
-                                $logLevel = $log['type'] === 'command' ? 'command' : ($log['level'] ?? 'info');
-                                $hasDetails = $log['type'] === 'command' || (isset($log['context']) && !empty($log['context']));
+                                $isCommand = $log['type'] === 'command';
+                                $isRunning = $isCommand && ($log['status'] ?? null) === 'running';
+
+                                // Determine visual state via pattern matching instead of complex booleans
+                                $rowState = match(true) {
+                                    $isRunning => 'warning',
+                                    $isCommand && isset($log['exit_code']) && $log['exit_code'] !== 0 => 'error',
+                                    $isCommand && isset($log['exit_code']) && $log['exit_code'] === 0 => 'success',
+                                    !$isCommand => $log['level'] ?? 'info',
+                                    default => 'info',
+                                };
+
+                                $isError = $rowState === 'error';
+                                $isWarning = $rowState === 'warning';
+                                $isSuccess = $rowState === 'success';
+
+                                $logLevel = $isCommand ? 'command' : ($log['level'] ?? 'info');
+                                $hasDetails = $isCommand || !empty($log['context']);
                             @endphp
+
 
                             <div class="flex border-l-4 {{ $isError ? 'border-l-error bg-error/5' : ($isWarning ? 'border-l-warning' : ($isSuccess ? 'border-l-success' : 'border-l-info')) }}">
                                 @if($hasDetails)
@@ -93,8 +127,10 @@
                                                     <span class="text-sm truncate {{ $isError ? 'text-error' : '' }}">
                                                         @if($log['type'] === 'command')
                                                             <div class="flex items-center gap-2">
-                                                                <x-devicon-bash class="w-8 h-8"/>
-                                                                <code class="text-primary">{{ Str::limit($log['command'], 80) }}</code>
+                                                                <code class="bg-neutral text-neutral-content px-2 py-1 rounded text-xs font-mono truncate max-w-xl">
+                                                                    <span class="text-success">$</span> {{ Str::limit($log['command'], 80) }}
+                                                                </code>
+                                                                <x-badge value="{{ __('Command') }}" class="badge-neutral badge-sm" />
                                                                 @if($isRunning)
                                                                     <x-loading class="loading-spinner loading-xs text-warning" />
                                                                 @endif
@@ -121,34 +157,23 @@
                                         <x-slot:content>
                                             <div class="pl-4 pr-4 pb-4 space-y-3">
                                                 @if($log['type'] === 'command')
-                                                    <!-- Full Command -->
-                                                    <div>
-                                                        <div class="text-xs text-base-content/50 mb-1">{{ __('Full Command') }}</div>
-                                                        <div class="bg-base-300 p-3 rounded font-mono text-sm overflow-x-auto">
-                                                            <code class="text-success">$ {{ $log['command'] }}</code>
-                                                        </div>
+                                                    <!-- Command & Output -->
+                                                    <div class="mockup-code text-sm max-h-64 overflow-auto">
+                                                        <pre data-prefix="$"><code>{{ $log['command'] }}</code></pre>
+                                                        @if(isset($log['output']) && !empty(trim($log['output'])))
+                                                            @foreach(explode("\n", trim($log['output'])) as $line)
+                                                                <pre data-prefix=">"><code class="{{ $isError ? 'text-error' : '' }}">{{ $line }}</code></pre>
+                                                            @endforeach
+                                                        @endif
                                                     </div>
-
-                                                    @if(isset($log['output']) && !empty(trim($log['output'])))
-                                                        <div>
-                                                            <div class="text-xs text-base-content/50 mb-1">{{ __('Output') }}</div>
-                                                            <div class="bg-base-300 p-3 rounded font-mono text-xs overflow-x-auto max-h-48 overflow-y-auto">
-                                                                <pre class="text-base-content/80 whitespace-pre-wrap">{{ trim($log['output']) }}</pre>
-                                                            </div>
-                                                        </div>
-                                                    @else
-                                                        <div class="text-xs text-base-content/50 mb-1">{{ __('No output') }}</div>
-                                                    @endif
 
                                                     @if($isRunning || isset($log['exit_code']) || isset($log['duration_ms']))
                                                         <div class="flex items-center gap-2">
                                                             @if($isRunning)
-                                                                <span class="text-xs text-base-content/50">{{ __('Status') }}:</span>
-                                                                <x-badge value="{{ __('Running') }}" class="badge-warning badge-sm">
-                                                                    <x-slot:prepend>
-                                                                        <x-loading class="loading-spinner loading-xs" />
-                                                                    </x-slot:prepend>
-                                                                </x-badge>
+                                                                <div class="badge badge-warning badge-sm gap-1">
+                                                                    <x-loading class="loading-spinner loading-xs" />
+                                                                    {{ __('Running') }}
+                                                                </div>
                                                             @elseif(isset($log['exit_code']))
                                                                 <span class="text-xs text-base-content/50">{{ __('Exit code') }}:</span>
                                                                 <x-badge

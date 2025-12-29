@@ -17,6 +17,10 @@ class LatestJobs extends Component
     /** @var Collection<int, BackupJob> */
     public Collection $jobs;
 
+    public bool $showLogsModal = false;
+
+    public ?string $selectedJobId = null;
+
     public function mount(): void
     {
         $this->jobs = new Collection;
@@ -30,6 +34,27 @@ class LatestJobs extends Component
     public function updatedStatusFilter(): void
     {
         $this->fetchJobs();
+    }
+
+    public function viewLogs(string $id): void
+    {
+        $this->selectedJobId = $id;
+        $this->showLogsModal = true;
+    }
+
+    public function getSelectedJobProperty(): ?BackupJob
+    {
+        if (! $this->selectedJobId) {
+            return null;
+        }
+
+        return BackupJob::with([
+            'snapshot.databaseServer',
+            'snapshot.triggeredBy',
+            'restore.snapshot.databaseServer',
+            'restore.targetServer',
+            'restore.triggeredBy',
+        ])->find($this->selectedJobId);
     }
 
     public function fetchJobs(): void

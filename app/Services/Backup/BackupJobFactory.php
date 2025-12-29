@@ -72,22 +72,22 @@ class BackupJobFactory
         ?int $triggeredByUserId = null
     ): Snapshot {
         $job = BackupJob::create(['status' => 'pending']);
+        $volume = $server->backup->volume;
 
         $snapshot = Snapshot::create([
             'backup_job_id' => $job->id,
             'database_server_id' => $server->id,
             'backup_id' => $server->backup->id,
-            'volume_id' => $server->backup->volume_id,
+            'volume_id' => $volume->id,
             'storage_uri' => '',
             'file_size' => 0,
             'checksum' => null,
             'started_at' => now(),
             'database_name' => $databaseName,
             'database_type' => $server->database_type,
-            'database_host' => $server->host,
-            'database_port' => $server->port,
             'compression_type' => 'gzip',
             'method' => $method,
+            'metadata' => Snapshot::generateMetadata($server, $databaseName, $volume),
             'triggered_by_user_id' => $triggeredByUserId,
         ]);
 

@@ -25,10 +25,8 @@ make setup
 
 This will:
 - Install Composer dependencies
-- Install npm dependencies
-- Copy `.env.example` to `.env`
-- Generate application key
 - Run database migrations
+- Install npm dependencies
 - Build frontend assets
 
 ### 2. Start Development Environment
@@ -55,12 +53,7 @@ All PHP commands run through Docker. Use the Makefile targets or `docker compose
 make test                           # Run all tests
 make test-filter FILTER=ServerTest  # Run specific tests
 make test-coverage                  # Run with coverage report
-make backup-test                    # End-to-end backup/restore tests
 ```
-
-:::warning Important
-When modifying backup or restore logic in `app/Services/Backup/`, always run `make backup-test` to verify the complete workflow with real database servers.
-:::
 
 ### Code Quality
 
@@ -165,7 +158,9 @@ Ensure tests pass before committing.
 
 ### Environment Variables
 
-Key development configuration in `.env`:
+The `.env` file is committed to the repository and contains default development configuration. To override these values, create a `.env.local` file (which is gitignored).
+
+Key development configuration:
 
 ```env
 # Application

@@ -22,10 +22,9 @@ use Illuminate\Support\Carbon;
  * @property Carbon $started_at
  * @property string $database_name
  * @property string $database_type
- * @property string $database_host
- * @property int $database_port
  * @property string $compression_type
  * @property string $method
+ * @property array<string, mixed>|null $metadata
  * @property string|null $triggered_by_user_id
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
@@ -45,13 +44,12 @@ use Illuminate\Support\Carbon;
  * @method static Builder<static>|Snapshot whereChecksum($value)
  * @method static Builder<static>|Snapshot whereCompressionType($value)
  * @method static Builder<static>|Snapshot whereCreatedAt($value)
- * @method static Builder<static>|Snapshot whereDatabaseHost($value)
  * @method static Builder<static>|Snapshot whereDatabaseName($value)
- * @method static Builder<static>|Snapshot whereDatabasePort($value)
  * @method static Builder<static>|Snapshot whereDatabaseServerId($value)
  * @method static Builder<static>|Snapshot whereDatabaseType($value)
  * @method static Builder<static>|Snapshot whereFileSize($value)
  * @method static Builder<static>|Snapshot whereId($value)
+ * @method static Builder<static>|Snapshot whereMetadata($value)
  * @method static Builder<static>|Snapshot whereMethod($value)
  * @method static Builder<static>|Snapshot whereStorageUri($value)
  * @method static Builder<static>|Snapshot whereStartedAt($value)
@@ -79,10 +77,9 @@ class Snapshot extends Model
         'started_at',
         'database_name',
         'database_type',
-        'database_host',
-        'database_port',
         'compression_type',
         'method',
+        'metadata',
         'triggered_by_user_id',
     ];
 
@@ -91,7 +88,56 @@ class Snapshot extends Model
         return [
             'started_at' => 'datetime',
             'file_size' => 'integer',
-            'database_port' => 'integer',
+            'metadata' => 'array',
+        ];
+    }
+
+    /**
+     * Generate metadata array for a snapshot.
+     *
+     * @return array{database_server: array{host: string|null, port: int|null, username: string|null, database_name: string}, volume: array{type: string, config: array<string, mixed>}}
+     */
+    public static function generateMetadata(DatabaseServer $server, string $databaseName, Volume $volume): array
+    {
+        return [
+            'database_server' => [
+                'host' => $server->host,
+                'port' => $server->port,
+                'username' => $server->username,
+                'database_name' => $databaseName,
+            ],
+            'volume' => [
+                'type' => $volume->type,
+                'config' => $volume->config,
+            ],
+        ];
+    }
+
+    /**
+     * Get database server info from metadata.
+     *
+     * @return array{host: string|null, port: int|null, username: string|null, database_name: string|null}
+     */
+    public function getDatabaseServerMetadata(): array
+    {
+        return $this->metadata['database_server'] ?? [
+            'host' => null,
+            'port' => null,
+            'username' => null,
+            'database_name' => null,
+        ];
+    }
+
+    /**
+     * Get volume info from metadata.
+     *
+     * @return array{type: string|null, config: array<string, mixed>|null}
+     */
+    public function getVolumeMetadata(): array
+    {
+        return $this->metadata['volume'] ?? [
+            'type' => null,
+            'config' => null,
         ];
     }
 

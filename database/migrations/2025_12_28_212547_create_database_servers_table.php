@@ -14,12 +14,14 @@ return new class extends Migration
         Schema::create('database_servers', function (Blueprint $table) {
             $table->char('id', 26)->primary();
             $table->string('name');
-            $table->string('host');
+            $table->string('host')->nullable();
             $table->integer('port')->default(3306);
             $table->string('database_type')->default('mysql');
-            $table->string('username');
-            $table->string('password');
-            $table->string('database_name')->nullable();
+            $table->string('sqlite_path')->nullable();
+            $table->json('database_names')->nullable();
+            $table->string('username')->nullable();
+            $table->string('password')->nullable();
+            $table->boolean('backup_all_databases')->default(false);
             $table->text('description')->nullable();
             $table->timestamps();
         });

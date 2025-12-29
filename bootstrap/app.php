@@ -1,8 +1,21 @@
 <?php
 
+use Dotenv\Dotenv;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+
+if (file_exists(dirname(__DIR__).'/.env.local')) {
+    $dotenv = Dotenv::createImmutable(dirname(__DIR__), '.env.local');
+    $dotenv->load();
+}
+
+// Load extra env file if specified (useful for testing with different databases)
+$extraEnvFile = getenv('EXTRA_ENV_FILE');
+if ($extraEnvFile && file_exists(dirname(__DIR__).'/'.$extraEnvFile)) {
+    $dotenv = Dotenv::createMutable(dirname(__DIR__), $extraEnvFile);
+    $dotenv->load();
+}
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(

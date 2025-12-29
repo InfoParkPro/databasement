@@ -5,7 +5,6 @@
  *
  * These tests require MySQL and PostgreSQL containers to be running.
  * Run with: php artisan test --group=integration
- * Or: make backup-test
  */
 
 use App\Models\Backup;
@@ -48,15 +47,17 @@ afterEach(function () {
     $this->volume?->delete();
 });
 
-test('mysql backup and restore workflow', function () {
-    integrationSetupTestEnvironment();
-    integrationCleanupLeftoverTestData('mysql');
+test('client-server database backup and restore workflow', function (string $type) {
+    integrationCleanupLeftoverTestData($type);
 
     // Create models
-    $this->volume = integrationCreateVolume('mysql');
-    $this->databaseServer = integrationCreateDatabaseServer('mysql');
+    $this->volume = integrationCreateVolume($type);
+    $this->databaseServer = integrationCreateDatabaseServer($type);
     $this->backup = integrationCreateBackup($this->databaseServer, $this->volume);
     $this->databaseServer->load('backup.volume');
+
+    // Load test data
+    integrationLoadTestData($type, $this->databaseServer);
 
     // Run backup
     $snapshots = $this->backupJobFactory->createSnapshots(
@@ -88,67 +89,24 @@ test('mysql backup and restore workflow', function () {
     $this->restoreTask->run($restore);
 
     // Verify restore
-    $pdo = integrationConnectToDatabase('mysql', $this->databaseServer, $this->restoredDatabaseName);
+    $pdo = integrationConnectToDatabase($type, $this->databaseServer, $this->restoredDatabaseName);
     expect($pdo)->toBeInstanceOf(PDO::class);
 
-    $stmt = $pdo->query('SHOW TABLES');
+    $verifyQuery = match ($type) {
+        'mysql' => 'SHOW TABLES',
+        'postgres' => "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public'",
+    };
+    $stmt = $pdo->query($verifyQuery);
     expect($stmt)->not->toBeFalse();
-});
-
-test('postgresql backup and restore workflow', function () {
-    integrationSetupTestEnvironment();
-    integrationCleanupLeftoverTestData('postgres');
-
-    // Create models
-    $this->volume = integrationCreateVolume('postgres');
-    $this->databaseServer = integrationCreateDatabaseServer('postgres');
-    $this->backup = integrationCreateBackup($this->databaseServer, $this->volume);
-    $this->databaseServer->load('backup.volume');
-
-    // Run backup
-    $snapshots = $this->backupJobFactory->createSnapshots(
-        server: $this->databaseServer,
-        method: 'manual',
-        triggeredByUserId: null
-    );
-    $this->snapshot = $snapshots[0];
-    $this->backupTask->run($this->snapshot);
-    $this->snapshot->refresh();
-    $this->snapshot->load('job');
-
-    expect($this->snapshot->job->status)->toBe('completed');
-    expect($this->snapshot->file_size)->toBeGreaterThan(0);
-
-    // Verify backup file
-    $backupFile = integrationFindLatestBackupFile();
-    expect($backupFile)->not->toBeNull();
-    expect(filesize($backupFile))->toBeGreaterThan(100);
-    expect(integrationIsGzipped($backupFile))->toBeTrue();
-
-    // Run restore
-    $this->restoredDatabaseName = 'testdb_restored_'.time();
-    $restore = $this->backupJobFactory->createRestore(
-        snapshot: $this->snapshot,
-        targetServer: $this->databaseServer,
-        schemaName: $this->restoredDatabaseName,
-    );
-    $this->restoreTask->run($restore);
-
-    // Verify restore
-    $pdo = integrationConnectToDatabase('postgres', $this->databaseServer, $this->restoredDatabaseName);
-    expect($pdo)->toBeInstanceOf(PDO::class);
-
-    $stmt = $pdo->query("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public'");
-    expect($stmt)->not->toBeFalse();
-});
+})->with(['mysql', 'postgres']);
 
 test('sqlite backup and restore workflow', function () {
-    integrationSetupTestEnvironment();
     integrationCleanupLeftoverTestData('sqlite');
 
     // Create a test SQLite database with some data
-    $sourceSqlitePath = '/tmp/backups/test_source.sqlite';
-    $restoredSqlitePath = '/tmp/backups/test_restored_'.time().'.sqlite';
+    $backupDir = config('backup.tmp_folder');
+    $sourceSqlitePath = "{$backupDir}/test_source.sqlite";
+    $restoredSqlitePath = "{$backupDir}/test_restored_".time().'.sqlite';
     integrationCreateTestSqliteDatabase($sourceSqlitePath);
 
     // Create models
@@ -170,7 +128,7 @@ test('sqlite backup and restore workflow', function () {
 
     expect($this->snapshot->job->status)->toBe('completed');
     expect($this->snapshot->file_size)->toBeGreaterThan(0);
-    expect($this->snapshot->database_host)->toBeNull();
+    expect($this->snapshot->getDatabaseServerMetadata()['host'])->toBeNull();
 
     // Verify backup file
     $backupFile = integrationFindLatestBackupFile();
@@ -208,22 +166,12 @@ test('sqlite backup and restore workflow', function () {
     $targetServer->delete();
 });
 
-// Helper functions
-
-function integrationSetupTestEnvironment(): void
-{
-    $backupDir = '/tmp/backups';
-    if (! is_dir($backupDir)) {
-        mkdir($backupDir, 0755, true);
-    }
-}
-
 function integrationCreateVolume(string $type): Volume
 {
     return Volume::create([
         'name' => "Integration Test Volume ({$type})",
         'type' => 'local',
-        'config' => ['root' => '/tmp/backups'],
+        'config' => ['root' => config('backup.tmp_folder')],
     ]);
 }
 
@@ -310,10 +258,12 @@ function integrationCreateTestSqliteDatabase(string $path): void
 
 function integrationFindLatestBackupFile(?string $extension = null): ?string
 {
+    $backupDir = config('backup.tmp_folder');
+
     // Search for both .sql.gz and .db.gz (SQLite) files
     $patterns = $extension
-        ? ["/tmp/backups/*.{$extension}"]
-        : ['/tmp/backups/*.sql.gz', '/tmp/backups/*.db.gz'];
+        ? ["{$backupDir}/*.{$extension}"]
+        : ["{$backupDir}/*.sql.gz", "{$backupDir}/*.db.gz"];
 
     $allFiles = [];
     foreach ($patterns as $pattern) {
@@ -376,4 +326,39 @@ function integrationDropRestoredDatabase(string $type, DatabaseServer $server, s
         $pdo->exec("SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '{$databaseName}' AND pid <> pg_backend_pid()");
         $pdo->exec("DROP DATABASE IF EXISTS \"{$databaseName}\"");
     }
+}
+
+function integrationLoadTestData(string $type, DatabaseServer $server): void
+{
+    $databaseName = $server->database_names[0];
+
+    // Connect to server (not specific database)
+    $dsn = match ($type) {
+        'mysql' => sprintf('mysql:host=%s;port=%d', $server->host, $server->port),
+        'postgres' => sprintf('pgsql:host=%s;port=%d;dbname=postgres', $server->host, $server->port),
+        default => throw new InvalidArgumentException("Unsupported database type: {$type}"),
+    };
+
+    $pdo = new PDO($dsn, $server->username, $server->password, [
+        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+    ]);
+
+    // Drop database if exists
+    if ($type === 'mysql') {
+        $pdo->exec("DROP DATABASE IF EXISTS `{$databaseName}`");
+        $pdo->exec("CREATE DATABASE `{$databaseName}`");
+    } else {
+        $pdo->exec("SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '{$databaseName}' AND pid <> pg_backend_pid()");
+        $pdo->exec("DROP DATABASE IF EXISTS \"{$databaseName}\"");
+        $pdo->exec("CREATE DATABASE \"{$databaseName}\"");
+    }
+
+    // Connect to new database and load fixture
+    $fixtureFile = match ($type) {
+        'mysql' => __DIR__.'/fixtures/mysql-init.sql',
+        'postgres' => __DIR__.'/fixtures/postgres-init.sql',
+    };
+
+    $pdo = integrationConnectToDatabase($type, $server, $databaseName);
+    $pdo->exec(file_get_contents($fixtureFile));
 }

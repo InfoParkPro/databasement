@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('backup_jobs', function (Blueprint $table) {
             $table->char('id', 26)->primary();
             $table->string('job_id')->nullable();
-            $table->enum('status', ['pending', 'queued', 'running', 'completed', 'failed']);
+            $table->enum('status', ['pending', 'running', 'completed', 'failed']);
             $table->timestamp('started_at')->nullable();
             $table->timestamp('completed_at')->nullable();
             $table->text('error_message')->nullable();

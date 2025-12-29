@@ -20,7 +20,7 @@ test('authenticated users can access create page', function () {
         ->assertStatus(200);
 });
 
-test('can create mysql database server', function () {
+test('can create database server', function (array $config) {
     DatabaseConnectionTester::shouldReceive('test')
         ->once()
         ->andReturn(['success' => true, 'message' => 'Connected!']);
@@ -32,31 +32,46 @@ test('can create mysql database server', function () {
         'config' => ['path' => '/var/backups'],
     ]);
 
-    Livewire::actingAs($user)
+    $component = Livewire::actingAs($user)
         ->test(Create::class)
-        ->set('form.name', 'Production MySQL Server')
-        ->set('form.host', 'mysql.example.com')
-        ->set('form.port', 3306)
-        ->set('form.database_type', 'mysql')
-        ->set('form.username', 'dbuser')
-        ->set('form.password', 'secret123')
-        ->set('form.database_names_input', 'myapp_production')
-        ->set('form.description', 'Main production database')
+        ->set('form.name', $config['name'])
+        ->set('form.database_type', $config['type'])
+        ->set('form.description', 'Test database')
         ->set('form.volume_id', $volume->id)
         ->set('form.recurrence', 'daily')
-        ->set('form.retention_days', 14)
-        ->call('save')
+        ->set('form.retention_days', 14);
+
+    // Set type-specific fields
+    if ($config['type'] === 'sqlite') {
+        $component->set('form.sqlite_path', $config['sqlite_path']);
+    } else {
+        $component
+            ->set('form.host', $config['host'])
+            ->set('form.port', $config['port'])
+            ->set('form.username', 'dbuser')
+            ->set('form.password', 'secret123')
+            ->set('form.database_names_input', 'myapp_production');
+    }
+
+    $component->call('save')
         ->assertRedirect(route('database-servers.index'));
 
     $this->assertDatabaseHas('database_servers', [
-        'name' => 'Production MySQL Server',
-        'host' => 'mysql.example.com',
-        'port' => 3306,
-        'database_type' => 'mysql',
+        'name' => $config['name'],
+        'database_type' => $config['type'],
     ]);
 
-    $server = DatabaseServer::where('name', 'Production MySQL Server')->first();
-    expect($server->sqlite_path)->toBeNull();
+    $server = DatabaseServer::where('name', $config['name'])->first();
+
+    if ($config['type'] === 'sqlite') {
+        expect($server->sqlite_path)->toBe($config['sqlite_path']);
+        expect($server->host)->toBeNull();
+        expect($server->username)->toBeNull();
+    } else {
+        expect($server->host)->toBe($config['host']);
+        expect($server->port)->toBe($config['port']);
+        expect($server->sqlite_path)->toBeNull();
+    }
 
     $this->assertDatabaseHas('backups', [
         'database_server_id' => $server->id,
@@ -64,75 +79,9 @@ test('can create mysql database server', function () {
         'recurrence' => 'daily',
         'retention_days' => 14,
     ]);
-});
-
-test('can create postgresql database server', function () {
-    DatabaseConnectionTester::shouldReceive('test')
-        ->once()
-        ->andReturn(['success' => true, 'message' => 'Connected!']);
-
-    $user = User::factory()->create();
-    $volume = Volume::create([
-        'name' => 'Test Volume',
-        'type' => 'local',
-        'config' => ['path' => '/var/backups'],
-    ]);
-
-    Livewire::actingAs($user)
-        ->test(Create::class)
-        ->set('form.name', 'Production PostgreSQL Server')
-        ->set('form.host', 'postgres.example.com')
-        ->set('form.port', 5432)
-        ->set('form.database_type', 'postgresql')
-        ->set('form.username', 'pguser')
-        ->set('form.password', 'secret123')
-        ->set('form.database_names_input', 'myapp_production')
-        ->set('form.volume_id', $volume->id)
-        ->set('form.recurrence', 'weekly')
-        ->call('save')
-        ->assertRedirect(route('database-servers.index'));
-
-    $this->assertDatabaseHas('database_servers', [
-        'name' => 'Production PostgreSQL Server',
-        'host' => 'postgres.example.com',
-        'port' => 5432,
-        'database_type' => 'postgresql',
-    ]);
-
-    $server = DatabaseServer::where('name', 'Production PostgreSQL Server')->first();
-    expect($server->sqlite_path)->toBeNull();
-});
-
-test('can create sqlite database server', function () {
-    DatabaseConnectionTester::shouldReceive('test')
-        ->once()
-        ->andReturn(['success' => true, 'message' => 'Connected!']);
-
-    $user = User::factory()->create();
-    $volume = Volume::create([
-        'name' => 'Test Volume',
-        'type' => 'local',
-        'config' => ['path' => '/var/backups'],
-    ]);
-
-    Livewire::actingAs($user)
-        ->test(Create::class)
-        ->set('form.name', 'Local SQLite Database')
-        ->set('form.database_type', 'sqlite')
-        ->set('form.sqlite_path', '/data/app.sqlite')
-        ->set('form.description', 'Local application database')
-        ->set('form.volume_id', $volume->id)
-        ->set('form.recurrence', 'daily')
-        ->call('save')
-        ->assertRedirect(route('database-servers.index'));
-
-    $this->assertDatabaseHas('database_servers', [
-        'name' => 'Local SQLite Database',
-        'database_type' => 'sqlite',
-        'sqlite_path' => '/data/app.sqlite',
-    ]);
-
-    $server = DatabaseServer::where('name', 'Local SQLite Database')->first();
-    expect($server->host)->toBeNull();
-    expect($server->username)->toBeNull();
-});
+})->with([
+    'mysql' => [['type' => 'mysql', 'name' => 'MySQL Server', 'host' => 'mysql.example.com', 'port' => 3306]],
+    'postgresql' => [['type' => 'postgresql', 'name' => 'PostgreSQL Server', 'host' => 'postgres.example.com', 'port' => 5432]],
+    'mariadb' => [['type' => 'mariadb', 'name' => 'MariaDB Server', 'host' => 'mariadb.example.com', 'port' => 3306]],
+    'sqlite' => [['type' => 'sqlite', 'name' => 'SQLite Database', 'sqlite_path' => '/data/app.sqlite']],
+]);

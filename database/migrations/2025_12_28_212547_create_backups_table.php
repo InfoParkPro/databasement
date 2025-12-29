@@ -16,6 +16,7 @@ return new class extends Migration
             $table->char('database_server_id', 26)->unique();
             $table->char('volume_id', 26)->index('backups_volume_id_foreign');
             $table->string('recurrence')->default('daily');
+            $table->unsignedTinyInteger('retention_days')->nullable();
             $table->timestamps();
         });
     }

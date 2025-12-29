@@ -70,21 +70,14 @@
                 @elseif($job->status === 'failed')
                     <x-badge value="{{ __('Failed') }}" class="badge-error" />
                 @elseif($job->status === 'running')
-                    <div class="flex items-center gap-1">
-                        <div class="badge badge-warning">
-                            {{ __('Running') }}
-                            <x-loading class="loading-xs" />
-                        </div>
+                    <div class="badge badge-warning gap-1">
+                        <x-loading class="loading-spinner loading-xs" />
+                        {{ __('Running') }}
                     </div>
                 @else
                     <x-badge value="{{ __('Pending') }}" class="badge-info" />
                 @endif
 
-                @if($job->status === 'failed' && $job->error_message)
-                    <div class="text-xs text-error mt-1" title="{{ $job->error_message }}">
-                        {{ Str::limit($job->error_message, 50) }}
-                    </div>
-                @endif
             @endscope
 
             @scope('cell_info', $job)

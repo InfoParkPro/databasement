@@ -37,6 +37,27 @@ spec:
       serviceAccountName: {{ include "databasement.serviceAccountName" . }}
       securityContext:
         {{ toYaml .Values.podSecurityContext | nindent 8 }}
+      initContainers:
+        - name: {{ .Chart.Name }}-migrations
+          securityContext:
+            {{ toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["sh", "-c", "php artisan db:wait && php artisan migrate --force"]
+          env:
+            {{ include "databasement.env" . | nindent 12 }}
+          {{- with .Values.extraEnvFrom }}
+          envFrom:
+            {{ toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+          {{- if .Values.persistence.enabled }}
+            - name: data
+              mountPath: {{ .Values.persistence.path | quote }}
+          {{- end }}
+          {{- if .Values.extraVolumeMounts }}
+            {{ toYaml .Values.extraVolumeMounts | nindent 12 }}
+          {{- end }}
       containers:
         - name: {{ .Chart.Name }}
           securityContext:
@@ -57,6 +78,8 @@ spec:
             {{ toYaml .Values.livenessProbe | nindent 12 }}
           readinessProbe:
             {{ toYaml .Values.readinessProbe | nindent 12 }}
+          startupProbe:
+            {{ toYaml .Values.startupProbe | nindent 12 }}
           resources:
             {{ toYaml .Values.resources | nindent 12 }}
           volumeMounts:

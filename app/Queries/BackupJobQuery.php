@@ -85,11 +85,11 @@ class BackupJobQuery
     {
         $query->where(function (Builder $q) use ($search) {
             $q->whereHas('snapshot.databaseServer', function (Builder $sq) use ($search) {
-                $sq->whereRaw('name LIKE ?', ["%{$search}%"]);
+                $sq->whereRaw('name LIKE ?', ["%{$search}%"])
+                    ->orWhereRaw('host LIKE ?', ["%{$search}%"]);
             })
                 ->orWhereHas('snapshot', function (Builder $sq) use ($search) {
-                    $sq->whereRaw('database_name LIKE ?', ["%{$search}%"])
-                        ->orWhereRaw('database_host LIKE ?', ["%{$search}%"]);
+                    $sq->whereRaw('database_name LIKE ?', ["%{$search}%"]);
                 })
                 ->orWhereHas('restore.targetServer', function (Builder $sq) use ($search) {
                     $sq->whereRaw('name LIKE ?', ["%{$search}%"]);

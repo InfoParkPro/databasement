@@ -1,4 +1,4 @@
-.PHONY: help install start test test-filter test-coverage backup-test lint-check lint-fix lint migrate migrate-fresh db-seed setup clean import-db docs-build
+.PHONY: help install start test test-mysql test-postgres test-filter test-filter-mysql test-filter-postgres test-coverage backup-test lint-check lint-fix lint migrate migrate-fresh db-seed setup clean import-db docs-build
 
 # Colors for output
 GREEN  := \033[0;32m
@@ -41,11 +41,29 @@ create-bucket: ## Create S3 bucket in LocalStack (usage: make create-bucket BUCK
 	$(DOCKER_COMPOSE) exec -T localstack awslocal s3 mb s3://$(or $(BUCKET),test-bucket)
 ##@ Testing
 
-test: ## Run all tests
+test: ## Run all tests (SQLite)
 	$(PHP_ARTISAN) test
+
+test-mysql: ## Run all tests with MySQL
+	$(DOCKER_COMPOSE) exec -T mysql mysql -uroot -proot -e "DROP DATABASE IF EXISTS databasement_app_test; CREATE DATABASE databasement_app_test;" 2>/dev/null || true
+	$(DOCKER_COMPOSE) exec -T -e EXTRA_ENV_FILE=.env.mysql.testing $(PHP_SERVICE) php artisan test
 
 test-filter: ## Run tests with filter (usage: make test-filter FILTER=DatabaseServer)
 	$(PHP_ARTISAN) test --filter=$(FILTER)
+
+test-filter-mysql: ## Run tests with filter using MySQL (usage: make test-filter-mysql FILTER=DatabaseServer)
+	$(DOCKER_COMPOSE) exec -T mysql mysql -uroot -proot -e "CREATE DATABASE IF NOT EXISTS databasement_app_test;" 2>/dev/null || true
+	$(DOCKER_COMPOSE) exec -T -e EXTRA_ENV_FILE=.env.mysql.testing $(PHP_SERVICE) php artisan test --filter=$(FILTER)
+
+test-postgres: ## Run all tests with PostgreSQL
+	$(DOCKER_COMPOSE) exec -T postgres psql -U root -d postgres -c "DROP DATABASE IF EXISTS databasement_app_test;"
+	$(DOCKER_COMPOSE) exec -T postgres psql -U root -d postgres -c "CREATE DATABASE databasement_app_test;"
+	$(DOCKER_COMPOSE) exec -T -e EXTRA_ENV_FILE=.env.postgres.testing $(PHP_SERVICE) php artisan test
+
+test-filter-postgres: ## Run tests with filter using PostgreSQL (usage: make test-filter-postgres FILTER=DatabaseServer)
+	$(DOCKER_COMPOSE) exec -T postgres psql -U root -d postgres -c "DROP DATABASE IF EXISTS databasement_app_test;"
+	$(DOCKER_COMPOSE) exec -T postgres psql -U root -d postgres -c "CREATE DATABASE databasement_app_test;"
+	$(DOCKER_COMPOSE) exec -T -e EXTRA_ENV_FILE=.env.postgres.testing $(PHP_SERVICE) php artisan test --filter=$(FILTER)
 
 test-coverage: ## Run tests with coverage
 	$(PHP_ARTISAN) test --coverage

@@ -18,12 +18,13 @@ class SnapshotResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        $dbMetadata = $this->getDatabaseServerMetadata();
+
         return [
             'id' => $this->id,
             'database_name' => $this->database_name,
             'database_type' => $this->database_type,
-            'database_host' => $this->database_host,
-            'database_port' => $this->database_port,
+            'metadata' => $this->metadata,
             'storage_uri' => $this->storage_uri,
             'file_size' => $this->file_size,
             'file_size_human' => $this->getHumanFileSize(),

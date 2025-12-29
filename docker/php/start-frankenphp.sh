@@ -5,5 +5,7 @@ if [ "$APP_ENV" = "production" ]; then
     php artisan optimize
 fi
 php artisan db:wait --allow-missing-db
-php artisan migrate --force
+if [ "$ENABLE_DATABASE_MIGRATION" = "true" ]; then
+    php artisan migrate --force
+fi
 frankenphp run --config /etc/frankenphp/Caddyfile --adapter caddyfile

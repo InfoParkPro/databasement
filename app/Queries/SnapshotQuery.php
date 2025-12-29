@@ -27,7 +27,6 @@ class SnapshotQuery
             ->with(self::RELATIONSHIPS)
             ->allowedFilters([
                 AllowedFilter::partial('database_name'),
-                AllowedFilter::partial('database_host'),
                 AllowedFilter::exact('database_type'),
                 AllowedFilter::exact('method'),
                 AllowedFilter::callback('status', function (Builder $query, $value) {
@@ -75,10 +74,10 @@ class SnapshotQuery
     {
         $query->where(function (Builder $q) use ($search) {
             $q->whereHas('databaseServer', function (Builder $sq) use ($search) {
-                $sq->whereRaw('name LIKE ?', ["%{$search}%"]);
+                $sq->whereRaw('name LIKE ?', ["%{$search}%"])
+                    ->orWhereRaw('host LIKE ?', ["%{$search}%"]);
             })
-                ->orWhere('database_name', 'like', "%{$search}%")
-                ->orWhere('database_host', 'like', "%{$search}%");
+                ->orWhere('database_name', 'like', "%{$search}%");
         });
     }
 }

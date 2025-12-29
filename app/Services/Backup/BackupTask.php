@@ -50,19 +50,7 @@ class BackupTask
             // Use the database name from the snapshot (important for multi-database backups)
             $databaseName = $snapshot->database_name;
 
-            $job->log("Starting backup for database: {$databaseName}", 'info', [
-                'database_server' => [
-                    'id' => $databaseServer->id,
-                    'name' => $databaseServer->name,
-                    'database_name' => $databaseName,
-                    'database_type' => $databaseServer->database_type,
-                ],
-                'volume' => [
-                    'id' => $snapshot->volume_id,
-                    'type' => $snapshot->volume->type,
-                ],
-                'method' => $snapshot->method,
-            ]);
+            $job->log("Starting backup for database: {$databaseName}", 'info');
 
             $this->dumpDatabase($databaseServer, $databaseName, $workingFile);
             $archive = $this->compressor->compress($workingFile);
