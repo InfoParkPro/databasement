@@ -43,7 +43,7 @@ spec:
             {{ toYaml .Values.securityContext | nindent 12 }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
-          command: ["sh", "-c", "php artisan db:wait && php artisan migrate --force"]
+          command: ["sh", "-c", "php artisan db:wait --allow-missing-db && php artisan migrate --force"]
           env:
             {{ include "databasement.env" . | nindent 12 }}
           {{- with .Values.extraEnvFrom }}

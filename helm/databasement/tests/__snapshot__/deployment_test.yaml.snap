@@ -148,7 +148,7 @@ should render deployment with default values:
             - command:
                 - sh
                 - -c
-                - php artisan db:wait && php artisan migrate --force
+                - php artisan db:wait --allow-missing-db && php artisan migrate --force
               env:
                 - name: SERVER_NAME
                   value: :2226
@@ -371,7 +371,7 @@ should render deployment with mysql database:
             - command:
                 - sh
                 - -c
-                - php artisan db:wait && php artisan migrate --force
+                - php artisan db:wait --allow-missing-db && php artisan migrate --force
               env:
                 - name: SERVER_NAME
                   value: :2226
