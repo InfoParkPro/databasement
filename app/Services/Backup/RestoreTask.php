@@ -14,7 +14,6 @@ use App\Services\Backup\Databases\MysqlDatabase;
 use App\Services\Backup\Databases\PostgresqlDatabase;
 use App\Services\Backup\Filesystems\FilesystemProvider;
 use App\Services\ConnectionFactory;
-use App\Support\Filesystem;
 use PDO;
 use PDOException;
 
@@ -34,7 +33,7 @@ class RestoreTask
      *
      * @throws \Exception
      */
-    public function run(Restore $restore): Restore
+    public function run(Restore $restore, string $workingDirectory): Restore
     {
         $targetServer = $restore->targetServer;
         $snapshot = $restore->snapshot;
@@ -45,9 +44,6 @@ class RestoreTask
         $this->shellProcessor->setLogger($job);
 
         try {
-            // Create unique working directory for this job
-            $workingDirectory = Filesystem::createWorkingDirectory('restore', $restore->id);
-
             $job->markRunning();
             $job->log('Starting restore operation', 'info', [
                 'target_database_server' => [
@@ -109,10 +105,10 @@ class RestoreTask
             $job->markFailed($e);
             throw $e;
         } finally {
-            // Clean up working directory and all files within
+            // Clean up working directory and all files within (safety net, Job also cleans up on failure)
             $job->log('Cleaning up temporary files', 'info');
-            if (isset($workingDirectory)) {
-                Filesystem::cleanupDirectory($workingDirectory);
+            if (is_dir($workingDirectory)) {
+                \App\Support\FilesystemSupport::cleanupDirectory($workingDirectory);
             }
         }
     }

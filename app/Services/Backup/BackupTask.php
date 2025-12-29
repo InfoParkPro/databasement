@@ -9,7 +9,6 @@ use App\Models\Volume;
 use App\Services\Backup\Databases\MysqlDatabase;
 use App\Services\Backup\Databases\PostgresqlDatabase;
 use App\Services\Backup\Filesystems\FilesystemProvider;
-use App\Support\Filesystem;
 use App\Support\Formatters;
 
 class BackupTask
@@ -27,7 +26,7 @@ class BackupTask
         $this->shellProcessor->setLogger($job);
     }
 
-    public function run(Snapshot $snapshot): Snapshot
+    public function run(Snapshot $snapshot, string $workingDirectory): Snapshot
     {
         $databaseServer = $snapshot->databaseServer;
         $job = $snapshot->job;
@@ -36,8 +35,6 @@ class BackupTask
         // Configure shell processor to log to job
         $this->setLogger($job);
         try {
-            // Create unique working directory for this job
-            $workingDirectory = Filesystem::createWorkingDirectory('backup', $snapshot->id);
             $extension = $isSqlite ? 'db' : 'sql';
             $workingFile = $workingDirectory.'/dump.'.$extension;
 
@@ -103,10 +100,10 @@ class BackupTask
 
             throw $e;
         } finally {
-            // Clean up working directory and all files within
+            // Clean up working directory and all files within (safety net, Job also cleans up on failure)
             $job->log('Cleaning up temporary files', 'info');
-            if (isset($workingDirectory)) {
-                Filesystem::cleanupDirectory($workingDirectory);
+            if (is_dir($workingDirectory)) {
+                \App\Support\FilesystemSupport::cleanupDirectory($workingDirectory);
             }
         }
     }

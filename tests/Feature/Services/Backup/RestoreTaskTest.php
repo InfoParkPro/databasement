@@ -11,6 +11,7 @@ use App\Services\Backup\Filesystems\FilesystemProvider;
 use App\Services\Backup\GzipCompressor;
 use App\Services\Backup\RestoreTask;
 use App\Services\ConnectionFactory;
+use App\Support\FilesystemSupport;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Support\TestShellProcessor;
 
@@ -48,6 +49,12 @@ beforeEach(function () {
     $this->tempDir = sys_get_temp_dir().'/restore-task-test-'.uniqid();
     mkdir($this->tempDir, 0777, true);
     config(['backup.working_directory' => $this->tempDir]);
+});
+
+afterEach(function () {
+    FilesystemSupport::cleanupDirectory($this->tempDir);
+    FilesystemSupport::cleanupDirectory(config('backup.working_directory'), true);
+    Mockery::close();
 });
 
 // Helper function to create a database server with backup and volume for restore tests
@@ -93,11 +100,6 @@ function setupRestoreExpectations(Restore $restore): void
         });
 }
 
-afterEach(function () {
-    \App\Support\Filesystem::cleanupDirectory($this->tempDir);
-    Mockery::close();
-});
-
 test('run executes mysql restore workflow successfully', function (string $cliType, string $expectedCommand) {
     // Set config - MysqlDatabase now reads it lazily
     config(['backup.mysql_cli_type' => $cliType]);
@@ -135,9 +137,10 @@ test('run executes mysql restore workflow successfully', function (string $cliTy
     setupRestoreExpectations($restore);
 
     // Act
-    $this->restoreTask->run($restore);
+    $workingDir = FilesystemSupport::createWorkingDirectory('restore', $restore->id);
+    $this->restoreTask->run($restore, $workingDir);
 
-    // Build expected file paths (now in unique working directory)
+    // Build expected file paths
     $workingDir = $this->tempDir.'/restore-'.$restore->id;
     $compressedFile = $workingDir.'/snapshot.gz';
     $decompressedFile = $workingDir.'/snapshot';
@@ -195,9 +198,10 @@ test('run executes postgresql restore workflow successfully', function () {
     setupRestoreExpectations($restore);
 
     // Act
-    $this->restoreTask->run($restore);
+    $workingDir = FilesystemSupport::createWorkingDirectory('restore', $restore->id);
+    $this->restoreTask->run($restore, $workingDir);
 
-    // Build expected file paths (now in unique working directory)
+    // Build expected file paths
     $workingDir = $this->tempDir.'/restore-'.$restore->id;
     $compressedFile = $workingDir.'/snapshot.gz';
     $decompressedFile = $workingDir.'/snapshot';
@@ -244,7 +248,8 @@ test('run throws exception when database types are incompatible', function () {
     $restore = $this->backupJobFactory->createRestore($snapshot, $targetServer, 'restored_db');
 
     // Act & Assert
-    expect(fn () => $this->restoreTask->run($restore))
+    $workingDir = FilesystemSupport::createWorkingDirectory('restore', $restore->id);
+    expect(fn () => $this->restoreTask->run($restore, $workingDir))
         ->toThrow(\App\Exceptions\Backup\RestoreException::class, 'Cannot restore mysql snapshot to postgresql server');
 });
 
@@ -329,7 +334,8 @@ test('run throws exception when restore command failed', function () {
     // Act & Assert
     $exception = null;
     try {
-        $restoreTask->run($restore);
+        $workingDir = FilesystemSupport::createWorkingDirectory('restore', $restore->id);
+        $restoreTask->run($restore, $workingDir);
     } catch (\App\Exceptions\ShellProcessFailed $e) {
         $exception = $e;
     }
@@ -392,9 +398,10 @@ test('run executes sqlite restore workflow successfully', function () {
         });
 
     // Act
-    $this->restoreTask->run($restore);
+    $workingDir = FilesystemSupport::createWorkingDirectory('restore', $restore->id);
+    $this->restoreTask->run($restore, $workingDir);
 
-    // Build expected file paths (now in unique working directory)
+    // Build expected file paths
     $workingDir = $this->tempDir.'/restore-'.$restore->id;
     $compressedFile = $workingDir.'/snapshot.gz';
     $decompressedFile = $workingDir.'/snapshot';

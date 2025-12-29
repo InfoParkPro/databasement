@@ -4,7 +4,7 @@ namespace App\Support;
 
 use RuntimeException;
 
-class Filesystem
+class FilesystemSupport
 {
     /**
      * Create a unique working directory for a job.
@@ -30,7 +30,7 @@ class Filesystem
     /**
      * Remove a directory and all contents recursively.
      */
-    public static function cleanupDirectory(string $directory): void
+    public static function cleanupDirectory(string $directory, bool $preserve = false): void
     {
         if (! is_dir($directory)) {
             return;
@@ -49,6 +49,8 @@ class Filesystem
             }
         }
 
-        rmdir($directory);
+        if (! $preserve) {
+            rmdir($directory);
+        }
     }
 }

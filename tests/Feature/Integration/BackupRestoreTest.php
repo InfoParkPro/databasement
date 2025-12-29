@@ -14,6 +14,7 @@ use App\Services\Backup\BackupJobFactory;
 use App\Services\Backup\BackupTask;
 use App\Services\Backup\Filesystems\FilesystemProvider;
 use App\Services\Backup\RestoreTask;
+use App\Support\FilesystemSupport;
 
 uses()->group('integration');
 
@@ -65,7 +66,8 @@ test('client-server database backup and restore workflow', function (string $typ
         method: 'manual',
     );
     $this->snapshot = $snapshots[0];
-    $this->backupTask->run($this->snapshot);
+    $backupWorkingDir = FilesystemSupport::createWorkingDirectory('backup', $this->snapshot->id);
+    $this->backupTask->run($this->snapshot, $backupWorkingDir);
     $this->snapshot->refresh();
     $this->snapshot->load('job');
 
@@ -82,7 +84,8 @@ test('client-server database backup and restore workflow', function (string $typ
         targetServer: $this->databaseServer,
         schemaName: $this->restoredDatabaseName,
     );
-    $this->restoreTask->run($restore);
+    $restoreWorkingDir = FilesystemSupport::createWorkingDirectory('restore', $restore->id);
+    $this->restoreTask->run($restore, $restoreWorkingDir);
 
     // Verify restore
     $pdo = integrationConnectToDatabase($type, $this->databaseServer, $this->restoredDatabaseName);
@@ -94,6 +97,8 @@ test('client-server database backup and restore workflow', function (string $typ
     };
     $stmt = $pdo->query($verifyQuery);
     expect($stmt)->not->toBeFalse();
+    FilesystemSupport::cleanupDirectory($backupWorkingDir);
+    FilesystemSupport::cleanupDirectory($restoreWorkingDir);
 })->with(['mysql', 'postgres']);
 
 test('sqlite backup and restore workflow', function () {
@@ -116,7 +121,8 @@ test('sqlite backup and restore workflow', function () {
         triggeredByUserId: null
     );
     $this->snapshot = $snapshots[0];
-    $this->backupTask->run($this->snapshot);
+    $backupWorkingDir = FilesystemSupport::createWorkingDirectory('backup', $this->snapshot->id);
+    $this->backupTask->run($this->snapshot, $backupWorkingDir);
     $this->snapshot->refresh();
     $this->snapshot->load('job');
 
@@ -141,7 +147,8 @@ test('sqlite backup and restore workflow', function () {
         targetServer: $targetServer,
         schemaName: $restoredSqlitePath,
     );
-    $this->restoreTask->run($restore);
+    $restoreWorkingDir = FilesystemSupport::createWorkingDirectory('restore', $restore->id);
+    $this->restoreTask->run($restore, $restoreWorkingDir);
 
     // Verify restore - check that the restored database has the test data
     $pdo = new PDO("sqlite:{$restoredSqlitePath}");
@@ -152,8 +159,8 @@ test('sqlite backup and restore workflow', function () {
     expect((int) $result['count'])->toBe(3);
 
     // Cleanup
-    @unlink($sourceSqlitePath);
-    @unlink($restoredSqlitePath);
+    FilesystemSupport::cleanupDirectory($backupWorkingDir);
+    FilesystemSupport::cleanupDirectory($restoreWorkingDir);
     $targetServer->delete();
 });
 
