@@ -144,10 +144,6 @@ test('can download snapshot from local storage', function () {
         ->call('download', $snapshot->id);
 
     $response->assertFileDownloaded($snapshot->filename);
-
-    // Cleanup
-    unlink($backupFilePath);
-    rmdir($tempDir);
 });
 
 test('can download snapshot from s3 storage redirects to presigned url', function () {
@@ -263,11 +259,4 @@ test('can delete snapshot with file and cascades restores and jobs', function ()
         ->and(BackupJob::find($snapshotJobId))->toBeNull('Snapshot job should be cascade deleted')
         ->and(BackupJob::find($restoreJobId))->toBeNull('Restore job should be cascade deleted')
         ->and(file_exists($backupFilePath))->toBeFalse('Backup file should be deleted from storage');
-
-    // Verify file was deleted
-
-    // Cleanup temp directory
-    if (is_dir($tempDir)) {
-        rmdir($tempDir);
-    }
 });

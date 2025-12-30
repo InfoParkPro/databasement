@@ -11,7 +11,6 @@ use App\Services\Backup\Databases\MysqlDatabase;
 use App\Services\Backup\Databases\PostgresqlDatabase;
 use App\Services\Backup\Filesystems\FilesystemProvider;
 use App\Services\Backup\GzipCompressor;
-use App\Support\FilesystemSupport;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use League\Flysystem\Filesystem;
 use Tests\Support\TestShellProcessor;
@@ -47,8 +46,6 @@ beforeEach(function () {
 });
 
 afterEach(function () {
-    FilesystemSupport::cleanupDirectory($this->tempDir);
-    FilesystemSupport::cleanupDirectory(config('backup.working_directory'), true);
     Mockery::close();
 });
 
@@ -120,8 +117,7 @@ test('run executes mysql and mariadb backup workflow successfully', function (st
     $snapshot = $snapshots[0];
 
     setupCommonExpectations($snapshot);
-    $workingDir = FilesystemSupport::createWorkingDirectory('backup', $snapshot->id);
-    $this->backupTask->run($snapshot, $workingDir);
+    $this->backupTask->run($snapshot);
 
     // Build expected file paths
     $workingDir = $this->tempDir.'/backup-'.$snapshot->id;
@@ -154,8 +150,7 @@ test('run executes postgresql backup workflow successfully', function () {
     $snapshot = $snapshots[0];
 
     setupCommonExpectations($snapshot);
-    $workingDir = FilesystemSupport::createWorkingDirectory('backup', $snapshot->id);
-    $this->backupTask->run($snapshot, $workingDir);
+    $this->backupTask->run($snapshot);
 
     // Build expected file paths
     $workingDir = $this->tempDir.'/backup-'.$snapshot->id;
@@ -185,8 +180,7 @@ test('run throws exception for unsupported database type', function () {
     $snapshot = $snapshots[0];
 
     // Act & Assert
-    $workingDir = FilesystemSupport::createWorkingDirectory('backup', $snapshot->id);
-    expect(fn () => $this->backupTask->run($snapshot, $workingDir))
+    expect(fn () => $this->backupTask->run($snapshot))
         ->toThrow(\Exception::class, 'Database type oracle not supported');
 });
 
@@ -224,8 +218,7 @@ test('run throws exception when backup command failed', function () {
     // Act & Assert
     $exception = null;
     try {
-        $workingDir = FilesystemSupport::createWorkingDirectory('backup', $snapshot->id);
-        $backupTask->run($snapshot, $workingDir);
+        $backupTask->run($snapshot);
     } catch (\App\Exceptions\ShellProcessFailed $e) {
         $exception = $e;
     }
@@ -312,8 +305,7 @@ test('run executes backup for each database when backup_all_databases is enabled
     foreach ($snapshots as $snapshot) {
         $this->shellProcessor->clearCommands();
         setupCommonExpectations($snapshot);
-        $workingDir = FilesystemSupport::createWorkingDirectory('backup', $snapshot->id);
-        $this->backupTask->run($snapshot, $workingDir);
+        $this->backupTask->run($snapshot);
     }
 
     // Verify both snapshots were processed
@@ -377,8 +369,7 @@ test('run executes sqlite backup workflow successfully', function () {
     expect($snapshot->database_name)->toBe('test.sqlite');
 
     setupCommonExpectations($snapshot);
-    $workingDir = FilesystemSupport::createWorkingDirectory('backup', $snapshot->id);
-    $this->backupTask->run($snapshot, $workingDir);
+    $this->backupTask->run($snapshot);
 
     // Build expected file paths
     $workingDir = $this->tempDir.'/backup-'.$snapshot->id;

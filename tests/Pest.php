@@ -1,5 +1,7 @@
 <?php
 
+use App\Support\FilesystemSupport;
+
 /*
 |--------------------------------------------------------------------------
 | Test Case
@@ -14,6 +16,41 @@
 pest()->extend(Tests\TestCase::class)
     ->use(Illuminate\Foundation\Testing\RefreshDatabase::class)
     ->in('Feature');
+
+/*
+|--------------------------------------------------------------------------
+| Global Cleanup
+|--------------------------------------------------------------------------
+|
+| Clean up temporary directories after each test to ensure no leftover files.
+| This covers both the backup working directory and volume temp directories.
+|
+*/
+
+afterEach(function () {
+    // Clean up backup working directory (preserves the directory itself)
+    $workingDirectory = config('backup.working_directory');
+    if ($workingDirectory && is_dir($workingDirectory)) {
+        FilesystemSupport::cleanupDirectory($workingDirectory, preserve: true);
+    }
+
+    // Clean up temp directories created during tests
+    $tempDir = sys_get_temp_dir();
+    $patterns = [
+        '/volume-test-*',        // VolumeFactory
+        '/backup-task-test-*',   // BackupTaskTest
+        '/restore-task-test-*',  // RestoreTaskTest
+    ];
+
+    foreach ($patterns as $pattern) {
+        $dirs = glob($tempDir.$pattern);
+        foreach ($dirs as $dir) {
+            if (is_dir($dir)) {
+                FilesystemSupport::cleanupDirectory($dir);
+            }
+        }
+    }
+});
 
 /*
 |--------------------------------------------------------------------------

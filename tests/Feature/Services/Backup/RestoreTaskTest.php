@@ -11,7 +11,6 @@ use App\Services\Backup\Filesystems\FilesystemProvider;
 use App\Services\Backup\GzipCompressor;
 use App\Services\Backup\RestoreTask;
 use App\Services\ConnectionFactory;
-use App\Support\FilesystemSupport;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Support\TestShellProcessor;
 
@@ -52,8 +51,6 @@ beforeEach(function () {
 });
 
 afterEach(function () {
-    FilesystemSupport::cleanupDirectory($this->tempDir);
-    FilesystemSupport::cleanupDirectory(config('backup.working_directory'), true);
     Mockery::close();
 });
 
@@ -137,8 +134,7 @@ test('run executes mysql restore workflow successfully', function (string $cliTy
     setupRestoreExpectations($restore);
 
     // Act
-    $workingDir = FilesystemSupport::createWorkingDirectory('restore', $restore->id);
-    $this->restoreTask->run($restore, $workingDir);
+    $this->restoreTask->run($restore);
 
     // Build expected file paths
     $workingDir = $this->tempDir.'/restore-'.$restore->id;
@@ -198,8 +194,7 @@ test('run executes postgresql restore workflow successfully', function () {
     setupRestoreExpectations($restore);
 
     // Act
-    $workingDir = FilesystemSupport::createWorkingDirectory('restore', $restore->id);
-    $this->restoreTask->run($restore, $workingDir);
+    $this->restoreTask->run($restore);
 
     // Build expected file paths
     $workingDir = $this->tempDir.'/restore-'.$restore->id;
@@ -248,8 +243,7 @@ test('run throws exception when database types are incompatible', function () {
     $restore = $this->backupJobFactory->createRestore($snapshot, $targetServer, 'restored_db');
 
     // Act & Assert
-    $workingDir = FilesystemSupport::createWorkingDirectory('restore', $restore->id);
-    expect(fn () => $this->restoreTask->run($restore, $workingDir))
+    expect(fn () => $this->restoreTask->run($restore))
         ->toThrow(\App\Exceptions\Backup\RestoreException::class, 'Cannot restore mysql snapshot to postgresql server');
 });
 
@@ -334,8 +328,7 @@ test('run throws exception when restore command failed', function () {
     // Act & Assert
     $exception = null;
     try {
-        $workingDir = FilesystemSupport::createWorkingDirectory('restore', $restore->id);
-        $restoreTask->run($restore, $workingDir);
+        $restoreTask->run($restore);
     } catch (\App\Exceptions\ShellProcessFailed $e) {
         $exception = $e;
     }
@@ -398,8 +391,7 @@ test('run executes sqlite restore workflow successfully', function () {
         });
 
     // Act
-    $workingDir = FilesystemSupport::createWorkingDirectory('restore', $restore->id);
-    $this->restoreTask->run($restore, $workingDir);
+    $this->restoreTask->run($restore);
 
     // Build expected file paths
     $workingDir = $this->tempDir.'/restore-'.$restore->id;

@@ -3,10 +3,6 @@
 use App\Models\Volume;
 use App\Services\Backup\Filesystems\FilesystemProvider;
 use App\Services\Backup\Filesystems\LocalFilesystem;
-use App\Support\FilesystemSupport;
-use Illuminate\Foundation\Testing\RefreshDatabase;
-
-uses(RefreshDatabase::class);
 
 beforeEach(function () {
     // Create the FilesystemProvider with real LocalFilesystem
@@ -31,9 +27,6 @@ test('getForVolume uses volume database config path for local filesystem', funct
     $expectedPath = $tempDir.'/'.$testFilename;
     expect(file_exists($expectedPath))->toBeTrue()
         ->and(file_get_contents($expectedPath))->toBe($testContent);
-
-    // Cleanup
-    FilesystemSupport::cleanupDirectory($tempDir);
 });
 
 test('getForVolume supports both root and path config keys for local filesystem', function () {
@@ -53,9 +46,6 @@ test('getForVolume supports both root and path config keys for local filesystem'
 
     expect(file_exists($tempDir.'/root-test.txt'))->toBeTrue();
 
-    // Clean up
-    unlink($tempDir.'/root-test.txt');
-
     // Test with 'path' key (from Volume database style)
     $volumeWithPath = Volume::create([
         'name' => 'Volume with path key',
@@ -67,9 +57,6 @@ test('getForVolume supports both root and path config keys for local filesystem'
     $filesystem2->write('path-test.txt', 'content');
 
     expect(file_exists($tempDir.'/path-test.txt'))->toBeTrue();
-
-    // Cleanup
-    FilesystemSupport::cleanupDirectory($tempDir);
 });
 
 test('transfer writes file to volume configured path', function () {
@@ -93,8 +80,4 @@ test('transfer writes file to volume configured path', function () {
     $expectedPath = $destDir.'/backup.sql.gz';
     expect(file_exists($expectedPath))->toBeTrue()
         ->and(file_get_contents($expectedPath))->toBe($sourceContent);
-
-    // Cleanup
-    FilesystemSupport::cleanupDirectory($sourceDir);
-    FilesystemSupport::cleanupDirectory($destDir);
 });
