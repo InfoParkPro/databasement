@@ -179,6 +179,10 @@ class DatabaseConnectionTester
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
             ]);
 
+            // Query sqlite_master to verify the file is a valid SQLite database.
+            // SELECT sqlite_version() only returns the library version without reading the file.
+            $pdo->query('SELECT 1 FROM sqlite_master LIMIT 1');
+
             // Get SQLite version
             $stmt = $pdo->query('SELECT sqlite_version()');
             $version = $stmt ? $stmt->fetchColumn() : 'unknown';
