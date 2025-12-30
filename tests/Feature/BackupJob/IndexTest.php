@@ -115,16 +115,14 @@ test('can filter backup jobs by type', function () {
 test('can download snapshot from local storage', function () {
     $user = User::factory()->create();
 
-    // Create a temporary file to serve as the backup
-    $tempDir = sys_get_temp_dir().'/snapshot-test-'.uniqid();
-    mkdir($tempDir, 0755, true);
-    $tempFile = $tempDir.'/test-backup.sql.gz';
-    file_put_contents($tempFile, 'test backup content');
+    // Create volume with temp directory (factory handles directory creation)
+    $volume = Volume::factory()->local()->create();
+    $tempDir = $volume->config['path'];
 
-    $volume = Volume::factory()->create([
-        'type' => 'local',
-        'config' => ['path' => $tempDir],
-    ]);
+    // Create a backup file in the volume directory
+    $backupFilename = 'test-backup.sql.gz';
+    $backupFilePath = $tempDir.'/'.$backupFilename;
+    file_put_contents($backupFilePath, 'test backup content');
 
     $server = DatabaseServer::factory()->create([
         'database_names' => ['test_db'],
@@ -135,8 +133,8 @@ test('can download snapshot from local storage', function () {
     $snapshots = $factory->createSnapshots($server, 'manual', $user->id);
     $snapshot = $snapshots[0];
     $snapshot->update([
-        'filename' => basename($tempFile),
-        'file_size' => filesize($tempFile),
+        'filename' => $backupFilename,
+        'file_size' => filesize($backupFilePath),
     ]);
     $snapshot->job->markCompleted();
 
@@ -148,7 +146,7 @@ test('can download snapshot from local storage', function () {
     $response->assertFileDownloaded($snapshot->filename);
 
     // Cleanup
-    unlink($tempFile);
+    unlink($backupFilePath);
     rmdir($tempDir);
 });
 
@@ -202,16 +200,11 @@ test('can download snapshot from s3 storage redirects to presigned url', functio
 test('can delete snapshot with file and cascades restores and jobs', function () {
     $user = User::factory()->create();
 
-    // Create a temporary directory and file to simulate a real backup
-    $tempDir = sys_get_temp_dir().'/snapshot-delete-test-'.uniqid();
-    mkdir($tempDir, 0755, true);
+    // Create volume with temp directory (factory handles directory creation)
+    $volume = Volume::factory()->local()->create();
+    $tempDir = $volume->config['path'];
 
-    // Create volume pointing to temp directory
-    $volume = Volume::factory()->create([
-        'type' => 'local',
-        'config' => ['path' => $tempDir],
-    ]);
-
+    // Create a backup file in the volume directory
     $backupFilename = 'test-backup.sql.gz';
     $backupFilePath = $tempDir.'/'.$backupFilename;
     file_put_contents($backupFilePath, 'test backup content');

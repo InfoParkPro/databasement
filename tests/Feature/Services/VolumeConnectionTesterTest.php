@@ -3,6 +3,7 @@
 use App\Models\Volume;
 use App\Services\Backup\Filesystems\FilesystemProvider;
 use App\Services\VolumeConnectionTester;
+use App\Support\FilesystemSupport;
 use League\Flysystem\Filesystem;
 use League\Flysystem\UnableToWriteFile;
 
@@ -12,50 +13,32 @@ beforeEach(function () {
 
 describe('local volume connection testing', function () {
     test('returns success for valid writable directory', function () {
-        $tempDir = sys_get_temp_dir().'/volume-test-'.uniqid();
-        mkdir($tempDir, 0777, true);
+        $volume = Volume::factory()->local()->create();
+        $tempDir = $volume->config['path'];
 
-        try {
-            $volume = new Volume([
-                'name' => 'test-volume',
-                'type' => 'local',
-                'config' => ['path' => $tempDir],
-            ]);
+        $result = $this->tester->test($volume);
 
-            $result = $this->tester->test($volume);
+        expect($result['success'])->toBeTrue()
+            ->and($result['message'])->toContain('Connection successful');
 
-            expect($result['success'])->toBeTrue()
-                ->and($result['message'])->toContain('Connection successful');
-        } finally {
-            if (is_dir($tempDir)) {
-                rmdir($tempDir);
-            }
-        }
+        // Cleanup
+        FilesystemSupport::cleanupDirectory($tempDir);
     });
 
     test('creates and removes test file during validation', function () {
-        $tempDir = sys_get_temp_dir().'/volume-test-'.uniqid();
-        mkdir($tempDir, 0777, true);
+        $volume = Volume::factory()->local()->create();
+        $tempDir = $volume->config['path'];
 
-        try {
-            expect(glob($tempDir.'/*'))->toBeEmpty();
+        expect(glob($tempDir.'/*'))->toBeEmpty();
 
-            $volume = new Volume([
-                'name' => 'test-volume',
-                'type' => 'local',
-                'config' => ['path' => $tempDir],
-            ]);
+        $result = $this->tester->test($volume);
 
-            $result = $this->tester->test($volume);
+        // After test, directory should still be empty (test file cleaned up)
+        expect(glob($tempDir.'/*'))->toBeEmpty()
+            ->and($result['success'])->toBeTrue();
 
-            // After test, directory should still be empty (test file cleaned up)
-            expect(glob($tempDir.'/*'))->toBeEmpty()
-                ->and($result['success'])->toBeTrue();
-        } finally {
-            if (is_dir($tempDir)) {
-                rmdir($tempDir);
-            }
-        }
+        // Cleanup
+        FilesystemSupport::cleanupDirectory($tempDir);
     });
 
     test('returns error when directory does not exist and cannot be created', function () {
