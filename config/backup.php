@@ -28,6 +28,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Job Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Configuration for backup and restore queue jobs.
+    |
+    */
+
+    'job_timeout' => (int) env('BACKUP_JOB_TIMEOUT', 7200),    // Maximum seconds a job can run (default: 2 hours)
+    'job_tries' => (int) env('BACKUP_JOB_TRIES', 3),           // Number of times to attempt the job
+    'job_backoff' => (int) env('BACKUP_JOB_BACKOFF', 60),      // Seconds to wait before retrying
+
+    /*
+    |--------------------------------------------------------------------------
     | Daily Backup Schedule
     |--------------------------------------------------------------------------
     |

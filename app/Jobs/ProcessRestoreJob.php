@@ -16,22 +16,11 @@ class ProcessRestoreJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    /**
-     * The number of times the job may be attempted.
-     * Set to 1 (no retries) because restore operations might have already
-     * partially modified the target database.
-     */
-    public int $tries = 1;
+    public int $tries;
 
-    /**
-     * The maximum number of seconds the job can run.
-     */
-    public int $timeout = 7200; // 2 hour
+    public int $timeout;
 
-    /**
-     * The number of seconds to wait before retrying the job.
-     */
-    public int $backoff = 60;
+    public int $backoff;
 
     /**
      * Working directory for temporary files.
@@ -44,6 +33,9 @@ class ProcessRestoreJob implements ShouldQueue
     public function __construct(
         public string $restoreId
     ) {
+        $this->timeout = config('backup.job_timeout');
+        $this->backoff = config('backup.job_backoff');
+        $this->tries = config('backup.job_tries');
         $this->onQueue('backups');
     }
 

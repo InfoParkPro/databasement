@@ -54,6 +54,21 @@ class Index extends Component
                 'env' => 'MYSQL_CLI_TYPE',
                 'description' => __('MySQL CLI type: "mariadb" or "mysql".'),
             ],
+            'job_timeout' => [
+                'value' => config('backup.job_timeout'),
+                'env' => 'BACKUP_JOB_TIMEOUT',
+                'description' => __('Maximum seconds a job can run.'),
+            ],
+            'job_tries' => [
+                'value' => config('backup.job_tries'),
+                'env' => 'BACKUP_JOB_TRIES',
+                'description' => __('Number of times to attempt the job.'),
+            ],
+            'job_backoff' => [
+                'value' => config('backup.job_backoff'),
+                'env' => 'BACKUP_JOB_BACKOFF',
+                'description' => __('Seconds to wait before retrying.'),
+            ],
             'daily_cron' => [
                 'value' => config('backup.daily_cron'),
                 'env' => 'BACKUP_DAILY_CRON',

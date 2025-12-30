@@ -16,20 +16,11 @@ class ProcessBackupJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    /**
-     * The number of times the job may be attempted.
-     */
-    public int $tries = 2;
+    public int $tries;
 
-    /**
-     * The maximum number of seconds the job can run.
-     */
-    public int $timeout = 7200; // 2 hour
+    public int $timeout;
 
-    /**
-     * The number of seconds to wait before retrying the job.
-     */
-    public int $backoff = 60;
+    public int $backoff;
 
     /**
      * Working directory for temporary files.
@@ -42,6 +33,9 @@ class ProcessBackupJob implements ShouldQueue
     public function __construct(
         public string $snapshotId
     ) {
+        $this->timeout = config('backup.job_timeout');
+        $this->backoff = config('backup.job_backoff');
+        $this->tries = config('backup.job_tries');
         $this->onQueue('backups');
     }
 
