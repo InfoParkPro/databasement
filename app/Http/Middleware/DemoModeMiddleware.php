@@ -58,6 +58,7 @@ class DemoModeMiddleware
                 'name' => 'Demo User',
                 'password' => bcrypt(config('app.demo_user_password')),
                 'role' => User::ROLE_DEMO,
+                'invitation_accepted_at' => now(),
             ]
         );
     }

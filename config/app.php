@@ -13,7 +13,7 @@ return [
     |
     */
 
-    'name' => env('APP_NAME', 'Laravel'),
+    'name' => env('APP_NAME', 'Databasement'),
 
     /*
     |--------------------------------------------------------------------------
@@ -53,6 +53,20 @@ return [
     */
 
     'url' => env('APP_URL', 'http://localhost'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Trusted Proxies
+    |--------------------------------------------------------------------------
+    |
+    | When running behind a reverse proxy (nginx, Traefik, Kubernetes Ingress),
+    | configure trusted proxies so Laravel can correctly determine the client
+    | IP address and protocol. Use '*' to trust all proxies (recommended for
+    | containerized environments), or specify IPs/CIDR ranges.
+    |
+    */
+
+    'trusted_proxies' => env('TRUSTED_PROXIES'),
 
     /*
     |--------------------------------------------------------------------------

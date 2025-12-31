@@ -80,13 +80,45 @@ DB_USERNAME=databasement
 DB_PASSWORD=your-secure-password
 ```
 
-## Backup Storage
+## Reverse Proxy / Trusted Proxies
 
-Configure where backup files are stored temporarily during operations.
+When running behind a reverse proxy (nginx, Traefik, Kubernetes Ingress), configure trusted proxies so Laravel can correctly determine the client IP and protocol.
 
-| Variable                   | Description                      | Default        |
-|----------------------------|----------------------------------|----------------|
-| `BACKUP_WORKING_DIRECTORY` | Local temp directory for backups | `/tmp/backups` |
+| Variable          | Description                                    | Default                                                   |
+|-------------------|------------------------------------------------|-----------------------------------------------------------|
+| `TRUSTED_PROXIES` | IP addresses or CIDR ranges of trusted proxies | `127.0.0.1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,::1')` |
+
+**Values:**
+- `127.0.0.1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,::1')` - This covers all RFC 1918 private ranges
+- `*` - Trust all proxies (suitable for Kubernetes/Docker where proxy IPs are dynamic)
+- Comma-separated IPs: `10.0.0.1,192.168.1.0/24` - Trust specific proxies
+- Empty - Trust no proxies
+
+```bash
+# Trust all proxies (default, recommended for containerized environments)
+TRUSTED_PROXIES=*
+
+# Trust specific proxy IPs
+TRUSTED_PROXIES=10.0.0.1,10.0.0.2
+
+# Trust a CIDR range
+TRUSTED_PROXIES=10.0.0.0/8
+```
+
+## Backup Configuration
+
+Configure backup behavior, schedules, and job settings.
+
+| Variable                   | Description                              | Default        |
+|----------------------------|------------------------------------------|----------------|
+| `BACKUP_WORKING_DIRECTORY` | Temporary directory for backup operations | `/tmp/backups` |
+| `MYSQL_CLI_TYPE`           | MySQL CLI type: `mariadb` or `mysql`     | `mariadb`      |
+| `BACKUP_JOB_TIMEOUT`       | Maximum seconds a backup/restore job can run | `7200` (2 hours) |
+| `BACKUP_JOB_TRIES`         | Number of times to retry failed jobs     | `3`            |
+| `BACKUP_JOB_BACKOFF`       | Seconds to wait before retrying          | `60`           |
+| `BACKUP_DAILY_CRON`        | Cron schedule for daily backups          | `0 2 * * *` (2:00 AM) |
+| `BACKUP_WEEKLY_CRON`       | Cron schedule for weekly backups         | `0 3 * * 0` (Sunday 3:00 AM) |
+| `BACKUP_CLEANUP_CRON`      | Cron schedule for snapshot cleanup       | `0 4 * * *` (4:00 AM) |
 
 ## S3 Storage
 

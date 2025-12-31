@@ -8,32 +8,15 @@ use Livewire\Component;
 class Index extends Component
 {
     /**
-     * @return array<string, array{value: mixed, env: string}>
+     * @return array<string, array{value: mixed, env: string, description: string}>
      */
-    public function getDatabaseConfig(): array
+    public function getAppConfig(): array
     {
-        $driver = config('database.default');
-
         return [
-            'driver' => [
-                'value' => $driver,
-                'env' => 'DB_CONNECTION',
-            ],
-            'host' => [
-                'value' => config("database.connections.{$driver}.host", '-'),
-                'env' => 'DB_HOST',
-            ],
-            'port' => [
-                'value' => config("database.connections.{$driver}.port", '-'),
-                'env' => 'DB_PORT',
-            ],
-            'username' => [
-                'value' => config("database.connections.{$driver}.username", '-'),
-                'env' => 'DB_USERNAME',
-            ],
-            'database' => [
-                'value' => config("database.connections.{$driver}.database", '-'),
-                'env' => 'DB_DATABASE',
+            'trusted_proxies' => [
+                'value' => config('app.trusted_proxies') ?: '(none)',
+                'env' => 'TRUSTED_PROXIES',
+                'description' => __('IP addresses or CIDR ranges of trusted reverse proxies. Use "*" to trust all.'),
             ],
         ];
     }
@@ -90,7 +73,7 @@ class Index extends Component
     public function render(): View
     {
         return view('livewire.configuration.index', [
-            'databaseConfig' => $this->getDatabaseConfig(),
+            'appConfig' => $this->getAppConfig(),
             'backupConfig' => $this->getBackupConfig(),
         ])->layout('components.layouts.app', ['title' => __('Configuration')]);
     }
