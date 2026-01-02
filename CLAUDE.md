@@ -79,6 +79,19 @@ make phpstan            # Run PHPStan static analysis
 make analyse            # Alias for phpstan
 ```
 
+### Debugging
+```bash
+# Laravel Tinker - interactive REPL for debugging
+docker compose exec app php artisan tinker
+
+# Execute a single command
+docker compose exec app php artisan tinker --execute="App\Models\User::first()"
+
+# Examples:
+docker compose exec app php artisan tinker --execute="config('app.demo_mode')"
+docker compose exec app php artisan tinker --execute="\$user = App\Models\User::find(1); echo \$user->name;"
+```
+
 ### Database Operations
 ```bash
 make migrate                # Run pending migrations
