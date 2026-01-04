@@ -1,4 +1,4 @@
-<x-modal wire:model="showLogsModal" title="{{ __('Job Logs') }}" class="backdrop-blur" box-class="w-11/12 max-w-6xl max-h-[90vh]">
+<x-modal wire:model="showLogsModal" title="{{ __('Job Logs') }}" class="backdrop-blur" box-class="w-full sm:w-11/12 max-w-6xl max-h-[90vh]">
     @if($this->selectedJob)
         <div class="space-y-4" x-data="{ showMetadata: false }">
             <!-- Job Info Header -->
@@ -7,18 +7,20 @@
                 $snapshot = $this->selectedJob->snapshot ?? $this->selectedJob->restore?->snapshot;
             @endphp
             <div class="p-4 bg-base-200 rounded-lg space-y-2">
-                <div class="flex items-center justify-between">
+                {{-- Mobile: stacked layout, Desktop: horizontal --}}
+                <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    {{-- Left: Icon + Job info --}}
                     <div class="flex items-center gap-3">
                         @if($this->selectedJob->snapshot)
-                            <x-database-type-icon :type="$this->selectedJob->snapshot->database_type" class="w-6 h-6" />
+                            <x-database-type-icon :type="$this->selectedJob->snapshot->database_type" class="w-6 h-6 shrink-0" />
                         @elseif($this->selectedJob->restore?->snapshot)
-                            <x-database-type-icon :type="$this->selectedJob->restore->snapshot->database_type" class="w-6 h-6" />
+                            <x-database-type-icon :type="$this->selectedJob->restore->snapshot->database_type" class="w-6 h-6 shrink-0" />
                         @endif
-                        <div>
+                        <div class="min-w-0">
                             <div class="text-sm text-base-content/70">
                                 {{ $this->selectedJob->snapshot ? __('Backup') : __('Restore') }}
                             </div>
-                            <div class="font-semibold">
+                            <div class="font-semibold truncate">
                                 @if($this->selectedJob->snapshot)
                                     {{ $this->selectedJob->snapshot->databaseServer->name }} / {{ $this->selectedJob->snapshot->database_name }}
                                 @elseif($this->selectedJob->restore)
@@ -27,7 +29,25 @@
                             </div>
                         </div>
                     </div>
-                    <div class="flex items-center gap-4">
+                    {{-- Right: Status + Metadata button --}}
+                    @php
+                        $jobStatus = $this->selectedJob->status;
+                        $jobStatusBadge = match($jobStatus) {
+                            'completed' => ['label' => __('Completed'), 'class' => 'badge-success'],
+                            'failed' => ['label' => __('Failed'), 'class' => 'badge-error'],
+                            'running' => ['label' => __('Running'), 'class' => 'badge-warning'],
+                            default => ['label' => ucfirst($jobStatus), 'class' => 'badge-info'],
+                        };
+                    @endphp
+                    <div class="flex items-center gap-2 sm:gap-4">
+                        @if($jobStatus === 'running')
+                            <div class="badge {{ $jobStatusBadge['class'] }} gap-1">
+                                <x-loading class="loading-spinner loading-xs" />
+                                {{ $jobStatusBadge['label'] }}
+                            </div>
+                        @else
+                            <x-badge value="{{ $jobStatusBadge['label'] }}" class="{{ $jobStatusBadge['class'] }}" />
+                        @endif
                         @if($snapshot?->metadata)
                             <x-button
                                 label="{{ __('Metadata') }}"
@@ -37,29 +57,18 @@
                                 ::class="showMetadata && 'btn-active'"
                             />
                         @endif
-                        <div class="text-right">
-                            @if($this->selectedJob->status === 'completed')
-                                <x-badge value="{{ __('Completed') }}" class="badge-success" />
-                            @elseif($this->selectedJob->status === 'failed')
-                                <x-badge value="{{ __('Failed') }}" class="badge-error" />
-                            @elseif($this->selectedJob->status === 'running')
-                                <div class="badge badge-warning gap-1">
-                                    <x-loading class="loading-spinner loading-xs" />
-                                    {{ __('Running') }}
-                                </div>
-                            @else
-                                <x-badge value="{{ ucfirst($this->selectedJob->status) }}" class="badge-info" />
-                            @endif
-                        </div>
                     </div>
                 </div>
-                <div class="text-sm text-base-content/70">
+                <div class="text-xs sm:text-sm text-base-content/70">
                     @if($this->selectedJob->started_at)
                         {{ __('Started') }}: {{ \App\Support\Formatters::humanDate($this->selectedJob->started_at) }}
                         @if($this->selectedJob->completed_at)
-                            | {{ __('Duration') }}: {{ $this->selectedJob->getHumanDuration() }}
+                            <span class="hidden sm:inline">|</span>
+                            <br class="sm:hidden">
+                            {{ __('Duration') }}: {{ $this->selectedJob->getHumanDuration() }}
                         @endif
-                        |
+                        <span class="hidden sm:inline">|</span>
+                        <br class="sm:hidden">
                     @endif
                     @if($triggeredBy)
                         {{ __('By') }}: {{ $triggeredBy->name }}
@@ -83,9 +92,10 @@
 
             @if(count($logs) > 0)
                 <div class="border border-base-300 rounded-lg overflow-hidden">
-                    <!-- Table Header -->
-                    <div class="flex bg-base-200 text-sm font-semibold border-b border-base-300">
-                        <div class="w-48 flex-shrink-0 px-4 py-3">{{ __('Date') }}</div>
+                    <!-- Table Header (hidden on mobile) -->
+                    <div class="hidden sm:flex bg-base-200 text-sm font-semibold border-b border-base-300">
+                        <div class="w-36 flex-shrink-0 px-4 py-3">{{ __('Date') }}</div>
+                        <div class="w-24 flex-shrink-0 py-3 text-center">{{ __('Type') }}</div>
                         <div class="flex-1 px-4 py-3">{{ __('Message') }}</div>
                     </div>
 
@@ -97,7 +107,7 @@
                                 $isCommand = $log['type'] === 'command';
                                 $isRunning = $isCommand && ($log['status'] ?? null) === 'running';
 
-                                // Determine visual state via pattern matching instead of complex booleans
+                                // Determine visual state via pattern matching
                                 $rowState = match(true) {
                                     $isRunning => 'warning',
                                     $isCommand && isset($log['exit_code']) && $log['exit_code'] !== 0 => 'error',
@@ -112,51 +122,75 @@
 
                                 $logLevel = $isCommand ? 'command' : ($log['level'] ?? 'info');
                                 $hasDetails = $isCommand || !empty($log['context']);
+
+                                // Badge styling based on log level (used in multiple places)
+                                $badgeClass = match($logLevel) {
+                                    'error' => 'badge-error badge-sm',
+                                    'warning' => 'badge-warning badge-sm',
+                                    'success' => 'badge-success badge-sm',
+                                    'command' => 'badge-neutral badge-sm',
+                                    default => 'badge-info badge-sm',
+                                };
+
+                                // Row border color based on state
+                                $borderClass = match(true) {
+                                    $isError => 'border-l-error bg-error/5',
+                                    $isWarning => 'border-l-warning',
+                                    $isSuccess => 'border-l-success',
+                                    default => 'border-l-info',
+                                };
                             @endphp
 
 
-                            <div class="flex border-l-4 {{ $isError ? 'border-l-error bg-error/5' : ($isWarning ? 'border-l-warning' : ($isSuccess ? 'border-l-success' : 'border-l-info')) }}">
-                                @if($hasDetails)
-                                    <x-collapse collapse-plus-minus class="flex-1 rounded-none border-none">
-                                        <x-slot:heading>
-                                            <div class="flex items-center w-full -ml-4">
-                                                <div class="w-44 flex-shrink-0 px-4 font-mono text-sm text-base-content/70">
-                                                    {{ $timestamp->format('M d, H:i:s') }}
-                                                </div>
-                                                <div class="flex-1 px-4 flex items-center gap-3">
-                                                    <span class="text-sm truncate {{ $isError ? 'text-error' : '' }}">
-                                                        @if($log['type'] === 'command')
-                                                            <div class="flex items-center gap-2">
-                                                                <code class="bg-neutral text-neutral-content px-2 py-1 rounded text-xs font-mono truncate max-w-xl">
-                                                                    <span class="text-success">$</span> {{ Str::limit($log['command'], 80) }}
-                                                                </code>
-                                                                <x-badge value="{{ __('Command') }}" class="badge-neutral badge-sm" />
-                                                                @if($isRunning)
-                                                                    <x-loading class="loading-spinner loading-xs text-warning" />
-                                                                @endif
-                                                            </div>
-                                                        @else
-                                                            {{ Str::limit($log['message'], 80) }}
-                                                        @endif
-                                                    </span>
-                                                    @if($log['type'] !== 'command')
-                                                        <x-badge
-                                                            :value="ucfirst($logLevel)"
-                                                            :class="match($logLevel) {
-                                                                'error' => 'badge-error badge-sm',
-                                                                'warning' => 'badge-warning badge-sm',
-                                                                'success' => 'badge-success badge-sm',
-                                                                default => 'badge-info badge-sm'
-                                                            }"
-                                                        />
-                                                    @endif
-                                                </div>
+                            <div class="flex border-l-4 {{ $borderClass }}">
+                                <x-collapse
+                                    :collapse-plus-minus="$hasDetails"
+                                    :no-icon="!$hasDetails"
+                                    class="flex-1 rounded-none border-none {{ !$hasDetails ? '[&_.collapse-content]:!p-0 pointer-events-none' : '' }}"
+                                >
+                                    <x-slot:heading>
+                                        {{-- Mobile: timestamp+badge / message, Desktop: timestamp | badge | message --}}
+                                        <div class="flex flex-col gap-1 sm:flex-row sm:items-center w-full -ml-4 {{ !$hasDetails ? 'pointer-events-auto cursor-default' : '' }}">
+                                            {{-- Timestamp --}}
+                                            <div class="sm:w-36 flex-shrink-0 px-4 flex items-center gap-2">
+                                                <span class="font-mono text-xs sm:text-sm text-base-content/70 whitespace-nowrap">
+                                                    {{ $timestamp->format('H:i:s') }}
+                                                    <span class="sm:hidden text-base-content/50">· {{ $timestamp->format('M d') }}</span>
+                                                    <span class="hidden sm:inline">{{ $timestamp->format(' M d') }}</span>
+                                                </span>
+                                                {{-- Badge on mobile only --}}
+                                                <span class="sm:hidden">
+                                                    <x-badge :value="ucfirst($logLevel)" class="{{ $badgeClass }}" />
+                                                </span>
                                             </div>
-                                        </x-slot:heading>
+                                            {{-- Badge (desktop only, fixed width for alignment) --}}
+                                            <div class="hidden sm:block w-24 flex-shrink-0 ml-2">
+                                                <span class="inline-flex w-full">
+                                                    <x-badge :value="ucfirst($logLevel)" class="{{ $badgeClass }}" />
+                                                    @if($isRunning)
+                                                        <x-loading class="loading-spinner loading-xs text-warning ml-1" />
+                                                    @endif
+                                                </span>
+                                            </div>
+                                            {{-- Message --}}
+                                            <div class="flex-1 px-4 pr-2 sm:pr-4 min-w-0 overflow-hidden">
+                                                @if($isCommand)
+                                                    <code class="bg-neutral text-neutral-content px-2 py-1 rounded text-xs font-mono truncate block">
+                                                        <span class="text-success">$</span> {{ $log['command'] }}
+                                                    </code>
+                                                @else
+                                                    <span class="text-sm truncate block {{ $isError ? 'text-error' : '' }}">
+                                                        {{ $log['message'] }}
+                                                    </span>
+                                                @endif
+                                            </div>
+                                        </div>
+                                    </x-slot:heading>
 
-                                        <x-slot:content>
-                                            <div class="pl-4 pr-4 pb-4 space-y-3">
-                                                @if($log['type'] === 'command')
+                                    <x-slot:content>
+                                        @if($hasDetails)
+                                            <div class="py-3 space-y-3">
+                                                @if($isCommand)
                                                     <!-- Command & Output -->
                                                     <div class="mockup-code text-sm max-h-64 overflow-auto">
                                                         <pre data-prefix="$"><code>{{ $log['command'] }}</code></pre>
@@ -205,30 +239,9 @@
                                                     @endif
                                                 @endif
                                             </div>
-                                        </x-slot:content>
-                                    </x-collapse>
-                                @else
-                                    <!-- No details - plain row without collapse -->
-                                    <div class="flex-1 flex items-center py-4 px-4 font-semibold">
-                                        <div class="w-44 flex-shrink-0 font-mono text-sm text-base-content/70">
-                                            {{ $timestamp->format('M d, H:i:s') }}
-                                        </div>
-                                        <div class="flex-1 flex items-center gap-3">
-                                            <span class="text-sm {{ $isError ? 'text-error' : '' }}">
-                                                {{ $log['message'] }}
-                                            </span>
-                                            <x-badge
-                                                :value="ucfirst($logLevel)"
-                                                :class="match($logLevel) {
-                                                    'error' => 'badge-error badge-sm',
-                                                    'warning' => 'badge-warning badge-sm',
-                                                    'success' => 'badge-success badge-sm',
-                                                    default => 'badge-info badge-sm'
-                                                }"
-                                            />
-                                        </div>
-                                    </div>
-                                @endif
+                                        @endif
+                                    </x-slot:content>
+                                </x-collapse>
                             </div>
                         @endforeach
                     </div>
