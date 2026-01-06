@@ -55,5 +55,7 @@ ENV MYSQL_CLI_TYPE="mariadb"
 ENV ENABLE_QUEUE_WORKER="false"
 ENV ENABLE_DATABASE_MIGRATION="true"
 
+HEALTHCHECK NONE
+
 ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
