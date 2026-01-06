@@ -26,13 +26,52 @@ docker run --rm davidcrty/databasement:latest php artisan key:generate --show
 
 Save this key for the next step.
 
+### 3. Create Environment File
 
-:::warning Important
-The `APP_KEY` must be identical in both `app` and `worker` services. This key is used to encrypt sensitive data like database passwords. If the keys don't match, the worker will fail to decrypt credentials when running backup jobs.
-:::
+Create a `.env` file with your configuration. This file is shared between the `app` and `worker` services to ensure consistent settings.
+
+#### SQLite (Simple Setup)
+
+```bash title=".env"
+APP_URL=http://localhost:2226
+APP_KEY=base64:your-generated-key-here
+
+# Database (SQLite)
+DB_CONNECTION=sqlite
+DB_DATABASE=/data/database.sqlite
+
+# S3 Storage (optional - for cloud backups)
+# AWS_ACCESS_KEY_ID=your-access-key
+# AWS_SECRET_ACCESS_KEY=your-secret-key
+# AWS_DEFAULT_REGION=us-east-1
+# AWS_ENDPOINT_URL_S3=https://s3.amazonaws.com
+# AWS_USE_PATH_STYLE_ENDPOINT=false
+```
+
+#### MySQL (Production Setup)
+
+```bash title=".env"
+APP_URL=http://localhost:2226
+APP_KEY=base64:your-generated-key-here
+
+# Database (MySQL)
+DB_CONNECTION=mysql
+DB_HOST=mysql
+DB_PORT=3306
+DB_DATABASE=databasement
+DB_USERNAME=databasement
+DB_PASSWORD=your-secure-password
+
+# S3 Storage (optional - for cloud backups)
+# AWS_ACCESS_KEY_ID=your-access-key
+# AWS_SECRET_ACCESS_KEY=your-secret-key
+# AWS_DEFAULT_REGION=us-east-1
+# AWS_ENDPOINT_URL_S3=https://s3.amazonaws.com
+# AWS_USE_PATH_STYLE_ENDPOINT=false
+```
 
 
-### 3. Create docker-compose.yml
+### 4. Create docker-compose.yml
 
 #### SQLite (Simple Setup)
 
@@ -44,11 +83,7 @@ services:
     restart: unless-stopped
     ports:
       - "2226:2226"
-    environment:
-      APP_URL: http://localhost:2226
-      APP_KEY: base64:your-generated-key-here
-      DB_CONNECTION: sqlite # or mysql, postgres
-      DB_DATABASE: /data/database.sqlite
+    env_file: .env
     volumes:
       - app-data:/data
     healthcheck:
@@ -62,11 +97,7 @@ services:
     container_name: databasement-worker
     restart: unless-stopped
     command: sh -c "php artisan db:wait && php artisan queue:work --queue=backups,default --tries=3 --timeout=3600 --sleep=3 --max-jobs=1000"
-    environment:
-      APP_URL: http://localhost:2226
-      APP_KEY: base64:your-generated-key-here
-      DB_CONNECTION: sqlite # or mysql, postgres
-      DB_DATABASE: /data/database.sqlite
+    env_file: .env
     volumes:
       - app-data:/data
     depends_on:
@@ -86,15 +117,7 @@ services:
     restart: unless-stopped
     ports:
       - "2226:2226"
-    environment:
-      APP_URL: http://localhost:2226
-      APP_KEY: base64:your-generated-key-here
-      DB_CONNECTION: mysql
-      DB_HOST: mysql
-      DB_PORT: 3306
-      DB_DATABASE: databasement
-      DB_USERNAME: databasement
-      DB_PASSWORD: your-secure-password
+    env_file: .env
     volumes:
       - app-data:/data
     depends_on:
@@ -111,15 +134,7 @@ services:
     container_name: databasement-worker
     restart: unless-stopped
     command: sh -c "php artisan db:wait && php artisan queue:work --queue=backups,default --tries=3 --timeout=3600 --sleep=3 --max-jobs=1000"
-    environment:
-      APP_URL: http://localhost:2226
-      APP_KEY: base64:your-generated-key-here
-      DB_CONNECTION: mysql
-      DB_HOST: mysql
-      DB_PORT: 3306
-      DB_DATABASE: databasement
-      DB_USERNAME: databasement
-      DB_PASSWORD: your-secure-password
+    env_file: .env
     volumes:
       - app-data:/data
     depends_on:
@@ -148,21 +163,21 @@ volumes:
   mysql-data:
 ```
 
-:::warning Important
-The `APP_KEY` must be identical in both `app` and `worker` services. This key is used to encrypt sensitive data like database passwords. If the keys don't match, the worker will fail to decrypt credentials when running backup jobs.
+:::tip
+Remember to restart both the `app` and `worker` services whenever you change the `.env` file: `docker compose restart app worker`
 :::
 
 :::tip
 The `worker` service runs the Laravel queue worker as a separate container. This provides better stability and allows independent restarts without affecting the web application. The worker processes backup and restore jobs from the queue.
 :::
 
-### 4. Start the Services
+### 5. Start the Services
 
 ```bash
 docker compose up -d
 ```
 
-### 5. Access the Application
+### 6. Access the Application
 
 Open http://localhost:2226 in your browser.
 
