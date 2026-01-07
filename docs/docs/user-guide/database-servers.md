@@ -40,7 +40,9 @@ CREATE USER databasement WITH PASSWORD 'your_secure_password';
 
 #### Permissions for backup and restore (all databases)
 
-For full backup and restore capabilities, the user needs to be a superuser or have the `CREATEDB` privilege:
+For full backup and restore capabilities, the user needs elevated privileges. The method depends on your PostgreSQL setup:
+
+#### Self-hosted PostgreSQL
 
 ```sql
 -- Option 1: Superuser (full access)
@@ -50,7 +52,25 @@ ALTER USER databasement WITH SUPERUSER;
 ALTER USER databasement WITH CREATEDB;
 ```
 
-If using Option 2, you also need to grant access to existing databases:
+#### AWS RDS PostgreSQL
+
+RDS doesn't allow `SUPERUSER`. Grant the `rds_superuser` role instead:
+
+```sql
+GRANT rds_superuser TO databasement;
+```
+
+#### Azure Database for PostgreSQL
+
+Azure uses the `azure_pg_admin` role:
+
+```sql
+GRANT azure_pg_admin TO databasement;
+```
+
+#### Additional grants for non-superuser setups
+
+If not using superuser/rds_superuser/azure_pg_admin, grant access to existing databases:
 
 ```sql
 -- Grant ownership or full privileges on the database
