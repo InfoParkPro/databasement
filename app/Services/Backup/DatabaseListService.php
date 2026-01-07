@@ -15,7 +15,12 @@ class DatabaseListService
         'sys',
     ];
 
-    private const EXCLUDED_POSTGRESQL_DATABASES = [];
+    private const EXCLUDED_POSTGRESQL_DATABASES = [
+        'postgres',          // Default administrative database
+        'rdsadmin',          // AWS RDS internal database
+        'azure_maintenance', // Azure Database for PostgreSQL internal database
+        'azure_sys',         // Azure Database for PostgreSQL internal database
+    ];
 
     /**
      * Get list of databases/schemas from a database server
