@@ -13,6 +13,11 @@ class Index extends Component
     public function getAppConfig(): array
     {
         return [
+            'timezone' => [
+                'value' => config('app.timezone'),
+                'env' => 'TZ',
+                'description' => __('Application timezone for dates and scheduled tasks.'),
+            ],
             'trusted_proxies' => [
                 'value' => config('app.trusted_proxies') ?: '(none)',
                 'env' => 'TRUSTED_PROXIES',
