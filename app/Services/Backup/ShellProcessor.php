@@ -61,7 +61,7 @@ class ShellProcessor
         }
 
         if (! $process->isSuccessful()) {
-            Log::error($command."\n".$errorOutput);
+            Log::error($sanitizedCommand."\n".$errorOutput);
             throw new ShellProcessFailed($errorOutput);
         }
 
