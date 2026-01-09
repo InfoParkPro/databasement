@@ -87,7 +87,7 @@ services:
     volumes:
       - app-data:/data
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:2226"]
+      test: ["CMD", "curl", "-f", "http://localhost:2226/health"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -124,7 +124,7 @@ services:
       mysql:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:2226"]
+      test: ["CMD", "curl", "-f", "http://localhost:2226/health"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -187,7 +187,66 @@ how to configure Traefik with Docker, please refer to
 the [official Traefik documentation](https://doc.traefik.io/traefik/expose/docker/).
 :::
 
-## Production Setup (External Database)
 
-For production, we recommend using MySQL or PostgreSQL instead of SQLite.
-Check the [database configuration guide](./configuration.md#database-configuration) for more information.
+## Use local directory as data volume
+You will need to create the directory `/path/to/databasement/data` (you can replace with your actual path) and make sure it is owned by the user `1000:1000`
+
+```bash
+# Create directory with app ownership (replace /path/to/databasement with your actual path)
+mkdir -p /path/to/databasement/data
+sudo chown 1000:1000 /path/to/databasement/data
+```
+
+```yaml title="docker-compose.yml"
+services:
+  app:
+    image: davidcrty/databasement:latest
+    container_name: databasement
+    restart: unless-stopped
+    ports:
+      - "2226:2226"
+    env_file: .env
+    volumes:
+      - /path/to/databasement/data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:2226/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  worker:
+    image: davidcrty/databasement:latest
+    container_name: databasement-worker
+    restart: unless-stopped
+    command: sh -c "php artisan db:wait && php artisan queue:work --queue=backups,default --tries=3 --timeout=3600 --sleep=3 --max-jobs=1000"
+    env_file: .env
+    volumes:
+      - /path/to/databasement/data:/data
+    depends_on:
+      - app
+```
+
+## Custom User ID
+
+:::info
+The Docker image is [**rootless**](https://docs.docker.com/engine/security/rootless/) and runs as UID `1000` by default.
+:::
+
+To run as a different user, add the `user` directive:
+
+```yaml
+services:
+  app:
+    image: davidcrty/databasement:latest
+    user: "1010:1010"
+    # ... rest of config
+
+  worker:
+    image: davidcrty/databasement:latest
+    user: "1010:1010"
+    # ... rest of config
+```
+
+:::tip
+For NAS platforms like **Unraid**, **Synology**, or **TrueNAS**, see the [NAS Platforms](./nas-platforms.md) guide for platform-specific instructions.
+:::
