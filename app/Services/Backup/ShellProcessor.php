@@ -22,7 +22,7 @@ class ShellProcessor
         $process->setTimeout(null);
 
         // Mask sensitive data in command line for logging
-        $sanitizedCommand = $this->sanitizeCommand($command);
+        $sanitizedCommand = $this->sanitize($command);
         $startTime = microtime(true);
 
         // Start the command log entry before execution
@@ -36,17 +36,17 @@ class ShellProcessor
         $process->run(function ($type, $data) use (&$incrementalOutput, $logIndex, $startTime) {
             $incrementalOutput .= $data;
 
-            // Update the log entry with incremental output
+            // Update the log entry with incremental output (sanitized)
             if ($this->logger && $logIndex !== null) {
                 $this->logger->updateCommandLog($logIndex, [
-                    'output' => trim($incrementalOutput),
+                    'output' => $this->sanitize(trim($incrementalOutput)),
                     'duration_ms' => round((microtime(true) - $startTime) * 1000, 2),
                 ]);
             }
         });
 
-        $output = $process->getOutput();
-        $errorOutput = $process->getErrorOutput();
+        $output = $this->sanitize($process->getOutput());
+        $errorOutput = $this->sanitize($process->getErrorOutput());
         $exitCode = $process->getExitCode();
 
         // Finalize the log entry with exit code and status
@@ -68,9 +68,14 @@ class ShellProcessor
         return $output;
     }
 
-    public function sanitizeCommand(string $command): string
+    /**
+     * Sanitize sensitive data from commands or output before logging or throwing exceptions.
+     *
+     * This method redacts passwords, connection strings, tokens, and other credentials
+     * that may appear in shell commands or their error output.
+     */
+    public function sanitize(string $input): string
     {
-        // Mask passwords in MySQL/PostgreSQL commands
         $patterns = [
             // Match --password=VALUE or --password='VALUE' or --password="VALUE"
             '/--password=[\'"]?[^\s\'"]+[\'"]?/' => '--password=***',
@@ -79,12 +84,21 @@ class ShellProcessor
             '/(^|\s)-p([^\s\-][^\s]*)/' => '$1-p***',
             // Match PGPASSWORD=VALUE
             '/PGPASSWORD=[^\s]+/' => 'PGPASSWORD=***',
+            // Match MYSQL_PWD=VALUE
+            '/MYSQL_PWD=[^\s]+/' => 'MYSQL_PWD=***',
+            // Connection strings with embedded passwords (mysql://user:pass@host, postgresql://user:pass@host)
+            '/(:\/\/[^:\/\s]+:)[^@\s]+(@)/' => '$1***$2',
+            // AWS/S3 credentials that might leak in error messages
+            '/AWS_SECRET_ACCESS_KEY=[^\s]+/' => 'AWS_SECRET_ACCESS_KEY=***',
+            '/AWS_ACCESS_KEY_ID=[^\s]+/' => 'AWS_ACCESS_KEY_ID=***',
+            // Generic token patterns
+            '/(api[_-]?key|token|secret|auth)[=:]\s*[\'"]?[^\s\'"]+[\'"]?/i' => '$1=***',
         ];
 
         foreach ($patterns as $pattern => $replacement) {
-            $command = preg_replace($pattern, $replacement, $command);
+            $input = preg_replace($pattern, $replacement, $input);
         }
 
-        return $command;
+        return $input;
     }
 }

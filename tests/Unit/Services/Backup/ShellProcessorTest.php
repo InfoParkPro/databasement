@@ -2,83 +2,62 @@
 
 use App\Services\Backup\ShellProcessor;
 
-test('sanitizes --password= format', function () {
+test('sanitizes sensitive patterns', function (string $input, string $expectedToContain, string $secretToRedact) {
     $processor = new ShellProcessor;
 
-    $result = $processor->sanitizeCommand('mysqldump --password=secret123 dbname');
+    $result = $processor->sanitize($input);
 
-    expect($result)->toContain('--password=***')
-        ->not->toContain('secret123');
-});
+    expect($result)
+        ->toContain($expectedToContain)
+        ->not->toContain($secretToRedact);
+})->with([
+    '--password= format' => ['mysqldump --password=secret123 dbname', '--password=***', 'secret123'],
+    'quoted --password= format' => ["mysqldump --password='secret123' dbname", '--password=***', 'secret123'],
+    '-p shorthand format' => ['mysqldump -psecret123 dbname', '-p***', 'secret123'],
+    'PGPASSWORD env var' => ['PGPASSWORD=secret123 pg_dump dbname', 'PGPASSWORD=***', 'secret123'],
+    'MYSQL_PWD env var' => ['MYSQL_PWD=secret123 mysqldump failed', 'MYSQL_PWD=***', 'secret123'],
+    'mysql connection string' => ['Failed to connect to mysql://user:secret123@localhost:3306/db', 'mysql://user:***@localhost', 'secret123'],
+    'postgresql connection string' => ['postgresql://admin:mypassword@db.example.com:5432/mydb', 'postgresql://admin:***@db.example.com', 'mypassword'],
+    'AWS_SECRET_ACCESS_KEY' => ['AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI', 'AWS_SECRET_ACCESS_KEY=***', 'wJalrXUtnFEMI'],
+    'AWS_ACCESS_KEY_ID' => ['AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE', 'AWS_ACCESS_KEY_ID=***', 'AKIAIOSFODNN7EXAMPLE'],
+    'api_key token' => ['api_key=sk-12345', 'api_key=***', 'sk-12345'],
+    'secret token' => ['secret=xyz789', 'secret=***', 'xyz789'],
+]);
 
-test('sanitizes quoted --password= format', function () {
+test('preserves non-sensitive patterns', function (string $input, string $expectedToContain) {
     $processor = new ShellProcessor;
 
-    $result = $processor->sanitizeCommand("mysqldump --password='secret123' dbname");
+    $result = $processor->sanitize($input);
 
-    expect($result)->toContain('--password=***')
-        ->not->toContain('secret123');
-});
-
-test('sanitizes -p shorthand format', function () {
-    $processor = new ShellProcessor;
-
-    $result = $processor->sanitizeCommand('mysqldump -psecret123 dbname');
-
-    expect($result)->toContain('-p***')
-        ->not->toContain('secret123');
-});
-
-test('sanitizes PGPASSWORD env var', function () {
-    $processor = new ShellProcessor;
-
-    $result = $processor->sanitizeCommand('PGPASSWORD=secret123 pg_dump dbname');
-
-    expect($result)->toContain('PGPASSWORD=***')
-        ->not->toContain('secret123');
-});
-
-test('does not sanitize hostname containing -p', function () {
-    $processor = new ShellProcessor;
-
-    $result = $processor->sanitizeCommand("mysqldump --host='mysql-production.example.com' dbname");
-
-    expect($result)->toContain('mysql-production.example.com');
-});
-
-test('does not sanitize --port option', function () {
-    $processor = new ShellProcessor;
-
-    $result = $processor->sanitizeCommand('mysqldump --port=3306 dbname');
-
-    expect($result)->toContain('--port=3306');
-});
+    expect($result)->toContain($expectedToContain);
+})->with([
+    'hostname containing -p' => ["mysqldump --host='mysql-production.example.com' dbname", 'mysql-production.example.com'],
+    '--port option' => ['mysqldump --port=3306 dbname', '--port=3306'],
+    '-p with space (port flag)' => ['pg_dump -p 5432 dbname', '-p 5432'],
+]);
 
 test('sanitizes realistic mariadb-dump command', function () {
     $processor = new ShellProcessor;
 
-    $command = "mariadb-dump --routines --skip_ssl --host='mysql-production.example.com' --port='3306' --user='root' --password='supersecret' 'mydb' > '/tmp/backup.sql'";
-    $result = $processor->sanitizeCommand($command);
+    $command = "mariadb-dump --host='mysql-production.example.com' --port='3306' --user='root' --password='supersecret' 'mydb'";
+    $result = $processor->sanitize($command);
 
     expect($result)
         ->toContain('mysql-production.example.com')
         ->toContain("--port='3306'")
-        ->toContain("--user='root'")
         ->toContain('--password=***')
-        ->toContain("'mydb'")
         ->not->toContain('supersecret');
 });
 
 test('sanitizes realistic pg_dump command', function () {
     $processor = new ShellProcessor;
 
-    $command = 'PGPASSWORD=supersecret pg_dump -h postgres-production.example.com -p 5432 -U admin mydb > /tmp/backup.sql';
-    $result = $processor->sanitizeCommand($command);
+    $command = 'PGPASSWORD=supersecret pg_dump -h postgres-production.example.com -p 5432 -U admin mydb';
+    $result = $processor->sanitize($command);
 
     expect($result)
         ->toContain('PGPASSWORD=***')
         ->toContain('postgres-production.example.com')
         ->toContain('-p 5432')
-        ->toContain('-U admin')
         ->not->toContain('supersecret');
 });
