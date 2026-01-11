@@ -82,10 +82,7 @@ should render deployment with default values:
                 requests:
                   cpu: 100m
                   memory: 256Mi
-              securityContext:
-                runAsGroup: 1000
-                runAsNonRoot: true
-                runAsUser: 1000
+              securityContext: {}
               startupProbe:
                 failureThreshold: 30
                 httpGet:
@@ -137,10 +134,7 @@ should render deployment with default values:
                 requests:
                   cpu: 100m
                   memory: 256Mi
-              securityContext:
-                runAsGroup: 1000
-                runAsNonRoot: true
-                runAsUser: 1000
+              securityContext: {}
               volumeMounts:
                 - mountPath: /data
                   name: data
@@ -185,15 +179,11 @@ should render deployment with default values:
                 requests:
                   cpu: 100m
                   memory: 256Mi
-              securityContext:
-                runAsGroup: 1000
-                runAsNonRoot: true
-                runAsUser: 1000
+              securityContext: {}
               volumeMounts:
                 - mountPath: /data
                   name: data
-          securityContext:
-            fsGroup: 1000
+          securityContext: {}
           serviceAccountName: default
           volumes:
             - name: data
@@ -294,10 +284,7 @@ should render deployment with mysql database:
                 requests:
                   cpu: 100m
                   memory: 256Mi
-              securityContext:
-                runAsGroup: 1000
-                runAsNonRoot: true
-                runAsUser: 1000
+              securityContext: {}
               startupProbe:
                 failureThreshold: 30
                 httpGet:
@@ -360,10 +347,7 @@ should render deployment with mysql database:
                 requests:
                   cpu: 100m
                   memory: 256Mi
-              securityContext:
-                runAsGroup: 1000
-                runAsNonRoot: true
-                runAsUser: 1000
+              securityContext: {}
               volumeMounts:
                 - mountPath: /data
                   name: data
@@ -419,15 +403,11 @@ should render deployment with mysql database:
                 requests:
                   cpu: 100m
                   memory: 256Mi
-              securityContext:
-                runAsGroup: 1000
-                runAsNonRoot: true
-                runAsUser: 1000
+              securityContext: {}
               volumeMounts:
                 - mountPath: /data
                   name: data
-          securityContext:
-            fsGroup: 1000
+          securityContext: {}
           serviceAccountName: default
           volumes:
             - name: data
