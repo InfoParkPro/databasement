@@ -229,7 +229,7 @@ AWS_S3_PROFILE=my-s3-profile
 | `AWS_STS_PROFILE`             | AWS credential profile for STS                  | -              |
 
 
-### Troubleshooting
+### Show AWS Configuration
 
 Debug the aws configuration by running:
 ```bash
@@ -307,7 +307,6 @@ If your application shows HTTP instead of HTTPS, or shows the wrong client IP:
 php artisan migrate:status # Check database migrations
 php artisan config:show database # View database configuration
 ```
-
 
 ### Get Help
 
