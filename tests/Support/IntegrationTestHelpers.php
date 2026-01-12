@@ -2,10 +2,10 @@
 
 namespace Tests\Support;
 
+use App\Enums\DatabaseType;
 use App\Models\Backup;
 use App\Models\DatabaseServer;
 use App\Models\Volume;
-use InvalidArgumentException;
 use PDO;
 
 class IntegrationTestHelpers
@@ -130,15 +130,14 @@ class IntegrationTestHelpers
      */
     public static function connectToDatabase(string $type, DatabaseServer $server, string $databaseName): PDO
     {
-        $dsn = match ($type) {
-            'mysql' => sprintf('mysql:host=%s;port=%d;dbname=%s', $server->host, $server->port, $databaseName),
-            'postgres' => sprintf('pgsql:host=%s;port=%d;dbname=%s', $server->host, $server->port, $databaseName),
-            default => throw new InvalidArgumentException("Unsupported database type: {$type}"),
-        };
-
-        return new PDO($dsn, $server->username, $server->password, [
-            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-        ]);
+        return DatabaseType::fromString($type)->createPdo(
+            $server->host,
+            $server->port,
+            $server->username,
+            $server->password,
+            $databaseName,
+            30
+        );
     }
 
     /**
@@ -146,15 +145,14 @@ class IntegrationTestHelpers
      */
     public static function dropDatabase(string $type, DatabaseServer $server, string $databaseName): void
     {
-        $dsn = match ($type) {
-            'mysql' => sprintf('mysql:host=%s;port=%d', $server->host, $server->port),
-            'postgres' => sprintf('pgsql:host=%s;port=%d;dbname=postgres', $server->host, $server->port),
-            default => throw new InvalidArgumentException("Unsupported database type: {$type}"),
-        };
-
-        $pdo = new PDO($dsn, $server->username, $server->password, [
-            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-        ]);
+        $pdo = DatabaseType::fromString($type)->createPdo(
+            $server->host,
+            $server->port,
+            $server->username,
+            $server->password,
+            null,
+            30
+        );
 
         if ($type === 'mysql') {
             $pdo->exec("DROP DATABASE IF EXISTS `{$databaseName}`");
@@ -171,20 +169,19 @@ class IntegrationTestHelpers
     {
         $databaseName = $server->database_names[0];
 
-        $dsn = match ($type) {
-            'mysql' => sprintf('mysql:host=%s;port=%d', $server->host, $server->port),
-            'postgres' => sprintf('pgsql:host=%s;port=%d;dbname=postgres', $server->host, $server->port),
-            default => throw new InvalidArgumentException("Unsupported database type: {$type}"),
-        };
-
-        $pdo = new PDO($dsn, $server->username, $server->password, [
-            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-        ]);
+        $pdo = DatabaseType::fromString($type)->createPdo(
+            $server->host,
+            $server->port,
+            $server->username,
+            $server->password,
+            null,
+            30
+        );
 
         if ($type === 'mysql') {
             $pdo->exec("DROP DATABASE IF EXISTS `{$databaseName}`");
             $pdo->exec("CREATE DATABASE `{$databaseName}`");
-        } else {
+        } elseif ($type === 'postgres') {
             $pdo->exec("SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '{$databaseName}' AND pid <> pg_backend_pid()");
             $pdo->exec("DROP DATABASE IF EXISTS \"{$databaseName}\"");
             $pdo->exec("CREATE DATABASE \"{$databaseName}\"");

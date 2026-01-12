@@ -27,23 +27,48 @@ enum DatabaseType: string
     }
 
     /**
-     * Build DSN for administrative connections (without specific database)
+     * Build PDO DSN string for database connections.
+     *
+     * @param  string  $host  Hostname or file path (for SQLite)
+     * @param  int  $port  Port number (ignored for SQLite)
+     * @param  string|null  $database  Database name (null for admin connections)
      */
-    public function buildAdminDsn(string $host, int $port): string
+    private function buildDsn(string $host, int $port, ?string $database = null): string
     {
         return match ($this) {
-            self::MYSQL => sprintf(
-                'mysql:host=%s;port=%d',
-                $host,
-                $port
-            ),
+            self::MYSQL => $database
+                ? sprintf('mysql:host=%s;port=%d;dbname=%s', $host, $port, $database)
+                : sprintf('mysql:host=%s;port=%d', $host, $port),
             self::POSTGRESQL => sprintf(
-                'pgsql:host=%s;port=%d;dbname=postgres',
+                'pgsql:host=%s;port=%d;dbname=%s',
                 $host,
-                $port
+                $port,
+                $database ?? 'postgres'
             ),
             self::SQLITE => "sqlite:{$host}",
         };
+    }
+
+    /**
+     * Create a PDO connection for this database type.
+     *
+     * @param  string  $host  Hostname or file path (for SQLite)
+     * @param  int  $port  Port number (ignored for SQLite)
+     * @param  string  $username  Database username
+     * @param  string  $password  Database password
+     * @param  string|null  $database  Database name (null for admin connections)
+     * @param  int  $timeout  Connection timeout in seconds
+     */
+    public function createPdo(string $host, int $port, string $username, string $password, ?string $database = null, int $timeout = 30): \PDO
+    {
+        $dsn = $this->buildDsn($host, $port, $database);
+
+        $options = [
+            \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION,
+            \PDO::ATTR_TIMEOUT => $timeout,
+        ];
+
+        return new \PDO($dsn, $username, $password, $options);
     }
 
     /**
@@ -55,5 +80,18 @@ enum DatabaseType: string
             fn (self $type) => ['id' => $type->value, 'name' => $type->label()],
             self::cases()
         );
+    }
+
+    /**
+     * Create DatabaseType from various string formats.
+     */
+    public static function fromString(string $type): self
+    {
+        return match ($type) {
+            'mysql' => self::MYSQL,
+            'postgres' => self::POSTGRESQL,
+            'sqlite' => self::SQLITE,
+            default => self::from($type), // Will throw ValueError if invalid
+        };
     }
 }

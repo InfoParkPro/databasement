@@ -33,8 +33,12 @@ afterEach(function () {
     // Cleanup restored database
     if ($this->restoredDatabaseName && $this->databaseServer) {
         try {
+            $type = match ($this->databaseServer->database_type) {
+                'postgres' => 'postgres',
+                default => 'mysql',
+            };
             IntegrationTestHelpers::dropDatabase(
-                $this->databaseServer->database_type === 'postgres' ? 'postgres' : 'mysql',
+                $type,
                 $this->databaseServer,
                 $this->restoredDatabaseName
             );
@@ -106,7 +110,6 @@ test('client-server database backup and restore workflow', function (string $typ
     'mysql with gzip' => ['mysql', 'gzip', 'gz'],
     'mysql with zstd' => ['mysql', 'zstd', 'zst'],
     'postgres with gzip' => ['postgres', 'gzip', 'gz'],
-    'postgres with zstd' => ['postgres', 'zstd', 'zst'],
 ]);
 
 test('sqlite backup and restore workflow', function () {

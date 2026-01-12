@@ -2,6 +2,7 @@
 
 namespace App\Services\Backup;
 
+use App\Enums\DatabaseType;
 use App\Models\DatabaseServer;
 use PDO;
 use PDOException;
@@ -80,33 +81,13 @@ class DatabaseListService
 
     protected function createConnection(DatabaseServer $databaseServer): PDO
     {
-        $dsn = $this->buildDsn($databaseServer);
-
-        return new PDO(
-            $dsn,
+        return DatabaseType::from($databaseServer->database_type)->createPdo(
+            $databaseServer->host,
+            $databaseServer->port,
             $databaseServer->username,
             $databaseServer->password,
-            [
-                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-                PDO::ATTR_TIMEOUT => 5,
-            ]
+            null,
+            5
         );
-    }
-
-    protected function buildDsn(DatabaseServer $databaseServer): string
-    {
-        return match ($databaseServer->database_type) {
-            'mysql' => sprintf(
-                'mysql:host=%s;port=%d',
-                $databaseServer->host,
-                $databaseServer->port
-            ),
-            'postgres' => sprintf(
-                'pgsql:host=%s;port=%d;dbname=postgres',
-                $databaseServer->host,
-                $databaseServer->port
-            ),
-            default => throw new \Exception("Database type {$databaseServer->database_type} not supported"),
-        };
     }
 }

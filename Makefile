@@ -8,7 +8,7 @@ NC     := \033[0m # No Color
 # Docker / PHP helpers
 DOCKER_COMPOSE := docker compose
 PHP_SERVICE    := app
-PHP_EXEC       := $(DOCKER_COMPOSE) exec -T $(PHP_SERVICE)
+PHP_EXEC       := $(DOCKER_COMPOSE) exec --user application -T $(PHP_SERVICE)
 PHP_COMPOSER   := $(PHP_EXEC) composer
 PHP_ARTISAN    := $(PHP_EXEC) php artisan
 NPM_EXEC       := npm
