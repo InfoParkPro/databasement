@@ -81,14 +81,24 @@ wait_for_healthy() {
 }
 
 verify_frankenphp() {
-    local logs
-    logs=$(docker logs "$CONTAINER_NAME" 2>&1)
+    local max_attempts=15
+    local attempt=1
 
-    if echo "$logs" | grep -q "spawned: 'frankenphp'"; then
-        pass "FrankenPHP spawned by supervisor"
-    else
-        fail "FrankenPHP not spawned"
-    fi
+    info "Waiting for FrankenPHP to be ready..."
+
+    while [ $attempt -le $max_attempts ]; do
+        local logs
+        logs=$(docker logs "$CONTAINER_NAME" 2>&1)
+
+        if echo "$logs" | grep -q "FrankenPHP started"; then
+            pass "FrankenPHP started successfully"
+            return 0
+        fi
+        sleep 1
+        attempt=$((attempt + 1))
+    done
+
+    fail "FrankenPHP did not start (missing 'FrankenPHP started' message)"
 }
 
 echo "=========================================="
