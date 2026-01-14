@@ -37,8 +37,13 @@ migrate:
 logs:
 	$(DOCKER_COMPOSE) logs -f php
 
-create-bucket: ## Create S3 bucket in LocalStack (usage: make create-bucket BUCKET=my-bucket)
-	$(DOCKER_COMPOSE) exec -T localstack awslocal s3 mb s3://$(or $(BUCKET),test-bucket)
+create-bucket: ## Create S3 bucket in rustfs (usage: make create-bucket BUCKET=my-bucket)
+	@docker run --rm --network=$$(docker network ls --filter name=databasement -q | head -1) \
+		-e AWS_ACCESS_KEY_ID=rustfsadmin \
+		-e AWS_SECRET_ACCESS_KEY=rustfsadmin \
+		amazon/aws-cli \
+		--endpoint-url=http://rustfs:9000 \
+		s3 mb s3://$(or $(BUCKET),test-bucket) 2>/dev/null || echo "Bucket may already exist"
 ##@ Testing
 
 test: ## Run all tests (SQLite)

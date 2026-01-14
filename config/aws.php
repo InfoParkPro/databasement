@@ -23,6 +23,7 @@ return [
     // S3 Configuration
     's3_profile' => env('AWS_S3_PROFILE'),
     's3_endpoint' => env('AWS_ENDPOINT_URL_S3'),
+    's3_public_endpoint' => env('AWS_PUBLIC_ENDPOINT_URL_S3'),  // Public URL for presigned URLs (use when internal endpoint differs from public)
     'use_path_style_endpoint' => (bool) env('AWS_USE_PATH_STYLE_ENDPOINT', false),
 
     // IAM Role Assumption (for restricted environments like VPC endpoints)

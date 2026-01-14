@@ -35,11 +35,13 @@ class Awss3Filesystem implements FilesystemInterface
      */
     public function getPresignedUrl(array $config, string $path, int $expiresInMinutes = 60): string
     {
-        $client = $this->getClient();
+        // Use a client configured with the public endpoint so the signature is valid
+        $client = $this->getClientForPresignedUrls();
+        $key = $this->buildKeyPath($config, $path);
 
         $command = $client->getCommand('GetObject', [
             'Bucket' => $config['bucket'],
-            'Key' => $path,
+            'Key' => $key,
         ]);
 
         $request = $client->createPresignedRequest($command, "+{$expiresInMinutes} minutes");
@@ -47,7 +49,19 @@ class Awss3Filesystem implements FilesystemInterface
         return (string) $request->getUri();
     }
 
-    private function getClient(): S3Client
+    /**
+     * Build the full S3 key path including prefix
+     *
+     * @param  array<string, mixed>  $config
+     */
+    public function buildKeyPath(array $config, string $path): string
+    {
+        $prefix = $config['root'] ?? $config['prefix'] ?? '';
+
+        return $prefix ? rtrim($prefix, '/').'/'.ltrim($path, '/') : $path;
+    }
+
+    protected function getClient(): S3Client
     {
         if ($this->client !== null) {
             return $this->client;
@@ -58,7 +72,29 @@ class Awss3Filesystem implements FilesystemInterface
         return $this->client;
     }
 
-    private function createClient(): S3Client
+    /**
+     * Get S3 client configured with public endpoint for generating presigned URLs
+     *
+     * When using S3-compatible storage in Docker, the internal endpoint (e.g., http://minio:9000)
+     * differs from the public endpoint (e.g., http://localhost:9000). Presigned URLs must be
+     * generated with the public endpoint so the signature matches when accessed from the browser.
+     */
+    protected function getClientForPresignedUrls(): S3Client
+    {
+        /** @var array<string, mixed> $awsConfig */
+        $awsConfig = config('aws');
+
+        $publicEndpoint = $awsConfig['s3_public_endpoint'] ?? null;
+
+        // If no public endpoint configured, use the regular client
+        if (empty($publicEndpoint)) {
+            return $this->getClient();
+        }
+
+        return $this->createClient($publicEndpoint);
+    }
+
+    private function createClient(?string $endpointOverride = null): S3Client
     {
         /** @var array<string, mixed> $awsConfig */
         $awsConfig = config('aws');
@@ -75,10 +111,18 @@ class Awss3Filesystem implements FilesystemInterface
         // Use IAM role assumption if role_arn is configured
         if (! empty($awsConfig['custom_role_arn'])) {
             $clientConfig['credentials'] = $this->createCustomAssumeRoleCredentials($awsConfig);
+        } elseif (! empty($awsConfig['access_key_id']) && ! empty($awsConfig['secret_access_key'])) {
+            // Use explicit credentials when configured (e.g., for testing or non-AWS environments)
+            $clientConfig['credentials'] = [
+                'key' => $awsConfig['access_key_id'],
+                'secret' => $awsConfig['secret_access_key'],
+            ];
         }
 
-        if (! empty($awsConfig['s3_endpoint'])) {
-            $clientConfig['endpoint'] = $awsConfig['s3_endpoint'];
+        // Use endpoint override if provided (for presigned URLs), otherwise use configured endpoint
+        $endpoint = $endpointOverride ?? $awsConfig['s3_endpoint'] ?? null;
+        if (! empty($endpoint)) {
+            $clientConfig['endpoint'] = $endpoint;
         }
 
         if (! empty($awsConfig['use_path_style_endpoint'])) {

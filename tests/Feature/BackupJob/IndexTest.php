@@ -193,6 +193,46 @@ test('can download snapshot from s3 storage redirects to presigned url', functio
         ->assertRedirect('https://test-bucket.s3.amazonaws.com/test-backup.sql.gz?presigned=token');
 });
 
+test('s3 download presigned url includes volume prefix in key path', function () {
+    config([
+        'aws.region' => 'us-east-1',
+        'aws.s3_endpoint' => 'http://minio:9000',
+        'aws.s3_public_endpoint' => 'https://127.0.0.1:9022',
+        'aws.use_path_style_endpoint' => true,
+        'aws.access_key_id' => 'test-key',
+        'aws.secret_access_key' => 'test-secret',
+    ]);
+    $user = User::factory()->create();
+
+    // Create S3 volume WITH a prefix
+    $volume = Volume::factory()->create([
+        'type' => 's3',
+        'config' => [
+            'bucket' => 'my-backup-bucket',
+            'prefix' => 'backups/production',
+        ],
+    ]);
+
+    $server = DatabaseServer::factory()->create([
+        'database_names' => ['myapp_db'],
+    ]);
+    $server->backup->update(['volume_id' => $volume->id]);
+
+    $factory = app(BackupJobFactory::class);
+    $snapshots = $factory->createSnapshots($server, 'manual', $user->id);
+    $snapshot = $snapshots[0];
+    $snapshot->update([
+        'filename' => 'myapp-backup-2024-01-13.sql.gz',
+        'file_size' => 2048,
+    ]);
+    $snapshot->job->markCompleted();
+
+    Livewire::actingAs($user)
+        ->test(Index::class)
+        ->call('download', $snapshot->id)
+        ->assertRedirectContains('https://127.0.0.1:9022/my-backup-bucket/backups/production/myapp-backup-2024-01-13.sql.gz');
+});
+
 test('can delete snapshot with file and cascades restores and jobs', function () {
     $user = User::factory()->create();
 
