@@ -10,7 +10,6 @@ use App\Services\Backup\Databases\MysqlDatabase;
 use App\Services\Backup\Databases\PostgresqlDatabase;
 use App\Services\Backup\Filesystems\FilesystemProvider;
 use App\Services\Backup\RestoreTask;
-use App\Services\ConnectionFactory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Support\TestShellProcessor;
 
@@ -25,7 +24,6 @@ beforeEach(function () {
 
     // Mock external dependencies only
     $this->filesystemProvider = Mockery::mock(FilesystemProvider::class);
-    $this->connectionFactory = Mockery::mock(ConnectionFactory::class);
 
     // Create a partial mock of RestoreTask to mock prepareDatabase
     $this->restoreTask = Mockery::mock(
@@ -36,7 +34,6 @@ beforeEach(function () {
             $this->shellProcessor,
             $this->filesystemProvider,
             $this->compressorFactory,
-            $this->connectionFactory,
         ]
     )->makePartial()
         ->shouldAllowMockingProtectedMethods();
@@ -310,7 +307,6 @@ test('run throws exception when restore command failed', function () {
             $shellProcessor,
             $this->filesystemProvider,
             $compressorFactory,
-            $this->connectionFactory,
         ]
     )->makePartial()
         ->shouldAllowMockingProtectedMethods();

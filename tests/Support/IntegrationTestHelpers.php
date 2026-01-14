@@ -130,14 +130,7 @@ class IntegrationTestHelpers
      */
     public static function connectToDatabase(string $type, DatabaseServer $server, string $databaseName): PDO
     {
-        return DatabaseType::fromString($type)->createPdo(
-            $server->host,
-            $server->port,
-            $server->username,
-            $server->password,
-            $databaseName,
-            30
-        );
+        return DatabaseType::from($type)->createPdo($server, $databaseName);
     }
 
     /**
@@ -145,14 +138,7 @@ class IntegrationTestHelpers
      */
     public static function dropDatabase(string $type, DatabaseServer $server, string $databaseName): void
     {
-        $pdo = DatabaseType::fromString($type)->createPdo(
-            $server->host,
-            $server->port,
-            $server->username,
-            $server->password,
-            null,
-            30
-        );
+        $pdo = DatabaseType::from($type)->createPdo($server);
 
         if ($type === 'mysql') {
             $pdo->exec("DROP DATABASE IF EXISTS `{$databaseName}`");
@@ -169,14 +155,7 @@ class IntegrationTestHelpers
     {
         $databaseName = $server->database_names[0];
 
-        $pdo = DatabaseType::fromString($type)->createPdo(
-            $server->host,
-            $server->port,
-            $server->username,
-            $server->password,
-            null,
-            30
-        );
+        $pdo = DatabaseType::from($type)->createPdo($server);
 
         if ($type === 'mysql') {
             $pdo->exec("DROP DATABASE IF EXISTS `{$databaseName}`");

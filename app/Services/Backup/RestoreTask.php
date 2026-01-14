@@ -13,7 +13,6 @@ use App\Models\Snapshot;
 use App\Services\Backup\Databases\MysqlDatabase;
 use App\Services\Backup\Databases\PostgresqlDatabase;
 use App\Services\Backup\Filesystems\FilesystemProvider;
-use App\Services\ConnectionFactory;
 use App\Support\FilesystemSupport;
 use App\Support\Formatters;
 use PDO;
@@ -27,7 +26,6 @@ class RestoreTask
         private readonly ShellProcessor $shellProcessor,
         private readonly FilesystemProvider $filesystemProvider,
         private readonly CompressorFactory $compressorFactory,
-        private readonly ConnectionFactory $connectionFactory
     ) {}
 
     /**
@@ -134,8 +132,8 @@ class RestoreTask
     protected function prepareDatabase(DatabaseServer $targetServer, string $schemaName, BackupJob $job): void
     {
         try {
-            $pdo = $this->connectionFactory->createAdminConnection($targetServer);
             $databaseType = DatabaseType::from($targetServer->database_type);
+            $pdo = $databaseType->createPdo($targetServer);
 
             match ($databaseType) {
                 DatabaseType::MYSQL => $this->prepareMysqlDatabase($pdo, $schemaName, $job),

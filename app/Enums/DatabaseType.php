@@ -2,6 +2,8 @@
 
 namespace App\Enums;
 
+use App\Models\DatabaseServer;
+
 enum DatabaseType: string
 {
     case MYSQL = 'mysql';
@@ -52,23 +54,23 @@ enum DatabaseType: string
     /**
      * Create a PDO connection for this database type.
      *
-     * @param  string  $host  Hostname or file path (for SQLite)
-     * @param  int  $port  Port number (ignored for SQLite)
-     * @param  string  $username  Database username
-     * @param  string  $password  Database password
+     * @param  DatabaseServer  $server  The database server to connect to
      * @param  string|null  $database  Database name (null for admin connections)
      * @param  int  $timeout  Connection timeout in seconds
      */
-    public function createPdo(string $host, int $port, string $username, string $password, ?string $database = null, int $timeout = 30): \PDO
+    public function createPdo(DatabaseServer $server, ?string $database = null, int $timeout = 30): \PDO
     {
-        $dsn = $this->buildDsn($host, $port, $database);
+        $host = $this === self::SQLITE
+            ? ($server->sqlite_path ?? $server->host)
+            : $server->host;
+        $dsn = $this->buildDsn($host, $server->port, $database);
 
         $options = [
             \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION,
             \PDO::ATTR_TIMEOUT => $timeout,
         ];
 
-        return new \PDO($dsn, $username, $password, $options);
+        return new \PDO($dsn, $server->username, $server->getDecryptedPassword(), $options);
     }
 
     /**
@@ -80,18 +82,5 @@ enum DatabaseType: string
             fn (self $type) => ['id' => $type->value, 'name' => $type->label()],
             self::cases()
         );
-    }
-
-    /**
-     * Create DatabaseType from various string formats.
-     */
-    public static function fromString(string $type): self
-    {
-        return match ($type) {
-            'mysql' => self::MYSQL,
-            'postgres' => self::POSTGRESQL,
-            'sqlite' => self::SQLITE,
-            default => self::from($type), // Will throw ValueError if invalid
-        };
     }
 }

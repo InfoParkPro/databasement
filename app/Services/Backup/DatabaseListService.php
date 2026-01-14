@@ -81,13 +81,6 @@ class DatabaseListService
 
     protected function createConnection(DatabaseServer $databaseServer): PDO
     {
-        return DatabaseType::from($databaseServer->database_type)->createPdo(
-            $databaseServer->host,
-            $databaseServer->port,
-            $databaseServer->username,
-            $databaseServer->password,
-            null,
-            5
-        );
+        return DatabaseType::from($databaseServer->database_type)->createPdo($databaseServer, null, 5);
     }
 }
