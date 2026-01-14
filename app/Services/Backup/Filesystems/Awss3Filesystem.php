@@ -111,6 +111,12 @@ class Awss3Filesystem implements FilesystemInterface
         // Use IAM role assumption if role_arn is configured
         if (! empty($awsConfig['custom_role_arn'])) {
             $clientConfig['credentials'] = $this->createCustomAssumeRoleCredentials($awsConfig);
+        } elseif (! empty($awsConfig['access_key_id']) && ! empty($awsConfig['secret_access_key'])) {
+            // Use explicit credentials when configured (e.g., for testing or non-AWS environments)
+            $clientConfig['credentials'] = [
+                'key' => $awsConfig['access_key_id'],
+                'secret' => $awsConfig['secret_access_key'],
+            ];
         }
 
         // Use endpoint override if provided (for presigned URLs), otherwise use configured endpoint
