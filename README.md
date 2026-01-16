@@ -57,14 +57,10 @@ Databasement is designed to be self-hosted. We provide several deployment option
 ### Quick Start
 
 ```bash
-# Generate an application key
-APP_KEY=$(docker run --rm davidcrty/databasement:latest php artisan key:generate --show)
-
 # Run the container
 docker run -d \
   --name databasement \
   -p 2226:2226 \
-  -e APP_KEY=$APP_KEY \
   -e DB_CONNECTION=sqlite \
   -e DB_DATABASE=/data/database.sqlite \
   -e ENABLE_QUEUE_WORKER=true \
