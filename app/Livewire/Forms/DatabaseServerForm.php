@@ -67,6 +67,8 @@ class DatabaseServerForm extends Form
     /** @var array<string, mixed> Connection test details (dbms, ping, ssl, etc.) */
     public array $connectionTestDetails = [];
 
+    public bool $showConnectionDetails = false;
+
     /** @var array<array{id: string, name: string}> */
     public array $availableDatabases = [];
 
@@ -156,6 +158,56 @@ class DatabaseServerForm extends Form
     }
 
     /**
+     * Get database type options for select
+     *
+     * @return array<array{id: string, name: string}>
+     */
+    public function getDatabaseTypeOptions(): array
+    {
+        return DatabaseType::toSelectOptions();
+    }
+
+    /**
+     * Get recurrence options for select
+     *
+     * @return array<array{id: string, name: string}>
+     */
+    public function getRecurrenceOptions(): array
+    {
+        return collect(Backup::RECURRENCE_TYPES)->map(fn ($type) => [
+            'id' => $type,
+            'name' => __(ucfirst($type)),
+        ])->toArray();
+    }
+
+    /**
+     * Get retention policy options for select
+     *
+     * @return array<array{id: string, name: string}>
+     */
+    public function getRetentionPolicyOptions(): array
+    {
+        return [
+            ['id' => Backup::RETENTION_DAYS, 'name' => __('Days-based')],
+            ['id' => Backup::RETENTION_GFS, 'name' => __('GFS (Grandfather-Father-Son)')],
+            ['id' => Backup::RETENTION_FOREVER, 'name' => __('Forever (keep all snapshots)')],
+        ];
+    }
+
+    /**
+     * Get volume options for select
+     *
+     * @return array<array{id: string, name: string}>
+     */
+    public function getVolumeOptions(): array
+    {
+        return \App\Models\Volume::orderBy('name')->get()->map(fn ($v) => [
+            'id' => $v->id,
+            'name' => "{$v->name} ({$v->type})",
+        ])->toArray();
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function formValidate(): array
@@ -180,9 +232,9 @@ class DatabaseServerForm extends Form
             if ($this->retention_policy === Backup::RETENTION_DAYS) {
                 $rules['retention_days'] = 'required|integer|min:1|max:365';
             } elseif ($this->retention_policy === Backup::RETENTION_GFS) {
-                $rules['gfs_keep_daily'] = 'nullable|integer|min:1|max:90';
-                $rules['gfs_keep_weekly'] = 'nullable|integer|min:1|max:52';
-                $rules['gfs_keep_monthly'] = 'nullable|integer|min:1|max:24';
+                $rules['gfs_keep_daily'] = 'nullable|integer|min:0|max:90';
+                $rules['gfs_keep_weekly'] = 'nullable|integer|min:0|max:52';
+                $rules['gfs_keep_monthly'] = 'nullable|integer|min:0|max:24';
             }
             // RETENTION_FOREVER requires no additional fields
         }
@@ -293,9 +345,10 @@ class DatabaseServerForm extends Form
             $backupData['gfs_keep_monthly'] = null;
         } elseif ($retentionPolicy === Backup::RETENTION_GFS) {
             $backupData['retention_days'] = null;
-            $backupData['gfs_keep_daily'] = $validated['gfs_keep_daily'] ?? null;
-            $backupData['gfs_keep_weekly'] = $validated['gfs_keep_weekly'] ?? null;
-            $backupData['gfs_keep_monthly'] = $validated['gfs_keep_monthly'] ?? null;
+            // Normalize 0 to null for consistency (0 means "disabled" same as null)
+            $backupData['gfs_keep_daily'] = ! empty($validated['gfs_keep_daily']) ? $validated['gfs_keep_daily'] : null;
+            $backupData['gfs_keep_weekly'] = ! empty($validated['gfs_keep_weekly']) ? $validated['gfs_keep_weekly'] : null;
+            $backupData['gfs_keep_monthly'] = ! empty($validated['gfs_keep_monthly']) ? $validated['gfs_keep_monthly'] : null;
         } else {
             // RETENTION_FOREVER - no retention fields needed
             $backupData['retention_days'] = null;
