@@ -1,16 +1,20 @@
 <div>
-    <!-- HEADER -->
+    <!-- HEADER with filters (Desktop) -->
     <x-header title="{{ __('Users') }}" separator progress-indicator>
-        <x-slot:middle class="!justify-end">
-            <x-input placeholder="{{ __('Search...') }}" wire:model.live.debounce="search" clearable icon="o-magnifying-glass" />
-        </x-slot:middle>
         <x-slot:actions>
-            <x-button label="{{ __('Filters') }}" @click="$wire.drawer = true" responsive icon="o-funnel" class="btn-ghost" />
+            <div class="hidden lg:flex items-center gap-2">
+                @include('livewire.user._filters', ['variant' => 'desktop'])
+            </div>
             @can('create', App\Models\User::class)
-                <x-button label="{{ __('Add User') }}" link="{{ route('users.create') }}" icon="o-plus" class="btn-primary" wire:navigate />
+                <x-button label="{{ __('Add User') }}" link="{{ route('users.create') }}" icon="o-plus" class="btn-primary btn-sm" wire:navigate />
             @endcan
         </x-slot:actions>
     </x-header>
+
+    <!-- FILTERS (Tablet & Mobile) -->
+    <div class="lg:hidden mb-4" x-data="{ showFilters: false }">
+        @include('livewire.user._filters', ['variant' => 'mobile'])
+    </div>
 
     <!-- TABLE -->
     <x-card shadow>
@@ -97,34 +101,6 @@
             @endscope
         </x-table>
     </x-card>
-
-    <!-- FILTER DRAWER -->
-    <x-drawer wire:model="drawer" title="{{ __('Filters') }}" right separator with-close-button class="lg:w-1/3">
-        <div class="grid gap-5">
-            <x-input placeholder="{{ __('Search...') }}" wire:model.live.debounce="search" icon="o-magnifying-glass" @keydown.enter="$wire.drawer = false" />
-            <x-select
-                label="{{ __('Role') }}"
-                placeholder="{{ __('All Roles') }}"
-                placeholder-value=""
-                wire:model.live="roleFilter"
-                :options="$roleFilterOptions"
-                icon="o-user-group"
-            />
-            <x-select
-                label="{{ __('Status') }}"
-                placeholder="{{ __('All Status') }}"
-                placeholder-value=""
-                wire:model.live="statusFilter"
-                :options="$statusFilterOptions"
-                icon="o-funnel"
-            />
-        </div>
-
-        <x-slot:actions>
-            <x-button label="{{ __('Reset') }}" icon="o-x-mark" wire:click="clear" spinner />
-            <x-button label="{{ __('Done') }}" icon="o-check" class="btn-primary" @click="$wire.drawer = false" />
-        </x-slot:actions>
-    </x-drawer>
 
     <!-- DELETE CONFIRMATION MODAL -->
     <x-delete-confirmation-modal
