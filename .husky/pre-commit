@@ -9,7 +9,7 @@ echo "🔍 Running static analysis..."
 make phpstan
 echo ""
 
-echo "🧪 Running tests..."
+echo "🧪 Running tests (parallel)..."
 make test
 echo ""
 

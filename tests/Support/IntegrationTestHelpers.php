@@ -6,24 +6,40 @@ use App\Enums\DatabaseType;
 use App\Models\Backup;
 use App\Models\DatabaseServer;
 use App\Models\Volume;
+use Illuminate\Support\Facades\ParallelTesting;
+use InvalidArgumentException;
 use PDO;
 
 class IntegrationTestHelpers
 {
     /**
+     * Get the parallel testing token suffix for unique resource names.
+     * Returns empty string if not running in parallel.
+     */
+    public static function getParallelSuffix(): string
+    {
+        $token = ParallelTesting::token();
+
+        return $token ? "_{$token}" : '';
+    }
+
+    /**
      * Get database connection config for a given type.
+     * When running in parallel, database names are suffixed with the process token to avoid conflicts.
      *
      * @return array{host: string, port: int, username: string, password: string, database: string, database_type: string}
      */
     public static function getDatabaseConfig(string $type): array
     {
+        $suffix = self::getParallelSuffix();
+
         return match ($type) {
             'mysql' => [
                 'host' => config('testing.databases.mysql.host'),
                 'port' => (int) config('testing.databases.mysql.port'),
                 'username' => config('testing.databases.mysql.username'),
                 'password' => config('testing.databases.mysql.password'),
-                'database' => config('testing.databases.mysql.database'),
+                'database' => config('testing.databases.mysql.database').$suffix,
                 'database_type' => 'mysql',
             ],
             'postgres' => [
@@ -31,11 +47,11 @@ class IntegrationTestHelpers
                 'port' => (int) config('testing.databases.postgres.port'),
                 'username' => config('testing.databases.postgres.username'),
                 'password' => config('testing.databases.postgres.password'),
-                'database' => config('testing.databases.postgres.database'),
+                'database' => config('testing.databases.postgres.database').$suffix,
                 'database_type' => 'postgres',
             ],
             'sqlite' => [
-                'host' => config('backup.working_directory').'/test_connection.sqlite',
+                'host' => config('backup.working_directory').'/test_connection'.$suffix.'.sqlite',
                 'port' => 0,
                 'username' => '',
                 'password' => '',
@@ -167,8 +183,9 @@ class IntegrationTestHelpers
         }
 
         $fixtureFile = match ($type) {
-            'mysql' => __DIR__.'/../Feature/Integration/fixtures/mysql-init.sql',
-            'postgres' => __DIR__.'/../Feature/Integration/fixtures/postgres-init.sql',
+            'mysql' => __DIR__.'/../Integration/fixtures/mysql-init.sql',
+            'postgres' => __DIR__.'/../Integration/fixtures/postgres-init.sql',
+            default => throw new InvalidArgumentException("loadTestData does not support database type: {$type}. Use createTestSqliteDatabase for SQLite."),
         };
 
         $pdo = self::connectToDatabase($type, $server, $databaseName);

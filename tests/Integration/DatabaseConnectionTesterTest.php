@@ -10,12 +10,15 @@
 use App\Services\DatabaseConnectionTester;
 use Tests\Support\IntegrationTestHelpers;
 
-uses()->group('integration');
-
 test('connection succeeds', function (string $databaseType) {
     $config = IntegrationTestHelpers::getDatabaseConfig($databaseType);
+
     if ($databaseType === 'sqlite') {
         IntegrationTestHelpers::createTestSqliteDatabase($config['host']);
+    } else {
+        // Create unique database for this parallel process
+        $server = IntegrationTestHelpers::createDatabaseServer($databaseType);
+        IntegrationTestHelpers::loadTestData($databaseType, $server);
     }
 
     $result = DatabaseConnectionTester::test([
@@ -30,8 +33,12 @@ test('connection succeeds', function (string $databaseType) {
     expect($result['success'])->toBeTrue()
         ->and($result['message'])->toBe('Connection successful');
 
+    // Cleanup
     if ($databaseType === 'sqlite') {
         unlink($config['host']);
+    } else {
+        IntegrationTestHelpers::dropDatabase($databaseType, $server, $config['database']);
+        $server->delete();
     }
 })->with(['mysql', 'postgres', 'sqlite']);
 

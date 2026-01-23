@@ -82,10 +82,10 @@ jobs:
           TEST_POSTGRES_HOST: 127.0.0.1
         run: |
           php artisan migrate --force
-          php artisan test --coverage-clover=coverage.xml --coverage-text=coverage.txt
-          cat coverage.txt | head -n 10
+          php artisan test --parallel --coverage-clover=coverage.xml
 
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
+          files: coverage.xml
