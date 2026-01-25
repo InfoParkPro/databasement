@@ -22,6 +22,24 @@ Databasement is a web application for managing database server backups. It allow
 - **User management**: Multi-user support with two-factor authentication
 - **Simple deployment**: Single container with built-in web server, queue worker, and scheduler
 
+## Quick Start
+
+```bash
+# Run the container
+docker run -d \
+  --name databasement \
+  -p 2226:2226 \
+  -e DB_CONNECTION=sqlite \
+  -e DB_DATABASE=/data/database.sqlite \
+  -e ENABLE_QUEUE_WORKER=true \
+  -v ./databasement-data:/data \
+  davidcrty/databasement:latest
+```
+
+Open http://localhost:2226 and create your first admin account.
+
+> **Note:** The container automatically handles volume permissions. You can use `PUID` and `PGID` environment variables to match your system's user/group IDs.
+
 ## Documentation Sections
 
 ### Self-Hosting
