@@ -5,7 +5,6 @@ namespace App\Jobs;
 use App\Models\Restore;
 use App\Services\Backup\RestoreTask;
 use App\Services\FailureNotificationService;
-use App\Support\FilesystemSupport;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -22,11 +21,6 @@ class ProcessRestoreJob implements ShouldQueue
     public int $timeout;
 
     public int $backoff;
-
-    /**
-     * Working directory for temporary files.
-     */
-    private string $workingDirectory;
 
     /**
      * Create a new job instance.
@@ -51,11 +45,8 @@ class ProcessRestoreJob implements ShouldQueue
         // Update job with queue job ID for tracking
         $restore->job->update(['job_id' => $this->job->getJobId()]);
 
-        // Create unique working directory for this job
-        $this->workingDirectory = FilesystemSupport::createWorkingDirectory('restore', $this->restoreId);
-
         // Run the restore task
-        $restoreTask->run($restore, $this->workingDirectory);
+        $restoreTask->run($restore, $this->attempts(), $this->tries);
 
         Log::info('Restore completed successfully', [
             'restore_id' => $this->restoreId,
@@ -66,26 +57,12 @@ class ProcessRestoreJob implements ShouldQueue
     }
 
     /**
-     * Handle a job failure.
+     * Handle a job failure (called by Laravel queue after all retries exhausted).
+     * Note: Job is already marked as failed by RestoreTask::run() catch block.
      */
     public function failed(\Throwable $exception): void
     {
-        Log::error('Restore job failed', [
-            'restore_id' => $this->restoreId,
-            'error' => $exception->getMessage(),
-            'trace' => $exception->getTraceAsString(),
-        ]);
-
-        // Clean up working directory if it exists
-        if (isset($this->workingDirectory) && is_dir($this->workingDirectory)) {
-            FilesystemSupport::cleanupDirectory($this->workingDirectory);
-        }
-
-        // Mark the job as failed and send notification (only if not already failed)
-        $restore = Restore::with(['job', 'targetServer', 'snapshot'])->findOrFail($this->restoreId);
-        if ($restore->job->status !== 'failed') {
-            $restore->job->markFailed($exception);
-            app(FailureNotificationService::class)->notifyRestoreFailed($restore, $exception);
-        }
+        $restore = Restore::with(['targetServer', 'snapshot'])->findOrFail($this->restoreId);
+        app(FailureNotificationService::class)->notifyRestoreFailed($restore, $exception);
     }
 }

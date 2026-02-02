@@ -5,7 +5,6 @@ namespace App\Jobs;
 use App\Models\Snapshot;
 use App\Services\Backup\BackupTask;
 use App\Services\FailureNotificationService;
-use App\Support\FilesystemSupport;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -22,11 +21,6 @@ class ProcessBackupJob implements ShouldQueue
     public int $timeout;
 
     public int $backoff;
-
-    /**
-     * Working directory for temporary files.
-     */
-    private string $workingDirectory;
 
     /**
      * Create a new job instance.
@@ -50,11 +44,8 @@ class ProcessBackupJob implements ShouldQueue
         // Update job with queue job ID for tracking
         $snapshot->job->update(['job_id' => $this->job->getJobId()]);
 
-        // Create unique working directory for this job
-        $this->workingDirectory = FilesystemSupport::createWorkingDirectory('backup', $this->snapshotId);
-
         // Run the backup task
-        $backupTask->run($snapshot, $this->workingDirectory);
+        $backupTask->run($snapshot, $this->attempts(), $this->tries);
 
         Log::info('Backup completed successfully', [
             'snapshot_id' => $this->snapshotId,
@@ -64,26 +55,12 @@ class ProcessBackupJob implements ShouldQueue
     }
 
     /**
-     * Handle a job failure.
+     * Handle a job failure (called by Laravel queue after all retries exhausted).
+     * Note: Job is already marked as failed by BackupTask::run() catch block.
      */
     public function failed(\Throwable $exception): void
     {
-        Log::error('Backup job failed', [
-            'snapshot_id' => $this->snapshotId,
-            'error' => $exception->getMessage(),
-            'trace' => $exception->getTraceAsString(),
-        ]);
-
-        // Clean up working directory if it exists
-        if (isset($this->workingDirectory) && is_dir($this->workingDirectory)) {
-            FilesystemSupport::cleanupDirectory($this->workingDirectory);
-        }
-
-        // Mark the job as failed and send notification (only if not already failed)
-        $snapshot = Snapshot::with(['job', 'databaseServer'])->findOrFail($this->snapshotId);
-        if ($snapshot->job->status !== 'failed') {
-            $snapshot->job->markFailed($exception);
-            app(FailureNotificationService::class)->notifyBackupFailed($snapshot, $exception);
-        }
+        $snapshot = Snapshot::with(['databaseServer'])->findOrFail($this->snapshotId);
+        app(FailureNotificationService::class)->notifyBackupFailed($snapshot, $exception);
     }
 }
