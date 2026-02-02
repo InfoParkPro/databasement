@@ -71,6 +71,12 @@ test('dry-run mode does not delete snapshots', function () {
 });
 
 test('GFS retention combines daily, weekly, and monthly tiers', function () {
+    // Freeze time to Saturday so all test dates are clearly separated:
+    // - day1/day2 are in daily tier (Fri/Thu)
+    // - day3 is outside daily tier but not oldest in week (Wed)
+    // - thisWeekOldest is the actual oldest in week (Mon)
+    $this->travelTo(now()->next('Saturday')->setTime(12, 0));
+
     $server = DatabaseServer::factory()->create();
     $server->backup->update([
         'retention_policy' => 'gfs',
