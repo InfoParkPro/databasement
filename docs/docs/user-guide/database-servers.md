@@ -215,3 +215,16 @@ Ensure your firewall allows connections:
 - **Docker networks**: Usually handled automatically
 - **Host firewall (iptables/ufw)**: May need rules for Docker bridge networks
 - **Cloud firewalls (AWS Security Groups, etc.)**: Add inbound rules for the database port
+
+## SSH Tunnel
+
+Connect to databases in private networks through a bastion/jump server. Enable this when the database isn't directly accessible from Databasement.
+
+| Field | Description |
+|-------|-------------|
+| SSH Host | Bastion server hostname or IP |
+| SSH Port | SSH port (default: 22) |
+| SSH Username | SSH user |
+| Auth Type | `Password` or `Private Key` (with optional passphrase) |
+
+Databasement establishes the tunnel before each backup/restore operation and closes it when complete. Sensitive credentials are encrypted at rest.
