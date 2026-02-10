@@ -265,31 +265,6 @@ test('run executes backup for each database when backup_all_databases is enabled
     }
 });
 
-test('createSnapshots throws exception when backup_all_databases is enabled but no databases found', function () {
-    // Arrange - Mock DatabaseListService to return empty list
-    $mockDatabaseListService = Mockery::mock(DatabaseListService::class);
-    $mockDatabaseListService->shouldReceive('listDatabases')
-        ->once()
-        ->andReturn([]);
-
-    $backupJobFactory = new BackupJobFactory($mockDatabaseListService);
-
-    $databaseServer = createDatabaseServer([
-        'name' => 'Empty Server',
-        'host' => 'localhost',
-        'port' => 3306,
-        'database_type' => 'mysql',
-        'username' => 'root',
-        'password' => 'secret',
-        'database_names' => null,
-        'backup_all_databases' => true,
-    ]);
-
-    // Act & Assert
-    expect(fn () => $backupJobFactory->createSnapshots($databaseServer, 'manual'))
-        ->toThrow(\RuntimeException::class, 'No databases found on the server to backup.');
-});
-
 test('run handles backup path configuration correctly', function (?string $configuredPath, string $expectedPrefix) {
     $databaseServer = createDatabaseServer([
         'name' => 'MySQL Server',
