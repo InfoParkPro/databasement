@@ -6,6 +6,7 @@ use App\Enums\DatabaseType;
 use App\Facades\AppConfig;
 use App\Models\Backup;
 use App\Models\DatabaseServer;
+use App\Models\DatabaseServerSshConfig;
 use App\Models\Volume;
 use App\Services\Backup\Databases\MongodbDatabase;
 use Illuminate\Support\Facades\ParallelTesting;
@@ -276,6 +277,71 @@ class IntegrationTestHelpers
     public static function connectToDatabase(string $type, DatabaseServer $server, string $databaseName): PDO
     {
         return DatabaseType::from($type)->createPdo($server, $databaseName);
+    }
+
+    /**
+     * Get SSH tunnel test configuration.
+     *
+     * @return array{host: string, port: int, username: string, password: string, mysql_host: string}
+     */
+    public static function getSshConfig(): array
+    {
+        return [
+            'host' => config('testing.ssh.host'),
+            'port' => (int) config('testing.ssh.port'),
+            'username' => config('testing.ssh.username'),
+            'password' => config('testing.ssh.password'),
+            'mysql_host' => config('testing.ssh.mysql_host'),
+        ];
+    }
+
+    /**
+     * Create a persisted DatabaseServerSshConfig with real test SSH credentials.
+     */
+    public static function createSshConfig(): DatabaseServerSshConfig
+    {
+        $ssh = self::getSshConfig();
+
+        return DatabaseServerSshConfig::create([
+            'host' => $ssh['host'],
+            'port' => $ssh['port'],
+            'username' => $ssh['username'],
+            'auth_type' => 'password',
+            'password' => $ssh['password'],
+        ]);
+    }
+
+    /**
+     * Create a database server configured to connect through an SSH tunnel.
+     *
+     * The server's host is set to the database hostname as seen from the SSH container
+     * (e.g. "mysql"), since the tunnel will forward connections from there.
+     *
+     * Currently only supports MySQL. Add config keys (e.g. testing.ssh.postgres_host)
+     * and extend the match below when adding SSH tunnel tests for other types.
+     */
+    public static function createDatabaseServerWithSshTunnel(string $type): DatabaseServer
+    {
+        $dbConfig = self::getDatabaseConfig($type);
+        $sshConfig = self::createSshConfig();
+        $ssh = self::getSshConfig();
+
+        $remoteHost = match ($type) {
+            'mysql' => $ssh['mysql_host'],
+            default => throw new InvalidArgumentException("SSH tunnel tests not configured for database type: {$type}"),
+        };
+
+        return DatabaseServer::create([
+            'name' => "Integration Test {$type} SSH Tunnel Server",
+            'host' => $remoteHost,
+            'port' => $dbConfig['port'],
+            'database_type' => $dbConfig['database_type'],
+            'username' => $dbConfig['username'],
+            'password' => $dbConfig['password'],
+            'database_names' => [$dbConfig['database']],
+            'description' => "Integration test {$type} database server via SSH tunnel",
+            'ssh_config_id' => $sshConfig->id,
+        ]);
     }
 
     /**
