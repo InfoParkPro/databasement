@@ -155,6 +155,11 @@ class DatabaseServerForm extends Form
         if ($value === 'sqlite' && empty($this->database_names)) {
             $this->database_names = [''];
         }
+
+        // Pre-fill auth_source for MongoDB
+        if ($value === 'mongodb' && $this->auth_source === '') {
+            $this->auth_source = 'admin';
+        }
     }
 
     /**

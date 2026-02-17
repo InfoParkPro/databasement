@@ -147,7 +147,7 @@ use App\Enums\DatabaseType;
                                 wire:model="form.auth_source"
                                 label="{{ __('Authentication Database') }}"
                                 placeholder="admin"
-                                hint="{{ __('The database used to authenticate credentials (defaults to admin)') }}"
+                                hint="{{ __('The database used to authenticate credentials') }}"
                                 type="text"
                             />
                         @endif
