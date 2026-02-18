@@ -2,27 +2,26 @@
 
 namespace App\Livewire\Dashboard;
 
-use App\Livewire\Concerns\WithDeferredLoading;
+use App\Models\Snapshot;
 use App\Support\Formatters;
 use Illuminate\Contracts\View\View;
-use Illuminate\Support\Facades\DB;
+use Livewire\Attributes\Lazy;
 use Livewire\Component;
 
+#[Lazy]
 class StorageDistributionChart extends Component
 {
-    use WithDeferredLoading;
-
     /** @var array<string, mixed> */
     public array $chart = [];
 
     public int $totalBytes = 0;
 
-    protected function loadContent(): void
+    public function mount(): void
     {
         /** @var \Illuminate\Support\Collection<int, object{name: string, total_size: int}> $storageByVolume */
-        $storageByVolume = DB::table('snapshots')
+        $storageByVolume = Snapshot::query()
             ->join('volumes', 'snapshots.volume_id', '=', 'volumes.id')
-            ->select('volumes.name', DB::raw('SUM(snapshots.file_size) as total_size'))
+            ->selectRaw('volumes.name, SUM(snapshots.file_size) as total_size')
             ->groupBy('volumes.id', 'volumes.name')
             ->orderByDesc('total_size')
             ->get();
@@ -47,7 +46,7 @@ class StorageDistributionChart extends Component
         ];
 
         $backgroundColors = [];
-        foreach ($labels as $index => $label) {
+        foreach (array_keys($labels) as $index) {
             $backgroundColors[] = $colors[$index % count($colors)];
         }
 
@@ -78,6 +77,11 @@ class StorageDistributionChart extends Component
                 ],
             ],
         ];
+    }
+
+    public function placeholder(): View
+    {
+        return view('components.lazy-placeholder', ['type' => 'chart']);
     }
 
     public function getFormattedTotal(): string

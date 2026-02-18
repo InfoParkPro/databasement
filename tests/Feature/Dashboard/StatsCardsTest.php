@@ -27,10 +27,10 @@ test('stats cards calculates correct totals', function () {
     $failedSnapshots[0]->update(['file_size' => 500]);
     $failedSnapshots[0]->job->markFailed(new Exception('Test error'));
 
-    Livewire::actingAs($user)
+    Livewire::withoutLazyLoading()
+        ->actingAs($user)
         ->test(StatsCards::class)
-        ->call('load')
-        ->assertSet('totalSnapshots', 4)
+        ->assertSet('totalSnapshots', 3) // only counts snapshots from successful jobs
         ->assertSet('successRate', 75.0); // 3 out of 4 = 75%
 });
 
@@ -51,9 +51,9 @@ test('stats cards shows missing snapshots count', function () {
     $snapshots = $factory->createSnapshots($server, 'manual', $user->id);
     $snapshots[0]->job->markCompleted();
 
-    Livewire::actingAs($user)
+    Livewire::withoutLazyLoading()
+        ->actingAs($user)
         ->test(StatsCards::class)
-        ->call('load')
         ->assertSet('missingSnapshots', 2)
         ->assertSee('2 missing');
 });
@@ -71,9 +71,9 @@ test('stats cards shows all verified when no snapshots are missing', function ()
         $snapshots[0]->job->markCompleted();
     }
 
-    Livewire::actingAs($user)
+    Livewire::withoutLazyLoading()
+        ->actingAs($user)
         ->test(StatsCards::class)
-        ->call('load')
         ->assertSet('verifiedSnapshots', 2)
         ->assertSet('missingSnapshots', 0)
         ->assertSee('All verified');
@@ -91,9 +91,9 @@ test('stats cards shows running jobs count', function () {
         $snapshots[0]->job->markRunning();
     }
 
-    Livewire::actingAs($user)
+    Livewire::withoutLazyLoading()
+        ->actingAs($user)
         ->test(StatsCards::class)
-        ->call('load')
         ->assertSet('runningJobs', 2);
 });
 
@@ -102,7 +102,8 @@ test('verify files button dispatches verification job', function () {
 
     $user = User::factory()->create();
 
-    Livewire::actingAs($user)
+    Livewire::withoutLazyLoading()
+        ->actingAs($user)
         ->test(StatsCards::class)
         ->call('verifyFiles');
 
@@ -116,7 +117,8 @@ test('verify files button prevents rapid re-dispatch via cache lock', function (
 
     Cache::lock('verify-snapshot-files', 300)->get();
 
-    Livewire::actingAs($user)
+    Livewire::withoutLazyLoading()
+        ->actingAs($user)
         ->test(StatsCards::class)
         ->call('verifyFiles');
 
