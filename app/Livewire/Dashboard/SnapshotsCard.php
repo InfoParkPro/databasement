@@ -7,6 +7,7 @@ use App\Models\Snapshot;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Cache;
 use Livewire\Attributes\Lazy;
+use Livewire\Attributes\On;
 use Livewire\Component;
 use Mary\Traits\Toast;
 use Symfony\Component\HttpFoundation\Response;
@@ -23,6 +24,17 @@ class SnapshotsCard extends Component
     public int $missingSnapshots = 0;
 
     public function mount(): void
+    {
+        $this->loadData();
+    }
+
+    #[On('refresh-dashboard')]
+    public function refreshDashboard(): void
+    {
+        $this->loadData();
+    }
+
+    private function loadData(): void
     {
         $baseQuery = Snapshot::whereRelation('job', 'status', 'completed');
 

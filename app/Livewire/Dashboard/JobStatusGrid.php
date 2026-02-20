@@ -4,8 +4,10 @@ namespace App\Livewire\Dashboard;
 
 use App\Models\BackupJob;
 use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\Collection;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Lazy;
+use Livewire\Attributes\On;
 use Livewire\Component;
 
 #[Lazy]
@@ -14,6 +16,37 @@ class JobStatusGrid extends Component
     public bool $showLogsModal = false;
 
     public ?string $selectedJobId = null;
+
+    /**
+     * @return Collection<int, BackupJob>
+     */
+    #[Computed]
+    public function jobs(): Collection
+    {
+        return BackupJob::query()
+            ->select(['id', 'status', 'duration_ms', 'created_at'])
+            ->with([
+                'snapshot:id,backup_job_id,database_name,database_server_id' => [
+                    'databaseServer:id,name',
+                ],
+                'restore:id,backup_job_id,target_server_id,snapshot_id' => [
+                    'targetServer:id,name',
+                    'snapshot:id,database_name,database_server_id' => [
+                        'databaseServer:id,name',
+                    ],
+                ],
+            ])
+            ->where('created_at', '>=', now()->subDays(30))
+            ->latest('created_at')
+            ->limit(1000)
+            ->get();
+    }
+
+    #[On('refresh-dashboard')]
+    public function refreshJobs(): void
+    {
+        unset($this->jobs);
+    }
 
     public function placeholder(): View
     {
@@ -50,18 +83,6 @@ class JobStatusGrid extends Component
 
     public function render(): View
     {
-        $jobs = BackupJob::query()
-            ->with([
-                'snapshot.databaseServer',
-                'restore.targetServer',
-                'restore.snapshot.databaseServer',
-            ])
-            ->latest('created_at')
-            ->limit(189)
-            ->get();
-
-        return view('livewire.dashboard.job-status-grid', [
-            'jobs' => $jobs,
-        ]);
+        return view('livewire.dashboard.job-status-grid');
     }
 }

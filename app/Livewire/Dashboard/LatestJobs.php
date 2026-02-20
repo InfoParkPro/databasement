@@ -6,6 +6,7 @@ use App\Models\BackupJob;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
 use Livewire\Attributes\Lazy;
+use Livewire\Attributes\On;
 use Livewire\Component;
 
 #[Lazy]
@@ -23,6 +24,12 @@ class LatestJobs extends Component
     public function mount(): void
     {
         $this->jobs = new Collection;
+        $this->fetchJobs();
+    }
+
+    #[On('refresh-dashboard')]
+    public function refreshDashboard(): void
+    {
         $this->fetchJobs();
     }
 

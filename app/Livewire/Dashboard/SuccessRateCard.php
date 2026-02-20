@@ -7,6 +7,7 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Support\Carbon;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Lazy;
+use Livewire\Attributes\On;
 use Livewire\Component;
 
 #[Lazy]
@@ -17,6 +18,17 @@ class SuccessRateCard extends Component
     public int $runningJobs = 0;
 
     public function mount(): void
+    {
+        $this->loadData();
+    }
+
+    #[On('refresh-dashboard')]
+    public function refreshDashboard(): void
+    {
+        $this->loadData();
+    }
+
+    private function loadData(): void
     {
         $thirtyDaysAgo = Carbon::now()->subDays(30);
 
