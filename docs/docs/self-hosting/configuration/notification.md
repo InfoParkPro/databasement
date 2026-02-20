@@ -10,18 +10,91 @@ This page covers additional setup guides for each channel.
 
 ## Email {#email}
 
-Databasement uses Laravel's mail system. Configure your mail driver with these environment variables:
+Databasement uses Laravel's mail system (Symfony Mailer). Configure your mail driver with these environment variables:
+
+---
+
+### Basic SMTP configuration (STARTTLS – typical 587)
 
 ```bash
 MAIL_MAILER=smtp
 MAIL_HOST=smtp.example.com
 MAIL_PORT=587
+MAIL_SCHEME=smtp
 MAIL_USERNAME=your-username
 MAIL_PASSWORD=your-password
-MAIL_ENCRYPTION=tls
 MAIL_FROM_ADDRESS=databasement@example.com
 MAIL_FROM_NAME="Databasement"
 ```
+
+`smtp` uses plain SMTP and automatically negotiates STARTTLS if the server supports it (commonly port 587).
+
+---
+
+### SMTPS (implicit TLS – typical 465)
+
+```bash
+MAIL_MAILER=smtp
+MAIL_HOST=smtp.example.com
+MAIL_PORT=465
+MAIL_SCHEME=smtps
+MAIL_USERNAME=your-username
+MAIL_PASSWORD=your-password
+MAIL_FROM_ADDRESS=databasement@example.com
+MAIL_FROM_NAME="Databasement"
+```
+
+`smtps` enables implicit TLS from the beginning of the connection.
+
+---
+
+### Unencrypted SMTP / no forced encryption (port 25)
+
+```bash
+MAIL_MAILER=smtp
+MAIL_HOST=smtp.example.com
+MAIL_PORT=25
+MAIL_SCHEME=smtp
+```
+
+If the server advertises `STARTTLS`, Symfony will attempt to use it automatically.
+
+If you **must explicitly disable STARTTLS**, use a DSN:
+
+```bash
+MAIL_MAILER=smtp
+MAIL_URL=smtp://smtp.example.com:25?auto_tls=false
+```
+
+---
+
+### Using a DSN (advanced configuration)
+
+You may configure the full connection using `MAIL_URL`:
+
+```bash
+MAIL_MAILER=smtp
+MAIL_URL=smtp://user:pass@smtp.example.com:587
+```
+
+Or with implicit TLS:
+
+```bash
+MAIL_MAILER=smtp
+MAIL_URL=smtps://user:pass@smtp.example.com:465
+```
+
+> **Note:** If your username or password contains special URI characters (e.g. `@`, `:`, `+`, `#`), percent-encode them in the DSN (e.g. `@` → `%40`).
+
+When `MAIL_URL` is defined, it overrides `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, and `MAIL_SCHEME`.
+
+---
+
+### Removed option
+
+`MAIL_ENCRYPTION` is no longer used.
+
+Encryption behavior is controlled exclusively by the DSN scheme (`smtp` or `smtps`) and optional DSN parameters.
 
 ## Slack {#slack}
 
