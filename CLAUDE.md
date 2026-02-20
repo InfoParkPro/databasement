@@ -342,7 +342,9 @@ cat /tmp/_keys1.txt /tmp/_keys2.txt | sort -u
 
 #### Avoiding HTML Encoding Artifacts
 
-Blade's `{{ }}` runs `htmlspecialchars()`, which encodes certain ASCII characters into HTML entities. When these appear in translation values, they cause visible artifacts like `&#039;` in the UI. **Always use Unicode equivalents** in translation values instead of these ASCII characters:
+Blade's `{{ }}` runs `htmlspecialchars()`, which encodes certain ASCII characters into HTML entities. This causes two types of issues:
+
+**In translation values** — use Unicode equivalents instead of these ASCII characters:
 
 | ASCII | Encoded as | Use instead | Example |
 |-------|-----------|-------------|---------|
@@ -351,6 +353,16 @@ Blade's `{{ }}` runs `htmlspecialchars()`, which encodes certain ASCII character
 | `&` (U+0026) | `&amp;` | Rephrase to avoid, or use `et`/`und`/`y`/etc. | |
 
 This mostly affects languages that use apostrophes heavily (French, Italian, Catalan, Irish) and languages with special quotation mark conventions (German, French, Polish, etc.).
+
+**In Blade component attributes** — use `:attr` binding (dynamic syntax) instead of `{{ }}` interpolation when passing translated strings to component attributes. The `{{ }}` syntax double-encodes special characters because the component escapes the value again when rendering:
+
+```blade
+{{-- Bad: double-encodes & ' " in translated values --}}
+<x-header title="{{ __('Appearance & Language') }}" />
+
+{{-- Good: passes raw PHP value, component handles escaping once --}}
+<x-header :title="__('Appearance & Language')" />
+```
 
 #### Updating an Existing Locale
 

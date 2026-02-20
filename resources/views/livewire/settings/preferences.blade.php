@@ -10,7 +10,7 @@
     }
 }">
     <div class="mx-auto max-w-7xl">
-        <x-header title="{{ __('Appearance & Language') }}" subtitle="{{ __('Customize your display and language preferences') }}" size="text-2xl" separator class="mb-6" />
+        <x-header :title="__('Appearance & Language')" :subtitle="__('Customize your display and language preferences')" size="text-2xl" separator class="mb-6" />
 
         <x-card title="{{ __('Language') }}" subtitle="{{ __('Choose your preferred language') }}" class="mb-6">
             <div class="flex flex-wrap gap-3">
