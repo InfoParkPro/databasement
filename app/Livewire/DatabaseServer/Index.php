@@ -102,7 +102,7 @@ class Index extends Component
         $this->deleteId = null;
         $this->showDeleteModal = false;
 
-        session()->flash('status', 'Database server deleted successfully!');
+        $this->success('Database server deleted successfully!', position: 'toast-bottom');
     }
 
     public function confirmRestore(string $id): void
