@@ -98,10 +98,10 @@ test('server with no databases does not prevent other backups from running', fun
 
     $schedule = dailySchedule();
 
-    // Server with backup_all_databases but no databases found
+    // Server with selection_mode=all but no databases found
     $emptyServer = DatabaseServer::factory()->create([
         'name' => 'Empty PostgreSQL',
-        'backup_all_databases' => true,
+        'database_selection_mode' => 'all',
         'database_names' => null,
     ]);
     $emptyServer->backup->update(['backup_schedule_id' => $schedule->id]);
@@ -137,18 +137,18 @@ test('server throwing exception when listing databases does not prevent other ba
 
     $schedule = dailySchedule();
 
-    // Server with backup_all_databases that will throw an exception
+    // Server with selection_mode=all that will throw an exception
     $failingServer = DatabaseServer::factory()->create([
         'name' => 'Failing Server',
-        'backup_all_databases' => true,
+        'database_selection_mode' => 'all',
         'database_names' => null,
     ]);
     $failingServer->backup->update(['backup_schedule_id' => $schedule->id]);
 
-    // Server with explicit database names that should still work
+    // Server with selection_mode=all that should still work (databases from mock provider)
     $normalServer = DatabaseServer::factory()->create([
         'name' => 'Normal Server',
-        'backup_all_databases' => true,
+        'database_selection_mode' => 'all',
         'database_names' => null,
     ]);
     $normalServer->backup->update(['backup_schedule_id' => $schedule->id]);

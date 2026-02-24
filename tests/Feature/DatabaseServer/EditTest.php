@@ -27,7 +27,7 @@ test('can edit database server', function (array $config) {
     } elseif ($config['type'] === 'redis') {
         $serverData['host'] = $config['host'];
         $serverData['port'] = $config['port'];
-        $serverData['backup_all_databases'] = true;
+        $serverData['database_selection_mode'] = 'all';
     } else {
         $serverData['host'] = $config['host'];
         $serverData['port'] = $config['port'];
@@ -212,4 +212,31 @@ test('refreshVolumes can be called without error', function () {
         ->test(Edit::class, ['server' => $server])
         ->call('refreshVolumes')
         ->assertOk();
+});
+
+test('pattern mode filters available databases and auto-loads on switch', function () {
+    $user = User::factory()->create();
+    $server = DatabaseServer::factory()->create();
+
+    $component = Livewire::actingAs($user)
+        ->test(Edit::class, ['server' => $server]);
+
+    // Switching to pattern triggers updatedDatabaseSelectionMode auto-load hook
+    $component->assertSet('form.availableDatabases', [])
+        ->set('form.database_selection_mode', 'pattern')
+        ->assertSet('form.loadingDatabases', false);
+
+    // Empty pattern returns nothing
+    $component->set('form.database_include_pattern', '');
+    expect($component->instance()->form->getFilteredDatabases())->toBe([]);
+
+    // With databases loaded, pattern filters correctly
+    $component->set('form.availableDatabases', [
+        ['id' => 'prod_users', 'name' => 'prod_users'],
+        ['id' => 'prod_orders', 'name' => 'prod_orders'],
+        ['id' => 'staging_users', 'name' => 'staging_users'],
+    ])->set('form.database_include_pattern', '^prod_');
+
+    expect($component->instance()->form->getFilteredDatabases())
+        ->toBe(['prod_users', 'prod_orders']);
 });
