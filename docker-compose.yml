@@ -17,12 +17,6 @@ services:
       # Set these to match your host user for proper file permissions
       UID: 1000
       GID: 1000
-      AWS_ACCESS_KEY_ID: rustfsadmin
-      AWS_SECRET_ACCESS_KEY: rustfsadmin
-      AWS_DEFAULT_REGION: us-east-1
-      AWS_ENDPOINT_URL_S3: http://rustfs:9000
-      AWS_PUBLIC_ENDPOINT_URL_S3: http://localhost:9000
-      AWS_USE_PATH_STYLE_ENDPOINT: "true"
     depends_on:
       - rustfs
 
@@ -39,12 +33,6 @@ services:
       TZ: UTC
       UID: 1000
       GID: 1000
-      AWS_ACCESS_KEY_ID: rustfsadmin
-      AWS_SECRET_ACCESS_KEY: rustfsadmin
-      AWS_DEFAULT_REGION: us-east-1
-      AWS_ENDPOINT_URL_S3: http://rustfs:9000
-      AWS_PUBLIC_ENDPOINT_URL_S3: http://localhost:9000
-      AWS_USE_PATH_STYLE_ENDPOINT: "true"
     depends_on:
       - app
       - rustfs
