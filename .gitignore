@@ -34,3 +34,4 @@ frankenphp-worker.php
 .scribe
 
 coverage
+.worktrees/
