@@ -73,6 +73,13 @@ class DatabaseProvider
                 $config['database'] = $databaseName;
             }
 
+            if ($server->database_type === DatabaseType::FIREBIRD) {
+                $config['database_names'] = $server->database_names ?? [];
+                if ($config['database'] === '' && ! empty($config['database_names'][0])) {
+                    $config['database'] = (string) $config['database_names'][0];
+                }
+            }
+
             if ($server->database_type === DatabaseType::MONGODB) {
                 $config['auth_source'] = $server->getExtraConfig('auth_source', 'admin');
                 if ($sourceDatabaseName !== null) {
@@ -112,6 +119,10 @@ class DatabaseProvider
 
             if ($config->databaseType !== DatabaseType::REDIS) {
                 $dbConfig['database'] = $databaseName;
+            }
+
+            if ($config->databaseType === DatabaseType::FIREBIRD && $dbConfig['database'] === '') {
+                $dbConfig['database'] = $config->extraConfig['database'] ?? '';
             }
 
             if ($config->databaseType === DatabaseType::MONGODB) {

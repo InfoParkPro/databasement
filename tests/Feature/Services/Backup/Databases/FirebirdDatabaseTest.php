@@ -1,0 +1,61 @@
+<?php
+
+use App\Exceptions\Backup\UnsupportedDatabaseTypeException;
+use App\Services\Backup\Databases\FirebirdDatabase;
+use App\Services\Backup\DTO\DatabaseOperationResult;
+use Illuminate\Support\Facades\Process;
+
+beforeEach(function () {
+    $this->db = new FirebirdDatabase;
+    $this->db->setConfig([
+        'host' => 'fb.local',
+        'port' => 3050,
+        'user' => 'sysdba',
+        'pass' => 'masterkey',
+        'database' => '/data/main.fdb',
+    ]);
+});
+
+test('dump builds gbak backup command', function () {
+    $result = $this->db->dump('/tmp/backup.fbk');
+
+    expect($result)->toBeInstanceOf(DatabaseOperationResult::class)
+        ->and($result->command)->toBe("gbak -b -user 'sysdba' -password 'masterkey' 'fb.local/3050:/data/main.fdb' '/tmp/backup.fbk'");
+});
+
+test('testConnection returns success when isql probe succeeds', function () {
+    Process::fake([
+        '*' => Process::result(output: 'Database: /data/main.fdb'),
+    ]);
+
+    $result = $this->db->testConnection();
+
+    expect($result['success'])->toBeTrue()
+        ->and($result['message'])->toBe('Connection successful')
+        ->and($result['details'])->toHaveKey('ping_ms')
+        ->and($result['details']['output'])->toContain('Database: /data/main.fdb');
+});
+
+test('testConnection returns failure when probe fails', function () {
+    Process::fake([
+        '*' => Process::result(exitCode: 1, errorOutput: 'I/O error during "open" operation'),
+    ]);
+
+    $result = $this->db->testConnection();
+
+    expect($result['success'])->toBeFalse()
+        ->and($result['message'])->toContain('I/O error during "open" operation');
+});
+
+test('listDatabases returns configured names', function () {
+    $this->db->setConfig([
+        'database_names' => ['/data/main.fdb', '/data/archive.fdb'],
+    ]);
+
+    expect($this->db->listDatabases())->toBe(['/data/main.fdb', '/data/archive.fdb']);
+});
+
+test('restore throws unsupported exception', function () {
+    expect(fn () => $this->db->restore('/tmp/backup.fbk'))
+        ->toThrow(UnsupportedDatabaseTypeException::class);
+});
