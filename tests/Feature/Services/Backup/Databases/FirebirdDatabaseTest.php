@@ -1,6 +1,5 @@
 <?php
 
-use App\Exceptions\Backup\UnsupportedDatabaseTypeException;
 use App\Services\Backup\Databases\FirebirdDatabase;
 use App\Services\Backup\DTO\DatabaseOperationResult;
 use Illuminate\Support\Facades\Process;
@@ -55,7 +54,16 @@ test('listDatabases returns configured names', function () {
     expect($this->db->listDatabases())->toBe(['/data/main.fdb', '/data/archive.fdb']);
 });
 
-test('restore throws unsupported exception', function () {
-    expect(fn () => $this->db->restore('/tmp/backup.fbk'))
-        ->toThrow(UnsupportedDatabaseTypeException::class);
+test('restore builds gbak restore command', function () {
+    $result = $this->db->restore('/tmp/backup.fbk');
+
+    expect($result)->toBeInstanceOf(DatabaseOperationResult::class)
+        ->and($result->command)->toBe("gbak -rep -user 'sysdba' -password 'masterkey' '/tmp/backup.fbk' 'fb.local/3050:/data/main.fdb'");
+});
+
+test('prepareForRestore is a no-op', function () {
+    $logger = Mockery::mock(\App\Contracts\BackupLogger::class);
+
+    expect(fn () => $this->db->prepareForRestore('/data/main.fdb', $logger))
+        ->not->toThrow(Exception::class);
 });

@@ -3,7 +3,6 @@
 namespace App\Services\Backup\Databases;
 
 use App\Contracts\BackupLogger;
-use App\Exceptions\Backup\UnsupportedDatabaseTypeException;
 use App\Services\Backup\DTO\DatabaseOperationResult;
 use App\Support\Formatters;
 use Illuminate\Process\Exceptions\ProcessTimedOutException;
@@ -35,12 +34,18 @@ class FirebirdDatabase implements DatabaseInterface
 
     public function restore(string $inputPath): DatabaseOperationResult
     {
-        throw new UnsupportedDatabaseTypeException('firebird');
+        return new DatabaseOperationResult(command: sprintf(
+            'gbak -rep -user %s -password %s %s %s',
+            escapeshellarg((string) ($this->config['user'] ?? '')),
+            escapeshellarg((string) ($this->config['pass'] ?? '')),
+            escapeshellarg($inputPath),
+            escapeshellarg($this->connectionTarget())
+        ));
     }
 
     public function prepareForRestore(string $schemaName, BackupLogger $logger): void
     {
-        throw new UnsupportedDatabaseTypeException('firebird');
+        // Firebird restore uses gbak -rep to replace the target database in one step.
     }
 
     public function listDatabases(): array
