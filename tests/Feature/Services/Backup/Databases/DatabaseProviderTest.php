@@ -25,6 +25,13 @@ test('make returns correct handler for database type', function (DatabaseType $t
     'mongodb' => [DatabaseType::MONGODB, MongodbDatabase::class],
 ]);
 
+test('make returns firebird handler for firebird type', function () {
+    $factory = new DatabaseProvider;
+    $firebirdType = DatabaseType::from('firebird');
+
+    expect($factory->make($firebirdType))->toBeInstanceOf('App\\Services\\Backup\\Databases\\FirebirdDatabase');
+});
+
 test('makeForServer uses explicit host and port parameters', function () {
     $server = DatabaseServer::factory()->create([
         'database_type' => 'mysql',

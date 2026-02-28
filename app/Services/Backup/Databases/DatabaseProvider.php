@@ -26,6 +26,7 @@ class DatabaseProvider
             DatabaseType::SQLITE => new SqliteDatabase($this->sftpFilesystem),
             DatabaseType::REDIS => new RedisDatabase,
             DatabaseType::MONGODB => new MongodbDatabase,
+            DatabaseType::FIREBIRD => new FirebirdDatabase,
         };
     }
 
