@@ -33,7 +33,7 @@ enum DatabaseType: string
             self::SQLITE => 'devicon.sqlite',
             self::REDIS => 'devicon.redis',
             self::MONGODB => 'devicon.mongodb',
-            self::FIREBIRD => 'heroicon-o-circle-stack',
+            self::FIREBIRD => 'o-circle-stack',
         };
     }
 

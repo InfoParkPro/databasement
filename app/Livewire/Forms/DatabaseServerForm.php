@@ -220,6 +220,12 @@ class DatabaseServerForm extends Form
         if ($value === 'mongodb' && $this->auth_source === '') {
             $this->auth_source = 'admin';
         }
+
+        if ($value === 'firebird') {
+            foreach ($this->backups as $index => $backup) {
+                $this->backups[$index]['database_selection_mode'] = 'selected';
+            }
+        }
     }
 
     /**
@@ -500,6 +506,28 @@ class DatabaseServerForm extends Form
     }
 
     /**
+     * Flatten, de-duplicate and return configured database names across the
+     * backup cards. Used for connection testing for database types that
+     * require explicit per-database targets such as Firebird.
+     *
+     * @return array<int, string>
+     */
+    private function collectConfiguredDatabaseNames(): array
+    {
+        $names = [];
+
+        foreach ($this->backups as $backup) {
+            foreach ($backup['database_names'] ?? [] as $name) {
+                if (is_string($name) && trim($name) !== '') {
+                    $names[] = trim($name);
+                }
+            }
+        }
+
+        return array_values(array_unique($names));
+    }
+
+    /**
      * Add an empty SQLite file path row to the given backup card.
      */
     public function addDatabasePath(int $backupIndex): void
@@ -551,6 +579,14 @@ class DatabaseServerForm extends Form
     public function isMongodb(): bool
     {
         return $this->database_type === 'mongodb';
+    }
+
+    /**
+     * Check if current database type is Firebird
+     */
+    public function isFirebird(): bool
+    {
+        return $this->database_type === 'firebird';
     }
 
     /**
@@ -1054,6 +1090,19 @@ class DatabaseServerForm extends Form
                 if ($this->ssh_enabled) {
                     $this->validate($this->getSshValidationRules());
                 }
+            } elseif ($this->isFirebird()) {
+                $this->validate([
+                    'host' => 'required|string|max:255',
+                    'port' => 'required|integer|min:1|max:65535',
+                    'username' => 'required|string|max:255',
+                    'password' => ($this->server === null ? 'required|string|max:255' : 'nullable'),
+                ]);
+
+                if ($this->collectConfiguredDatabaseNames() === []) {
+                    throw ValidationException::withMessages([
+                        'form.backups' => __('Add at least one Firebird database path before testing the connection.'),
+                    ]);
+                }
             } elseif ($this->hasOptionalCredentials()) {
                 $this->validate([
                     'host' => 'required|string|max:255',
@@ -1100,7 +1149,7 @@ class DatabaseServerForm extends Form
             'port' => $this->port,
             'username' => $this->username,
             'password' => $password,
-            'database_names' => $this->isSqlite() ? $this->collectSqlitePaths() : null,
+            'database_names' => $this->isSqlite() ? $this->collectSqlitePaths() : ($this->isFirebird() ? $this->collectConfiguredDatabaseNames() : null),
             'extra_config' => $this->isMongodb() ? ['auth_source' => $this->auth_source] : null,
         ], $sshConfig);
 
@@ -1112,7 +1161,7 @@ class DatabaseServerForm extends Form
         $this->testingConnection = false;
 
         // If connection successful and supports per-database backups, load available databases
-        if ($this->connectionTestSuccess && ! $this->isSqlite() && ! $this->isRedis()) {
+        if ($this->connectionTestSuccess && ! $this->isSqlite() && ! $this->isRedis() && ! $this->isFirebird()) {
             $this->loadAvailableDatabases();
         }
     }
