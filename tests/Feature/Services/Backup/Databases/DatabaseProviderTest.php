@@ -105,6 +105,24 @@ test('makeForServer passes sourceDatabaseName for mongodb restore', function () 
         ->toContain("--nsTo='targetdb.*'");
 });
 
+test('makeForServer passes firebird target database path for restore', function () {
+    $server = DatabaseServer::factory()->firebird()->create([
+        'host' => 'fb.internal',
+        'port' => 3050,
+        'username' => 'sysdba',
+        'password' => 'masterkey',
+        'database_names' => ['/data/main.fdb'],
+    ]);
+
+    $factory = new DatabaseProvider;
+
+    $database = $factory->makeForServer($server, '/data/restore-target.fdb', '127.0.0.1', 43050);
+
+    $result = $database->restore('/tmp/restore.fbk');
+    expect($result->command)->toContain("'127.0.0.1/43050:/data/restore-target.fdb'")
+        ->toContain("'/tmp/restore.fbk'");
+});
+
 test('testConnectionForServer delegates to handler testConnection', function (string $dbType, string $expectedDbName) {
     $mockHandler = Mockery::mock(DatabaseInterface::class);
     $mockHandler->shouldReceive('testConnection')
