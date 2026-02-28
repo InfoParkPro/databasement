@@ -64,15 +64,16 @@ class SqliteDatabase implements DatabaseInterface
             ));
         }
 
-        if (! @copy($sourcePath, $outputPath)) {
-            throw new DatabaseDumpException("Failed to copy local SQLite file {$sourcePath} to {$outputPath}");
-        }
+        $command = $this->buildLocalWalSafeDumpCommand($sourcePath, $outputPath);
 
-        return new DatabaseOperationResult(log: new DatabaseOperationLog(
-            'Copied local SQLite database',
-            'success',
-            ['path' => $sourcePath],
-        ));
+        return new DatabaseOperationResult(
+            command: $command,
+            log: new DatabaseOperationLog(
+                'Created WAL-safe local SQLite backup command',
+                'success',
+                ['path' => $sourcePath],
+            )
+        );
     }
 
     public function restore(string $inputPath): DatabaseOperationResult
@@ -172,6 +173,22 @@ class SqliteDatabase implements DatabaseInterface
         }
 
         return 'unknown';
+    }
+
+    /**
+     * Build a shell command that performs a WAL-safe local backup with sqlite3.
+     */
+    private function buildLocalWalSafeDumpCommand(string $sourcePath, string $outputPath): string
+    {
+        $errorMessage = 'sqlite3 CLI is required for WAL-safe SQLite backup';
+        $backupCommand = '.backup '.escapeshellarg($outputPath);
+
+        return sprintf(
+            'command -v sqlite3 >/dev/null 2>&1 || { echo %s >&2; exit 1; }; sqlite3 %s %s',
+            escapeshellarg($errorMessage),
+            escapeshellarg($sourcePath),
+            escapeshellarg($backupCommand),
+        );
     }
 
     /**

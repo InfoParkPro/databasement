@@ -34,8 +34,10 @@ PGPASSWORD='...' pg_dump --clean --if-exists --no-owner --no-privileges --quote-
 
 **SQLite:**
 ```bash
-cp '/path/to/database.sqlite' dump.db
+sqlite3 '/path/to/database.sqlite' ".backup 'dump.db'"
 ```
+
+This creates a consistent snapshot and is safe for databases running in WAL mode.
 
 **MongoDB:**
 ```bash

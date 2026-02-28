@@ -20,7 +20,7 @@ test('listDatabases returns basename of sqlite path', function () {
     expect($db->listDatabases())->toBe(['myapp.sqlite']);
 });
 
-test('dump copies local file', function () {
+test('dump returns WAL-safe sqlite3 command for local file', function () {
     $sourceFile = $this->tempDir.'/source.sqlite';
     file_put_contents($sourceFile, 'SQLite data');
 
@@ -31,10 +31,12 @@ test('dump copies local file', function () {
     $result = $db->dump($outputPath);
 
     expect($result)->toBeInstanceOf(DatabaseOperationResult::class)
-        ->and($result->command)->toBeNull()
-        ->and($result->log->message)->toBe('Copied local SQLite database')
-        ->and($result->log->context)->toBe(['path' => $sourceFile])
-        ->and(file_get_contents($outputPath))->toBe('SQLite data');
+        ->and($result->command)->not->toBeNull()
+        ->and($result->command)->toContain('command -v sqlite3')
+        ->and($result->command)->toContain($sourceFile)
+        ->and($result->command)->toContain($outputPath)
+        ->and($result->log->message)->toBe('Created WAL-safe local SQLite backup command')
+        ->and($result->log->context)->toBe(['path' => $sourceFile]);
 });
 
 test('dump downloads remote file via SFTP', function () {
@@ -71,12 +73,15 @@ test('dump downloads remote file via SFTP', function () {
         ->and(file_get_contents($outputPath))->toBe('remote SQLite data');
 });
 
-test('dump throws on local copy failure', function () {
+test('dump local command validates sqlite3 presence before running backup', function () {
     $db = new SqliteDatabase;
-    $db->setConfig(['sqlite_path' => '/nonexistent/source.sqlite']);
+    $db->setConfig(['sqlite_path' => '/data/app.sqlite']);
 
-    $db->dump($this->tempDir.'/dump.db');
-})->throws(DatabaseDumpException::class, 'Failed to copy local SQLite file /nonexistent/source.sqlite');
+    $result = $db->dump($this->tempDir.'/dump.db');
+
+    expect($result->command)->not->toBeNull()
+        ->and($result->command)->toContain('sqlite3 CLI is required for WAL-safe SQLite backup');
+});
 
 test('dump throws when remote stream copy returns zero bytes', function () {
     $sshConfig = DatabaseServerSshConfig::factory()->create([
