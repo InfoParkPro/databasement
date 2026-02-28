@@ -250,13 +250,17 @@ use App\Enums\DatabaseType;
                 <div class="space-y-4">
                     <!-- Segmented Control -->
                     @php
-                        $modes = [
-                            'all' => ['icon' => 'o-circle-stack', 'label' => __('All Databases'), 'hint' => __('Backup everything')],
-                            'selected' => ['icon' => 'o-check-badge', 'label' => __('Selected'), 'hint' => __('Pick specific ones')],
-                            'pattern' => ['icon' => null, 'label' => __('Pattern'), 'hint' => __('Match by regex')],
-                        ];
+                        $modes = $form->isFirebird()
+                            ? [
+                                'selected' => ['icon' => 'o-check-badge', 'label' => __('Selected'), 'hint' => __('Pick specific ones')],
+                            ]
+                            : [
+                                'all' => ['icon' => 'o-circle-stack', 'label' => __('All Databases'), 'hint' => __('Backup everything')],
+                                'selected' => ['icon' => 'o-check-badge', 'label' => __('Selected'), 'hint' => __('Pick specific ones')],
+                                'pattern' => ['icon' => null, 'label' => __('Pattern'), 'hint' => __('Match by regex')],
+                            ];
                     @endphp
-                    <div class="grid grid-cols-3 gap-2 rounded-xl bg-base-200 p-2">
+                    <div class="grid {{ $form->isFirebird() ? 'grid-cols-1' : 'grid-cols-3' }} gap-2 rounded-xl bg-base-200 p-2">
                         @foreach($modes as $mode => $opt)
                             @php $isActive = $form->database_selection_mode === $mode; @endphp
                             <button
@@ -276,7 +280,7 @@ use App\Enums\DatabaseType;
                     </div>
 
                     <!-- All Databases Panel -->
-                    @if($form->database_selection_mode === 'all')
+                    @if(!$form->isFirebird() && $form->database_selection_mode === 'all')
                         <x-alert class="alert-info" icon="o-information-circle">
                             {{ __('All user databases will be backed up. System databases are automatically excluded.') }}
                             @if(count($form->availableDatabases) > 0)
@@ -286,7 +290,7 @@ use App\Enums\DatabaseType;
                     @endif
 
                     <!-- Selected Databases Panel -->
-                    @if($form->database_selection_mode === 'selected')
+                    @if($form->database_selection_mode === 'selected' || $form->isFirebird())
                         @if($form->loadingDatabases)
                             <div class="flex items-center gap-2 text-base-content/70">
                                 <x-loading class="loading-spinner loading-sm" />
@@ -313,7 +317,7 @@ use App\Enums\DatabaseType;
                     @endif
 
                     <!-- Pattern Panel -->
-                    @if($form->database_selection_mode === 'pattern')
+                    @if(!$form->isFirebird() && $form->database_selection_mode === 'pattern')
                         <div class="space-y-3">
                             <div>
                                 <div class="flex items-center justify-between mb-1">

@@ -207,3 +207,59 @@ test('can add and remove SQLite database paths', function () {
         ->assertCount('form.database_names', 1)
         ->assertSet('form.database_names.0', '/data/other.sqlite');
 });
+
+test('creates firebird server with selected database mode and names', function () {
+    $user = User::factory()->create();
+    $volume = Volume::create([
+        'name' => 'Test Volume',
+        'type' => 'local',
+        'config' => ['path' => '/var/backups'],
+    ]);
+
+    Livewire::actingAs($user)
+        ->test(Create::class)
+        ->set('form.name', 'Firebird Primary')
+        ->set('form.database_type', 'firebird')
+        ->set('form.host', 'firebird.example.com')
+        ->set('form.port', 3050)
+        ->set('form.username', 'sysdba')
+        ->set('form.password', 'masterkey')
+        ->set('form.database_names.0', '/db/main.fdb')
+        ->set('form.volume_id', $volume->id)
+        ->set('form.backup_schedule_id', dailySchedule()->id)
+        ->set('form.retention_days', 14)
+        ->call('save')
+        ->assertHasNoErrors()
+        ->assertRedirect(route('database-servers.index'));
+
+    $server = DatabaseServer::where('name', 'Firebird Primary')->first();
+
+    expect($server)->not->toBeNull()
+        ->and($server->database_type->value)->toBe('firebird')
+        ->and($server->database_selection_mode)->toBe('selected')
+        ->and($server->database_names)->toBe(['/db/main.fdb']);
+});
+
+test('firebird cannot be saved with all-databases selection mode', function () {
+    $user = User::factory()->create();
+    $volume = Volume::create([
+        'name' => 'Test Volume',
+        'type' => 'local',
+        'config' => ['path' => '/var/backups'],
+    ]);
+
+    Livewire::actingAs($user)
+        ->test(Create::class)
+        ->set('form.name', 'Firebird Invalid Mode')
+        ->set('form.database_type', 'firebird')
+        ->set('form.host', 'firebird.example.com')
+        ->set('form.port', 3050)
+        ->set('form.username', 'sysdba')
+        ->set('form.password', 'masterkey')
+        ->set('form.database_selection_mode', 'all')
+        ->set('form.volume_id', $volume->id)
+        ->set('form.backup_schedule_id', dailySchedule()->id)
+        ->set('form.retention_days', 14)
+        ->call('save')
+        ->assertHasErrors(['form.database_names']);
+});

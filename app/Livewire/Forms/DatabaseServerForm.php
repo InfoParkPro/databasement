@@ -162,6 +162,10 @@ class DatabaseServerForm extends Form
         if ($value === 'mongodb' && $this->auth_source === '') {
             $this->auth_source = 'admin';
         }
+
+        if ($value === 'firebird') {
+            $this->database_selection_mode = 'selected';
+        }
     }
 
     /**
@@ -169,6 +173,10 @@ class DatabaseServerForm extends Form
      */
     public function updatedDatabaseSelectionMode(): void
     {
+        if ($this->isFirebird() && $this->database_selection_mode !== 'selected') {
+            $this->database_selection_mode = 'selected';
+        }
+
         // Auto-load databases when switching to selected/pattern mode in edit
         if (in_array($this->database_selection_mode, ['selected', 'pattern'])
             && empty($this->availableDatabases)
@@ -436,6 +444,14 @@ class DatabaseServerForm extends Form
     }
 
     /**
+     * Check if current database type is Firebird
+     */
+    public function isFirebird(): bool
+    {
+        return $this->database_type === 'firebird';
+    }
+
+    /**
      * Check if current database type has optional credentials (username/password not required).
      */
     public function hasOptionalCredentials(): bool
@@ -675,6 +691,15 @@ class DatabaseServerForm extends Form
      */
     private function getDatabaseSelectionRules(): array
     {
+        if ($this->isFirebird()) {
+            return [
+                'database_selection_mode' => 'required|string|in:selected',
+                'database_names' => $this->backups_enabled ? 'required|array|min:1' : 'nullable|array',
+                'database_names.*' => 'string|max:255',
+                'database_include_pattern' => 'nullable|string|max:500',
+            ];
+        }
+
         $rules = [
             'database_selection_mode' => 'required|string|in:all,selected,pattern',
             'database_names' => 'nullable|array',
@@ -792,6 +817,13 @@ class DatabaseServerForm extends Form
         }
 
         if ($this->isSqlite()) {
+            $serverData['database_selection_mode'] = 'selected';
+            $serverData['database_include_pattern'] = null;
+
+            return;
+        }
+
+        if ($this->isFirebird()) {
             $serverData['database_selection_mode'] = 'selected';
             $serverData['database_include_pattern'] = null;
 

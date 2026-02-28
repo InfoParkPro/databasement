@@ -240,3 +240,28 @@ test('pattern mode filters available databases and auto-loads on switch', functi
     expect($component->instance()->form->getFilteredDatabases())
         ->toBe(['prod_users', 'prod_orders']);
 });
+
+test('firebird edit normalizes selection mode back to selected', function () {
+    $user = User::factory()->create();
+    $server = DatabaseServer::factory()->create([
+        'name' => 'Firebird Legacy',
+        'database_type' => 'firebird',
+        'host' => 'firebird.example.com',
+        'port' => 3050,
+        'username' => 'sysdba',
+        'password' => 'masterkey',
+        'database_selection_mode' => 'selected',
+        'database_names' => ['/db/main.fdb'],
+    ]);
+
+    Livewire::actingAs($user)
+        ->test(Edit::class, ['server' => $server])
+        ->set('form.database_selection_mode', 'all')
+        ->set('form.database_names.0', '/db/main.fdb')
+        ->call('save')
+        ->assertHasNoErrors();
+
+    $server->refresh();
+    expect($server->database_selection_mode)->toBe('selected')
+        ->and($server->database_names)->toBe(['/db/main.fdb']);
+});
