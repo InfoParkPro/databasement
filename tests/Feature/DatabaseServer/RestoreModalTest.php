@@ -49,7 +49,7 @@ test('can navigate through restore wizard steps', function (string $databaseType
 
     // Step 2: Enter schema name
     $component->assertSet('currentStep', 2);
-})->with(['mysql', 'postgres', 'sqlite']);
+})->with(['mysql', 'postgres', 'sqlite', 'firebird']);
 
 test('can queue restore job with valid data', function (string $databaseType) {
     Queue::fake();
@@ -89,6 +89,60 @@ test('can queue restore job with valid data', function (string $databaseType) {
     $pushedJob = Queue::pushed(ProcessRestoreJob::class)->first();
     expect($pushedJob->restoreId)->toBe($restore->id);
 })->with(['mysql', 'postgres', 'sqlite']);
+
+test('firebird appears in restore-compatible flow', function () {
+    $targetServer = DatabaseServer::factory()->firebird()->create();
+
+    $firebirdSource = DatabaseServer::factory()->firebird()->create();
+    $snapshot = Snapshot::factory()->forServer($firebirdSource)->withFile()->create([
+        'database_name' => '/data/source.fdb',
+    ]);
+
+    $mysqlSource = DatabaseServer::factory()->create([
+        'database_type' => 'mysql',
+    ]);
+    Snapshot::factory()->forServer($mysqlSource)->withFile()->create([
+        'database_name' => 'mysql_db',
+    ]);
+
+    Livewire::test(RestoreModal::class)
+        ->dispatch('open-restore-modal', targetServerId: $targetServer->id)
+        ->assertSee($firebirdSource->name)
+        ->assertSee($snapshot->database_name)
+        ->assertDontSee($mysqlSource->name);
+});
+
+test('firebird restore allows path-style schema names', function () {
+    Queue::fake();
+
+    $targetServer = DatabaseServer::factory()->firebird()->create();
+    $sourceServer = DatabaseServer::factory()->firebird()->create();
+    $snapshot = Snapshot::factory()->forServer($sourceServer)->withFile()->create();
+
+    Livewire::test(RestoreModal::class)
+        ->dispatch('open-restore-modal', targetServerId: $targetServer->id)
+        ->call('selectSnapshot', $snapshot->id)
+        ->set('schemaName', '/data/main.fdb')
+        ->call('restore')
+        ->assertHasNoErrors();
+});
+
+test('firebird restore queues ProcessRestoreJob successfully', function () {
+    Queue::fake();
+
+    $targetServer = DatabaseServer::factory()->firebird()->create();
+    $sourceServer = DatabaseServer::factory()->firebird()->create();
+    $snapshot = Snapshot::factory()->forServer($sourceServer)->withFile()->create();
+
+    Livewire::test(RestoreModal::class)
+        ->dispatch('open-restore-modal', targetServerId: $targetServer->id)
+        ->call('selectSnapshot', $snapshot->id)
+        ->set('schemaName', '/data/main.fdb')
+        ->call('restore')
+        ->assertDispatched('restore-completed');
+
+    Queue::assertPushed(ProcessRestoreJob::class, 1);
+});
 
 test('only shows compatible servers with same database type', function () {
     $targetServer = DatabaseServer::factory()->create([
