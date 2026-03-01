@@ -9,7 +9,9 @@ use App\Models\BackupJob;
 use App\Models\DatabaseServer;
 use App\Models\Restore;
 use App\Models\Snapshot;
+use App\Models\Volume;
 use App\Services\Backup\Databases\DatabaseProvider;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 
 class BackupJobFactory
@@ -35,11 +37,20 @@ class BackupJobFactory
         ?int $triggeredByUserId = null
     ): array {
         $snapshots = [];
+        $targetVolumes = $this->resolveTargetVolumes($server);
+
+        if ($targetVolumes->isEmpty()) {
+            Log::warning("No target volumes found for server [{$server->name}] backup configuration.");
+
+            return $snapshots;
+        }
 
         // SQLite: one snapshot per database file path
         if ($server->database_type === DatabaseType::SQLITE) {
             foreach ($server->database_names ?? [] as $databasePath) {
-                $snapshots[] = $this->createSnapshot($server, $databasePath, $method, $triggeredByUserId);
+                foreach ($targetVolumes as $volume) {
+                    $snapshots[] = $this->createSnapshot($server, $databasePath, $volume, $method, $triggeredByUserId);
+                }
             }
 
             return $snapshots;
@@ -47,7 +58,9 @@ class BackupJobFactory
 
         // Redis: single snapshot, dumps entire instance
         if ($server->database_type === DatabaseType::REDIS) {
-            $snapshots[] = $this->createSnapshot($server, 'all', $method, $triggeredByUserId);
+            foreach ($targetVolumes as $volume) {
+                $snapshots[] = $this->createSnapshot($server, 'all', $volume, $method, $triggeredByUserId);
+            }
 
             return $snapshots;
         }
@@ -66,7 +79,9 @@ class BackupJobFactory
         }
 
         foreach ($databases as $databaseName) {
-            $snapshots[] = $this->createSnapshot($server, $databaseName, $method, $triggeredByUserId);
+            foreach ($targetVolumes as $volume) {
+                $snapshots[] = $this->createSnapshot($server, $databaseName, $volume, $method, $triggeredByUserId);
+            }
         }
 
         return $snapshots;
@@ -80,11 +95,11 @@ class BackupJobFactory
     protected function createSnapshot(
         DatabaseServer $server,
         string $databaseName,
+        Volume $volume,
         string $method,
         ?int $triggeredByUserId = null
     ): Snapshot {
         $job = BackupJob::create(['status' => 'pending']);
-        $volume = $server->backup->volume;
 
         $snapshot = Snapshot::create([
             'backup_job_id' => $job->id,
@@ -106,6 +121,36 @@ class BackupJobFactory
         $snapshot->load(['job', 'volume', 'databaseServer']);
 
         return $snapshot;
+    }
+
+    /**
+     * Resolve configured target volumes for snapshot fan-out.
+     *
+     * @return Collection<int, Volume>
+     */
+    protected function resolveTargetVolumes(DatabaseServer $server): Collection
+    {
+        $volumeIds = $server->backup->getEffectiveVolumeIds();
+        if ($volumeIds === []) {
+            return collect();
+        }
+
+        $volumes = Volume::query()
+            ->whereIn('id', $volumeIds)
+            ->get()
+            ->keyBy('id');
+
+        $orderedVolumes = collect();
+        foreach ($volumeIds as $volumeId) {
+            if ($volumes->has($volumeId)) {
+                $orderedVolumes->push($volumes->get($volumeId));
+                continue;
+            }
+
+            Log::warning("Configured backup volume [{$volumeId}] was not found for server [{$server->name}].");
+        }
+
+        return $orderedVolumes;
     }
 
     /**

@@ -124,3 +124,72 @@ test('it still creates backup snapshot using legacy volume_id when volume_ids is
 
     Queue::assertPushed(ProcessBackupJob::class, 1);
 });
+
+test('selected mode creates one snapshot per configured volume', function () {
+    $firstVolume = Volume::factory()->local()->create();
+    $secondVolume = Volume::factory()->local()->create();
+
+    $server = DatabaseServer::factory()->create([
+        'database_names' => ['test_db'],
+        'database_selection_mode' => 'selected',
+    ]);
+
+    $server->backup->update([
+        'volume_id' => $firstVolume->id,
+        'volume_ids' => [$firstVolume->id, $secondVolume->id],
+    ]);
+
+    $action = app(TriggerBackupAction::class);
+    $result = $action->execute($server);
+
+    expect($result['snapshots'])->toHaveCount(2)
+        ->and($result['message'])->toBe('2 database backups started successfully!')
+        ->and(collect($result['snapshots'])->pluck('volume_id')->sort()->values()->all())
+        ->toBe(collect([$firstVolume->id, $secondVolume->id])->sort()->values()->all());
+
+    foreach ($result['snapshots'] as $snapshot) {
+        expect($snapshot->metadata['volume']['type'])->toBe($snapshot->volume->type);
+    }
+
+    Queue::assertPushed(ProcessBackupJob::class, 2);
+});
+
+test('all mode fans out snapshots across databases and volumes', function () {
+    $firstVolume = Volume::factory()->local()->create();
+    $secondVolume = Volume::factory()->s3()->create();
+
+    $server = DatabaseServer::factory()->create([
+        'database_selection_mode' => 'all',
+        'database_names' => null,
+    ]);
+
+    $server->backup->update([
+        'volume_id' => $firstVolume->id,
+        'volume_ids' => [$firstVolume->id, $secondVolume->id],
+    ]);
+
+    $this->mock(\App\Services\Backup\Databases\DatabaseProvider::class, function ($mock) {
+        $mock->shouldReceive('listDatabasesForServer')->andReturn(['db1', 'db2']);
+    });
+
+    $action = app(TriggerBackupAction::class);
+    $result = $action->execute($server);
+
+    expect($result['snapshots'])->toHaveCount(4)
+        ->and($result['message'])->toBe('4 database backups started successfully!');
+
+    $pairs = collect($result['snapshots'])
+        ->map(fn ($snapshot) => "{$snapshot->database_name}:{$snapshot->volume_id}")
+        ->sort()
+        ->values()
+        ->all();
+
+    expect($pairs)->toBe(collect([
+        "db1:{$firstVolume->id}",
+        "db1:{$secondVolume->id}",
+        "db2:{$firstVolume->id}",
+        "db2:{$secondVolume->id}",
+    ])->sort()->values()->all());
+
+    Queue::assertPushed(ProcessBackupJob::class, 4);
+});
