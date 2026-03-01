@@ -41,6 +41,7 @@ class DatabaseServerResource extends JsonResource
                     ]
                     : null,
                 'volume_id' => $this->backup->volume_id,
+                'volume_ids' => $this->backup->getEffectiveVolumeIds(),
             ]),
         ];
     }

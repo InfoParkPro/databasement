@@ -13,8 +13,10 @@ When you create a backup, Databasement:
 1. Connects to the database server (via SSH tunnel if configured)
 2. Runs the appropriate dump command for the database type
 3. Compresses the output with gzip
-4. Transfers the compressed file to the selected storage volume
+4. Transfers the compressed file to each selected storage volume
 5. Creates a snapshot record with metadata
+
+If multiple storage volumes are configured for a server, Databasement creates an independent snapshot/job for each database-volume pair. For example, `2 databases x 3 volumes = 6 backup jobs`.
 
 ### Backup Commands
 
@@ -55,7 +57,7 @@ mongodump --host='...' --port='...' --username='...' --password='...' \
 redis-cli -h '...' -p '...' -a '...' --no-auth-warning --rdb dump.rdb
 ```
 
-All dumps are then compressed with gzip before being transferred to the storage volume.
+All dumps are then compressed with gzip before being transferred to the configured storage volume(s).
 Firebird backup and restore automation both rely on the `gbak` CLI being available in runtime.
 
 ## Failed Backups

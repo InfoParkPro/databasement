@@ -2,6 +2,7 @@
 
 use App\Models\DatabaseServer;
 use App\Models\User;
+use App\Models\Volume;
 
 test('unauthenticated users cannot access database servers api', function () {
     $response = $this->getJson('/api/v1/database-servers');
@@ -112,6 +113,44 @@ test('show endpoint includes backup schedule details', function () {
     $response->assertOk()
         ->assertJsonPath('data.backup.backup_schedule.name', 'Daily')
         ->assertJsonPath('data.backup.backup_schedule.expression', '0 2 * * *');
+});
+
+test('show endpoint includes configured backup volume_ids', function () {
+    $user = User::factory()->create();
+    $firstVolume = Volume::factory()->local()->create();
+    $secondVolume = Volume::factory()->s3()->create();
+
+    $server = DatabaseServer::factory()->create();
+    $server->backup->update([
+        'volume_id' => $firstVolume->id,
+        'volume_ids' => [$firstVolume->id, $secondVolume->id],
+    ]);
+
+    $response = $this->actingAs($user, 'sanctum')
+        ->getJson("/api/v1/database-servers/{$server->id}");
+
+    $response->assertOk()
+        ->assertJsonPath('data.backup.volume_id', $firstVolume->id)
+        ->assertJsonPath('data.backup.volume_ids.0', $firstVolume->id)
+        ->assertJsonPath('data.backup.volume_ids.1', $secondVolume->id);
+});
+
+test('show endpoint falls back to legacy volume_id when volume_ids is missing', function () {
+    $user = User::factory()->create();
+    $firstVolume = Volume::factory()->local()->create();
+
+    $server = DatabaseServer::factory()->create();
+    $server->backup->update([
+        'volume_id' => $firstVolume->id,
+        'volume_ids' => null,
+    ]);
+
+    $response = $this->actingAs($user, 'sanctum')
+        ->getJson("/api/v1/database-servers/{$server->id}");
+
+    $response->assertOk()
+        ->assertJsonPath('data.backup.volume_id', $firstVolume->id)
+        ->assertJsonPath('data.backup.volume_ids.0', $firstVolume->id);
 });
 
 test('password is not exposed in database server api response', function () {

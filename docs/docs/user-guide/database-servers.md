@@ -6,6 +6,15 @@ sidebar_position: 2
 
 Database servers are the source of your backups. Databasement can connect to and backup MySQL, PostgreSQL, MariaDB, MongoDB, SQLite, Firebird, and Redis/Valkey servers.
 
+## Backup Targets
+
+When backup is enabled for a server, you can select one or more storage volumes as backup targets.
+
+- One selected volume: one snapshot/job per database.
+- Multiple selected volumes: one snapshot/job per database for each selected volume.
+
+Failures are tracked per snapshot/job, so one failing target volume does not block successful backups to other selected volumes.
+
 ## Connection Requirements
 
 ### MySQL / MariaDB
