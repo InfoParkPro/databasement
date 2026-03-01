@@ -19,7 +19,7 @@ test('dump builds gbak backup command', function () {
     $result = $this->db->dump('/tmp/backup.fbk');
 
     expect($result)->toBeInstanceOf(DatabaseOperationResult::class)
-        ->and($result->command)->toBe("gbak -b -user 'sysdba' -password 'masterkey' 'fb.local/3050:/data/main.fdb' '/tmp/backup.fbk'");
+        ->and($result->command)->toBe("gbak -b -g -user 'sysdba' -password 'masterkey' 'fb.local/3050:/data/main.fdb' '/tmp/backup.fbk'");
 });
 
 test('testConnection returns success when isql probe succeeds', function () {
