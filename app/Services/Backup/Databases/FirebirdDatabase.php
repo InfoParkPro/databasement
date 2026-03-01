@@ -24,7 +24,7 @@ class FirebirdDatabase implements DatabaseInterface
     public function dump(string $outputPath): DatabaseOperationResult
     {
         return new DatabaseOperationResult(command: sprintf(
-            'gbak -b -user %s -password %s %s %s',
+            'gbak -b -g -user %s -password %s %s %s',
             escapeshellarg((string) ($this->config['user'] ?? '')),
             escapeshellarg((string) ($this->config['pass'] ?? '')),
             escapeshellarg($this->connectionTarget()),
