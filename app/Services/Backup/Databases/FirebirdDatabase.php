@@ -111,7 +111,7 @@ class FirebirdDatabase implements DatabaseInterface
             return $database;
         }
 
-        return "{$host}/{$port}:{$database}";
+        return $host.'/'.$port.':'.$database;
     }
 
     private function buildConnectionProbeCommand(): string
@@ -129,7 +129,7 @@ printf '%%s\n' "SELECT 1 FROM RDB\$DATABASE;" | "$ISQL" -user %s -password %s %s
 BASH;
 
         return sprintf(
-            "sh -lc %s",
+            'sh -lc %s',
             escapeshellarg(sprintf(
                 $script,
                 escapeshellarg((string) ($this->config['user'] ?? '')),
