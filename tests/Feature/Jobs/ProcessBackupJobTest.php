@@ -4,6 +4,8 @@ use App\Contracts\BackupLogger;
 use App\Facades\AppConfig;
 use App\Jobs\ProcessBackupJob;
 use App\Models\DatabaseServer;
+use App\Models\Volume;
+use App\Notifications\BackupFailedNotification;
 use App\Services\Backup\BackupJobFactory;
 use App\Services\Backup\BackupTask;
 use App\Services\Backup\DTO\BackupConfig;
@@ -170,5 +172,100 @@ test('failed method sends notification', function () {
         \App\Notifications\BackupFailedNotification::class,
         fn ($notification) => $notification->snapshot->id === $snapshot->id
             && $notification->exception->getMessage() === 'Backup failed: connection timeout'
+    );
+});
+
+test('multi-volume snapshots are processed independently', function () {
+    $firstVolume = Volume::factory()->local()->create();
+    $secondVolume = Volume::factory()->s3()->create();
+
+    $server = createDatabaseServer([
+        'database_names' => ['myapp'],
+    ]);
+
+    $server->backup->update([
+        'volume_id' => $firstVolume->id,
+        'volume_ids' => [$firstVolume->id, $secondVolume->id],
+    ]);
+
+    $snapshots = app(BackupJobFactory::class)->createSnapshots($server->fresh(['backup']), 'manual');
+    expect($snapshots)->toHaveCount(2);
+
+    foreach ($snapshots as $snapshot) {
+        $mockBackupTask = Mockery::mock(BackupTask::class);
+        $mockBackupTask->shouldReceive('execute')
+            ->once()
+            ->with(
+                Mockery::on(fn (BackupConfig $config) => $config->volume->name === $snapshot->volume->name),
+                Mockery::type(BackupLogger::class),
+            )
+            ->andReturn(new BackupResult("{$snapshot->id}.fbk", 1024, "checksum-{$snapshot->id}"));
+
+        (new ProcessBackupJob($snapshot->id))->handle($mockBackupTask);
+    }
+
+    foreach ($snapshots as $snapshot) {
+        $snapshot->refresh();
+        expect($snapshot->job->status)->toBe('completed')
+            ->and($snapshot->filename)->toBe("{$snapshot->id}.fbk");
+    }
+});
+
+test('failure on one volume does not affect successful snapshot on another volume', function () {
+    Notification::fake();
+    AppConfig::set('notifications.enabled', true);
+    AppConfig::set('notifications.mail.to', 'admin@example.com');
+
+    $firstVolume = Volume::factory()->local()->create();
+    $secondVolume = Volume::factory()->s3()->create();
+
+    $server = createDatabaseServer([
+        'database_names' => ['myapp'],
+    ]);
+
+    $server->backup->update([
+        'volume_id' => $firstVolume->id,
+        'volume_ids' => [$firstVolume->id, $secondVolume->id],
+    ]);
+
+    $snapshots = app(BackupJobFactory::class)->createSnapshots($server->fresh(['backup']), 'manual');
+    expect($snapshots)->toHaveCount(2);
+
+    $failingSnapshot = collect($snapshots)->firstWhere('volume_id', $firstVolume->id);
+    $successfulSnapshot = collect($snapshots)->firstWhere('volume_id', $secondVolume->id);
+
+    $failingBackupTask = Mockery::mock(BackupTask::class);
+    $failingBackupTask->shouldReceive('execute')
+        ->once()
+        ->andThrow(new \App\Exceptions\ShellProcessFailed('volume write failed'));
+
+    $exception = null;
+    try {
+        (new ProcessBackupJob($failingSnapshot->id))->handle($failingBackupTask);
+    } catch (\Throwable $e) {
+        $exception = $e;
+    }
+
+    expect($exception)->not->toBeNull();
+    (new ProcessBackupJob($failingSnapshot->id))->failed($exception);
+
+    $successfulBackupTask = Mockery::mock(BackupTask::class);
+    $successfulBackupTask->shouldReceive('execute')
+        ->once()
+        ->andReturn(new BackupResult('ok.fbk', 2048, 'ok-checksum'));
+
+    (new ProcessBackupJob($successfulSnapshot->id))->handle($successfulBackupTask);
+
+    $failingSnapshot->refresh();
+    $successfulSnapshot->refresh();
+
+    expect($failingSnapshot->job->status)->toBe('failed')
+        ->and($failingSnapshot->job->error_message)->toBe('volume write failed')
+        ->and($successfulSnapshot->job->status)->toBe('completed')
+        ->and($successfulSnapshot->filename)->toBe('ok.fbk');
+
+    Notification::assertSentOnDemand(
+        BackupFailedNotification::class,
+        fn (BackupFailedNotification $notification) => $notification->snapshot->id === $failingSnapshot->id
     );
 });
