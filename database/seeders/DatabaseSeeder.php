@@ -111,6 +111,7 @@ class DatabaseSeeder extends Seeder
             Backup::create([
                 'database_server_id' => $server->id,
                 'volume_id' => $volume->id,
+                'volume_ids' => [$volume->id],
                 'backup_schedule_id' => $dailySchedule->id,
                 'retention_policy' => Backup::RETENTION_DAYS,
                 'retention_days' => 30,

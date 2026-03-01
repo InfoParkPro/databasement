@@ -14,6 +14,7 @@ use Illuminate\Support\Carbon;
  * @property string $id
  * @property string $database_server_id
  * @property string $volume_id
+ * @property array<string>|null $volume_ids
  * @property string|null $path
  * @property string $backup_schedule_id
  * @property int|null $retention_days
@@ -54,6 +55,7 @@ class Backup extends Model
     protected $fillable = [
         'database_server_id',
         'volume_id',
+        'volume_ids',
         'path',
         'backup_schedule_id',
         'retention_days',
@@ -62,6 +64,13 @@ class Backup extends Model
         'gfs_keep_weekly',
         'gfs_keep_monthly',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'volume_ids' => 'array',
+        ];
+    }
 
     /**
      * @return BelongsTo<DatabaseServer, Backup>
@@ -93,5 +102,27 @@ class Backup extends Model
     public function snapshots(): HasMany
     {
         return $this->hasMany(Snapshot::class);
+    }
+
+    /**
+     * Return normalized target volume IDs, with fallback to legacy volume_id.
+     *
+     * @return array<string>
+     */
+    public function getEffectiveVolumeIds(): array
+    {
+        $ids = array_values(array_filter(
+            array_map(
+                static fn ($id) => is_string($id) ? trim($id) : '',
+                $this->volume_ids ?? []
+            ),
+            static fn (string $id) => $id !== ''
+        ));
+
+        if ($ids !== []) {
+            return array_values(array_unique($ids));
+        }
+
+        return $this->volume_id !== '' ? [$this->volume_id] : [];
     }
 }

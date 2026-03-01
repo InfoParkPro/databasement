@@ -3,6 +3,7 @@
 use App\Jobs\ProcessBackupJob;
 use App\Models\DatabaseServer;
 use App\Models\User;
+use App\Models\Volume;
 use App\Services\Backup\TriggerBackupAction;
 use Illuminate\Support\Facades\Queue;
 
@@ -100,4 +101,26 @@ test('pattern mode creates snapshots only for matching databases', function () {
         ->and($result['snapshots'][1]->database_name)->toBe('prod_orders');
 
     Queue::assertPushed(ProcessBackupJob::class, 2);
+});
+
+test('it still creates backup snapshot using legacy volume_id when volume_ids is not configured', function () {
+    $firstVolume = Volume::factory()->local()->create();
+
+    $server = DatabaseServer::factory()->create([
+        'database_names' => ['test_db'],
+        'database_selection_mode' => 'selected',
+    ]);
+
+    $server->backup->update([
+        'volume_id' => $firstVolume->id,
+        'volume_ids' => null,
+    ]);
+
+    $action = app(TriggerBackupAction::class);
+    $result = $action->execute($server);
+
+    expect($result['snapshots'])->toHaveCount(1)
+        ->and($result['snapshots'][0]->volume_id)->toBe($firstVolume->id);
+
+    Queue::assertPushed(ProcessBackupJob::class, 1);
 });

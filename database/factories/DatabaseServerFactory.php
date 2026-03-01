@@ -194,6 +194,7 @@ class DatabaseServerFactory extends Factory
             Backup::create([
                 'database_server_id' => $databaseServer->id,
                 'volume_id' => $volume->id,
+                'volume_ids' => [$volume->id],
                 'backup_schedule_id' => $schedule->id,
                 'retention_days' => fake()->randomElement([7, 14, 30]),
             ]);

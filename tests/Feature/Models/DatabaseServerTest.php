@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\DatabaseType;
+use App\Models\Volume;
 use App\Models\DatabaseServer;
 use App\Models\DatabaseServerSshConfig;
 
@@ -100,4 +101,26 @@ test('database type has firebird defaults for backup flow', function () {
 
     expect($firebirdType->defaultPort())->toBe(3050)
         ->and($firebirdType->dumpExtension())->toBe('fbk');
+});
+
+test('backup exposes effective volume ids with fallback to legacy volume_id', function () {
+    $firstVolume = Volume::factory()->local()->create();
+    $secondVolume = Volume::factory()->local()->create();
+    $server = DatabaseServer::factory()->create();
+
+    $server->backup->update([
+        'volume_id' => $firstVolume->id,
+        'volume_ids' => [$firstVolume->id, $secondVolume->id],
+    ]);
+
+    $server->refresh();
+
+    expect($server->backup->getEffectiveVolumeIds())
+        ->toBe([$firstVolume->id, $secondVolume->id]);
+
+    $server->backup->update(['volume_ids' => null]);
+    $server->refresh();
+
+    expect($server->backup->getEffectiveVolumeIds())
+        ->toBe([$firstVolume->id]);
 });
