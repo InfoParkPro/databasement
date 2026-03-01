@@ -440,7 +440,8 @@ test('execute propagates firebird restore command failure and cleans up working 
         ->with(
             Mockery::type(VolumeConfig::class),
             'backup.fbk.gz',
-            Mockery::type('string')
+            Mockery::on(fn (string $destination) => str_starts_with($destination, $config->workingDirectory.'/')
+                && str_ends_with($destination, '.gz'))
         )
         ->andReturnUsing(function ($volumeConfig, $remoteFilename, $destination) {
             file_put_contents($destination, 'compressed backup data');
