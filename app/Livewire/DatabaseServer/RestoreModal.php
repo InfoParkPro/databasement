@@ -167,11 +167,19 @@ class RestoreModal extends Component
     protected function validateSchemaName(): void
     {
         $isSqlite = $this->targetServer?->database_type === DatabaseType::SQLITE;
+        $isFirebird = $this->targetServer?->database_type === DatabaseType::FIREBIRD;
 
         if ($isSqlite) {
             // SQLite uses file paths - allow more characters
             $rules = ['schemaName' => 'required|string|max:255'];
             $messages = ['schemaName.required' => __('Please enter a database path.')];
+        } elseif ($isFirebird) {
+            // Firebird targets are often file paths (e.g. /data/main.fdb)
+            $rules = ['schemaName' => 'required|string|max:255|regex:/^[a-zA-Z0-9_\/\\\\.\-:]+$/'];
+            $messages = [
+                'schemaName.required' => __('Please enter a database name or path.'),
+                'schemaName.regex' => __('Database name can only contain letters, numbers, slashes, dots, dashes, colons, and underscores.'),
+            ];
         } else {
             // MySQL, MariaDB, PostgreSQL - only letters, numbers, and underscores
             $rules = ['schemaName' => 'required|string|max:64|regex:/^[a-zA-Z0-9_]+$/'];
