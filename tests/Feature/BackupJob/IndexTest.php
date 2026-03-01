@@ -191,7 +191,7 @@ test('clear resets file missing filter', function () {
         ->assertSet('fileMissing', '');
 });
 
-test('can download snapshot from local storage', function () {
+test('can download snapshot from local storage route', function () {
     $user = User::factory()->create();
 
     // Create volume with temp directory (factory handles directory creation)
@@ -217,15 +217,14 @@ test('can download snapshot from local storage', function () {
     ]);
     $snapshot->job->markCompleted();
 
-    // Test download returns file response
-    $response = Livewire::actingAs($user)
-        ->test(Index::class)
-        ->call('download', $snapshot->id);
+    $response = $this->actingAs($user)
+        ->get(route('snapshots.download', $snapshot));
 
-    $response->assertFileDownloaded($snapshot->filename);
+    $response->assertOk();
+    $response->assertHeader('content-disposition');
 });
 
-test('can download snapshot from s3 storage redirects to presigned url', function () {
+test('snapshot download route redirects to s3 presigned url', function () {
     $user = User::factory()->create();
 
     $volume = Volume::factory()->s3()->create();
@@ -257,9 +256,8 @@ test('can download snapshot from s3 storage redirects to presigned url', functio
 
     app()->instance(Awss3Filesystem::class, $mockS3Filesystem);
 
-    Livewire::actingAs($user)
-        ->test(Index::class)
-        ->call('download', $snapshot->id)
+    $this->actingAs($user)
+        ->get(route('snapshots.download', $snapshot))
         ->assertRedirect('https://test-bucket.s3.amazonaws.com/test-backup.sql.gz?presigned=token');
 });
 
@@ -295,9 +293,8 @@ test('s3 download presigned url includes volume prefix in key path', function ()
     ]);
     $snapshot->job->markCompleted();
 
-    Livewire::actingAs($user)
-        ->test(Index::class)
-        ->call('download', $snapshot->id)
+    $this->actingAs($user)
+        ->get(route('snapshots.download', $snapshot))
         ->assertRedirectContains('https://127.0.0.1:9022/my-backup-bucket/backups/production/myapp-backup-2024-01-13.sql.gz');
 });
 

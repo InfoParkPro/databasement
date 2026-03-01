@@ -134,13 +134,13 @@
                 <div class="flex gap-2 justify-end">
                     @if($job->snapshot && $job->status === 'completed')
                         @can('download', $job->snapshot)
-                            <x-button
-                                icon="o-arrow-down-tray"
-                                wire:click="download('{{ $job->snapshot->id }}')"
-                                spinner
-                                tooltip="{{ __('Download') }}"
-                                class="btn-ghost btn-sm text-info"
-                            />
+                            <a
+                                href="{{ route('snapshots.download', $job->snapshot) }}"
+                                class="btn btn-ghost btn-sm text-info"
+                                title="{{ __('Download') }}"
+                            >
+                                <x-icon name="o-arrow-down-tray" class="w-5 h-5" />
+                            </a>
                         @endcan
                     @endif
                     <x-button

@@ -46,6 +46,9 @@ Route::middleware(['auth'])->group(function () {
         ->name('volumes.index');
     Route::livewire('jobs', \App\Livewire\BackupJob\Index::class)
         ->name('jobs.index');
+    Route::get('snapshots/{snapshot}/download', \App\Http\Controllers\Web\SnapshotDownloadController::class)
+        ->can('download', 'snapshot')
+        ->name('snapshots.download');
 
     // Users index - viewable by all (actions restricted in component)
     Route::livewire('users', \App\Livewire\User\Index::class)
