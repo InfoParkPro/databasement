@@ -47,11 +47,9 @@ jobs:
           fi
 
       - name: Set up QEMU
-        if: steps.filter.outputs.base == 'true'
         uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
-        if: steps.filter.outputs.base == 'true'
         uses: docker/setup-buildx-action@v3
 
       - name: Compute image namespace
@@ -59,15 +57,24 @@ jobs:
         run: echo "value=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
 
       - name: Login to GitHub Container Registry
-        if: steps.filter.outputs.base == 'true'
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Check base image latest availability
+        id: base_latest
+        run: |
+          IMAGE="ghcr.io/${{ steps.image_namespace.outputs.value }}/databasement-php:latest"
+          if docker manifest inspect "$IMAGE" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Build and push base image
-        if: steps.filter.outputs.base == 'true'
+        if: steps.filter.outputs.base == 'true' || steps.base_latest.outputs.exists != 'true'
         uses: docker/build-push-action@v6
         with:
           context: docker/php
@@ -80,11 +87,11 @@ jobs:
       - name: Determine base image tag for app build
         id: base_image_tag
         run: |
-          if [[ "${{ steps.filter.outputs.base }}" == "true" ]]; then
-            # Base image was rebuilt, use the branch-specific tag
+          if [[ "${{ steps.filter.outputs.base }}" == "true" || "${{ steps.base_latest.outputs.exists }}" != "true" ]]; then
+            # Base image was rebuilt in this run, use the branch-specific tag.
             echo "tag=${{ steps.tag.outputs.tag }}" >> $GITHUB_OUTPUT
           else
-            # Base image not rebuilt, fall back to latest
+            # Base image already exists, re-use latest.
             echo "tag=latest" >> $GITHUB_OUTPUT
           fi
 
