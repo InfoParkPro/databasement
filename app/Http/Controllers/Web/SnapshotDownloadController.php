@@ -8,13 +8,14 @@ use App\Http\Controllers\Controller;
 use App\Models\Snapshot;
 use App\Services\Backup\Filesystems\Awss3Filesystem;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Gate;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class SnapshotDownloadController extends Controller
 {
     public function __invoke(Snapshot $snapshot): BinaryFileResponse|RedirectResponse
     {
-        $this->authorize('download', $snapshot);
+        Gate::authorize('download', $snapshot);
 
         $snapshot->loadMissing('volume');
 
