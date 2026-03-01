@@ -41,6 +41,18 @@ function buildTargetConfig(string $host = 'localhost'): DatabaseConnectionConfig
     );
 }
 
+function buildFirebirdTargetConfig(string $host = 'fb.local', int $port = 3050): DatabaseConnectionConfig
+{
+    return new DatabaseConnectionConfig(
+        databaseType: DatabaseType::FIREBIRD,
+        serverName: 'Target Firebird',
+        host: $host,
+        port: $port,
+        username: 'sysdba',
+        password: 'masterkey',
+    );
+}
+
 function buildSnapshotVolumeConfig(): VolumeConfig
 {
     return new VolumeConfig(
@@ -62,6 +74,21 @@ function buildRestoreConfig(?string $workingDirectory = null): RestoreConfig
         snapshotDatabaseName: 'sourcedb',
         schemaName: 'restored_db',
         workingDirectory: $workingDirectory ?? test()->tempDir.'/restore-test-'.uniqid(),
+    );
+}
+
+function buildFirebirdRestoreConfig(?string $workingDirectory = null): RestoreConfig
+{
+    return new RestoreConfig(
+        targetServer: buildFirebirdTargetConfig(),
+        snapshotVolume: buildSnapshotVolumeConfig(),
+        snapshotFilename: 'backup.fbk.gz',
+        snapshotFileSize: 2048,
+        snapshotCompressionType: CompressionType::GZIP,
+        snapshotDatabaseType: DatabaseType::FIREBIRD,
+        snapshotDatabaseName: '/data/source.fdb',
+        schemaName: '/data/restore-target.fdb',
+        workingDirectory: $workingDirectory ?? test()->tempDir.'/restore-firebird-'.uniqid(),
     );
 }
 
@@ -331,4 +358,43 @@ test('execute cleans up working directory on failure', function () {
         ->toThrow(\App\Exceptions\ShellProcessFailed::class);
 
     expect(is_dir($config->workingDirectory))->toBeFalse();
+});
+
+test('execute restores firebird snapshot and runs download/decompress/cleanup lifecycle', function () {
+    $mockHandler = Mockery::mock(DatabaseInterface::class);
+    $mockHandler->shouldReceive('prepareForRestore')->once()->with('/data/restore-target.fdb', Mockery::any())->andReturnNull();
+    $mockHandler->shouldReceive('restore')
+        ->once()
+        ->with(Mockery::on(fn (string $workingFile) => str_ends_with($workingFile, '/snapshot')))
+        ->andReturn(new DatabaseOperationResult(command: "echo 'firebird restore command'"));
+
+    $mockProvider = Mockery::mock(DatabaseProvider::class);
+    $mockProvider->shouldReceive('makeFromConfig')
+        ->once()
+        ->with(
+            Mockery::on(fn (DatabaseConnectionConfig $config) => $config->databaseType === DatabaseType::FIREBIRD && $config->host === 'fb.local'),
+            '/data/restore-target.fdb',
+            'fb.local',
+            3050,
+            '/data/source.fdb',
+        )
+        ->andReturn($mockHandler);
+
+    setupDownloadMock();
+
+    $restoreTask = new RestoreTask(
+        $mockProvider,
+        $this->shellProcessor,
+        $this->filesystemProvider,
+        $this->compressorFactory,
+        $this->sshTunnelService,
+    );
+
+    $config = buildFirebirdRestoreConfig();
+    mkdir($config->workingDirectory, 0755, true);
+
+    $restoreTask->execute($config, new InMemoryBackupLogger);
+
+    expect($this->shellProcessor->hasCommand("echo 'firebird restore command'"))->toBeTrue()
+        ->and(is_dir($config->workingDirectory))->toBeFalse();
 });
