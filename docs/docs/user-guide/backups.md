@@ -39,6 +39,11 @@ sqlite3 '/path/to/database.sqlite' ".backup 'dump.db'"
 
 This creates a consistent snapshot and is safe for databases running in WAL mode.
 
+**Firebird:**
+```bash
+gbak -b -user '...' -password '...' '/path/to/source.fdb' '/path/to/dump.fbk'
+```
+
 **MongoDB:**
 ```bash
 mongodump --host='...' --port='...' --username='...' --password='...' \
@@ -51,6 +56,7 @@ redis-cli -h '...' -p '...' -a '...' --no-auth-warning --rdb dump.rdb
 ```
 
 All dumps are then compressed with gzip before being transferred to the storage volume.
+Firebird backup and restore automation both rely on the `gbak` CLI being available in runtime.
 
 ## Failed Backups
 

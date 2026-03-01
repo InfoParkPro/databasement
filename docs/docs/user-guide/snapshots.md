@@ -24,6 +24,8 @@ When you restore a snapshot, Databasement:
 4. Drops and recreates the target database (if it exists)
 5. Restores the data using native database tools
 
+Restore is supported only between compatible database types (for example Firebird snapshot -> Firebird server).
+
 ### Restore Commands
 
 **MySQL/MariaDB:**
@@ -43,6 +45,11 @@ PGPASSWORD='...' psql --host='...' --port='...' --username='...' \
 cp '/path/to/snapshot' '/path/to/database.sqlite'
 ```
 
+**Firebird:**
+```bash
+gbak -rep -user '...' -password '...' '/path/to/snapshot.fbk' '/path/to/target.fdb'
+```
+
 **MongoDB:**
 ```bash
 mongorestore --host='...' --port='...' --username='...' --password='...' \
@@ -55,3 +62,5 @@ Redis/Valkey restore is not currently supported. RDB file imports require direct
 :::
 
 All snapshots are decompressed with `gzip -d` before restore.
+
+For Firebird restores, target database names can be file-like paths (for example `/data/main.fdb`), and the runtime must provide `gbak` (plus `isql-fb`/`isql` for tooling compatibility checks).

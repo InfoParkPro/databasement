@@ -4,7 +4,7 @@ sidebar_position: 2
 
 # Database Servers
 
-Database servers are the source of your backups. Databasement can connect to and backup MySQL, PostgreSQL, MariaDB, MongoDB, SQLite, and Redis/Valkey servers.
+Database servers are the source of your backups. Databasement can connect to and backup MySQL, PostgreSQL, MariaDB, MongoDB, SQLite, Firebird, and Redis/Valkey servers.
 
 ## Connection Requirements
 
@@ -149,6 +149,24 @@ SQLite databases are backed up by copying the database file directly. Databaseme
 
 :::note
 SQLite requires an SSH tunnel to access remote database files. Databasement uses SFTP over the tunnel to copy and restore files.
+:::
+
+### Firebird
+
+Firebird backup and restore use the native `gbak` CLI.
+
+#### Connection settings
+
+| Field | Description |
+|-------|-------------|
+| Host | Firebird server hostname or IP |
+| Port | Firebird port (default: 3050) |
+| Username | Firebird user (for example `SYSDBA`) |
+| Password | Firebird user password |
+| Database | Target Firebird database identifier/path (for example `/data/main.fdb`) |
+
+:::note Restore constraints
+Firebird snapshot restore is automated for Firebird targets only (same database type). Target names may be file-like identifiers such as `/data/main.fdb`.
 :::
 
 ## Troubleshooting Connection Issues
