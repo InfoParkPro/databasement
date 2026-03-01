@@ -265,3 +265,38 @@ test('firebird edit normalizes selection mode back to selected', function () {
     expect($server->database_selection_mode)->toBe('selected')
         ->and($server->database_names)->toBe(['/db/main.fdb']);
 });
+
+test('edit loads and updates multiple backup volumes', function () {
+    $user = User::factory()->create();
+    $firstVolume = Volume::factory()->local()->create();
+    $secondVolume = Volume::factory()->local()->create();
+    $thirdVolume = Volume::factory()->local()->create();
+
+    $server = DatabaseServer::factory()->create([
+        'name' => 'Edit Multi Volume',
+        'database_type' => 'mysql',
+        'host' => 'mysql.example.com',
+        'port' => 3306,
+        'username' => 'dbuser',
+        'password' => 'secret',
+        'database_names' => ['myapp'],
+    ]);
+
+    $server->backup->update([
+        'volume_id' => $firstVolume->id,
+        'volume_ids' => [$firstVolume->id, $secondVolume->id],
+    ]);
+
+    Livewire::actingAs($user)
+        ->test(Edit::class, ['server' => $server])
+        ->assertSet('form.volume_ids', [$firstVolume->id, $secondVolume->id])
+        ->set('form.volume_ids', [$thirdVolume->id, $secondVolume->id])
+        ->call('save')
+        ->assertHasNoErrors();
+
+    $server->refresh();
+    $backup = $server->backup()->firstOrFail();
+
+    expect($backup->volume_ids)->toBe([$thirdVolume->id, $secondVolume->id])
+        ->and($backup->volume_id)->toBe($thirdVolume->id);
+});

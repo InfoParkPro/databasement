@@ -410,31 +410,29 @@ use App\Enums\DatabaseType;
                 </div>
 
                 <div class="space-y-4">
-                    <x-select
-                        wire:model="form.volume_id"
-                        label="{{ __('Storage Volume') }}"
+                    <x-choices-offline
+                        wire:model="form.volume_ids"
+                        label="{{ __('Storage Volumes') }}"
                         :options="$form->getVolumeOptions()"
-                        placeholder="{{ __('Select a storage volume') }}"
-                        placeholder-value=""
+                        hint="{{ __('Select one or more target volumes for each backup run.') }}"
                         required
-                    >
-                        <x-slot:append>
-                            <x-button
-                                wire:click="refreshVolumes"
-                                icon="o-arrow-path"
-                                class="btn-ghost join-item"
-                                tooltip-bottom="{{ __('Refresh volume list') }}"
-                                spinner
-                            />
-                            <x-button
-                                link="{{ route('volumes.create') }}"
-                                icon="o-plus"
-                                class="btn-ghost join-item"
-                                tooltip-bottom="{{ __('Create new volume') }}"
-                                external
-                            />
-                        </x-slot:append>
-                    </x-select>
+                    />
+                    <div class="flex items-center gap-2">
+                        <x-button
+                            wire:click="refreshVolumes"
+                            icon="o-arrow-path"
+                            class="btn-ghost btn-sm"
+                            tooltip-bottom="{{ __('Refresh volume list') }}"
+                            spinner
+                        />
+                        <x-button
+                            link="{{ route('volumes.create') }}"
+                            icon="o-plus"
+                            class="btn-ghost btn-sm"
+                            tooltip-bottom="{{ __('Create new volume') }}"
+                            external
+                        />
+                    </div>
 
                     <x-input
                         wire:model="form.path"

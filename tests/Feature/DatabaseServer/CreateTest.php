@@ -263,3 +263,50 @@ test('firebird cannot be saved with all-databases selection mode', function () {
         ->call('save')
         ->assertHasErrors(['form.database_names']);
 });
+
+test('can create server with multiple backup volumes', function () {
+    $user = User::factory()->create();
+    $firstVolume = Volume::factory()->local()->create();
+    $secondVolume = Volume::factory()->local()->create();
+
+    Livewire::actingAs($user)
+        ->test(Create::class)
+        ->set('form.name', 'Multi Volume MySQL')
+        ->set('form.database_type', 'mysql')
+        ->set('form.host', 'mysql.example.com')
+        ->set('form.port', 3306)
+        ->set('form.username', 'dbuser')
+        ->set('form.password', 'secret123')
+        ->set('form.database_names.0', 'myapp')
+        ->set('form.volume_ids', [$firstVolume->id, $secondVolume->id])
+        ->set('form.backup_schedule_id', dailySchedule()->id)
+        ->set('form.retention_days', 14)
+        ->call('save')
+        ->assertHasNoErrors();
+
+    $server = DatabaseServer::where('name', 'Multi Volume MySQL')->firstOrFail();
+    $backup = $server->backup()->firstOrFail();
+
+    expect($backup->volume_ids)->toBe([$firstVolume->id, $secondVolume->id])
+        ->and($backup->volume_id)->toBe($firstVolume->id);
+});
+
+test('cannot create server with backups enabled when no volume is selected', function () {
+    $user = User::factory()->create();
+
+    Livewire::actingAs($user)
+        ->test(Create::class)
+        ->set('form.name', 'Missing Volumes')
+        ->set('form.database_type', 'mysql')
+        ->set('form.host', 'mysql.example.com')
+        ->set('form.port', 3306)
+        ->set('form.username', 'dbuser')
+        ->set('form.password', 'secret123')
+        ->set('form.database_names.0', 'myapp')
+        ->set('form.volume_ids', [])
+        ->set('form.volume_id', '')
+        ->set('form.backup_schedule_id', dailySchedule()->id)
+        ->set('form.retention_days', 14)
+        ->call('save')
+        ->assertHasErrors(['form.volume_ids']);
+});

@@ -79,6 +79,9 @@ class DatabaseServerForm extends Form
 
     public string $volume_id = '';
 
+    /** @var array<string> */
+    public array $volume_ids = [];
+
     public string $path = '';
 
     public string $backup_schedule_id = '';
@@ -351,6 +354,7 @@ class DatabaseServerForm extends Form
             /** @var Backup $backup */
             $backup = $server->backup;
             $this->volume_id = $backup->volume_id;
+            $this->volume_ids = $backup->getEffectiveVolumeIds();
             $this->path = $backup->path ?? '';
             $this->backup_schedule_id = $backup->backup_schedule_id ?? '';
             $this->retention_days = $backup->retention_days;
@@ -518,6 +522,7 @@ class DatabaseServerForm extends Form
     public function formValidate(): array
     {
         $this->normalizeDatabaseNames();
+        $this->normalizeVolumeSelection();
 
         $rules = $this->getBaseValidationRules();
 
@@ -569,7 +574,8 @@ class DatabaseServerForm extends Form
     private function getBackupValidationRules(): array
     {
         $rules = [
-            'volume_id' => 'required|exists:volumes,id',
+            'volume_ids' => 'required|array|min:1',
+            'volume_ids.*' => 'required|exists:volumes,id',
             'path' => ['nullable', 'string', 'max:255', new SafePath],
             'backup_schedule_id' => 'required|exists:backup_schedules,id',
             'retention_policy' => 'required|string|in:'.implode(',', Backup::RETENTION_POLICIES),
@@ -931,9 +937,11 @@ class DatabaseServerForm extends Form
     private function extractBackupData(array $validated): array
     {
         $retentionPolicy = $validated['retention_policy'] ?? Backup::RETENTION_DAYS;
+        $volumeIds = array_values(array_unique($validated['volume_ids'] ?? []));
 
         $backupData = [
-            'volume_id' => $validated['volume_id'] ?? '',
+            'volume_id' => $volumeIds[0] ?? '',
+            'volume_ids' => $volumeIds !== [] ? $volumeIds : null,
             'path' => ! empty($validated['path']) ? $validated['path'] : null,
             'backup_schedule_id' => $validated['backup_schedule_id'] ?? '',
             'retention_policy' => $retentionPolicy,
@@ -961,6 +969,7 @@ class DatabaseServerForm extends Form
 
         unset(
             $validated['volume_id'],
+            $validated['volume_ids'],
             $validated['path'],
             $validated['backup_schedule_id'],
             $validated['retention_days'],
@@ -971,6 +980,20 @@ class DatabaseServerForm extends Form
         );
 
         return [$validated, $backupData];
+    }
+
+    private function normalizeVolumeSelection(): void
+    {
+        if ($this->volume_ids === [] && $this->volume_id !== '') {
+            $this->volume_ids = [$this->volume_id];
+        }
+
+        $this->volume_ids = array_values(array_filter(
+            array_map(static fn ($id) => is_string($id) ? trim($id) : '', $this->volume_ids),
+            static fn (string $id) => $id !== ''
+        ));
+
+        $this->volume_id = $this->volume_ids[0] ?? '';
     }
 
     /**
