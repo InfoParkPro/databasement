@@ -75,7 +75,7 @@ class DatabaseProvider
 
             if ($server->database_type === DatabaseType::FIREBIRD) {
                 $config['database_names'] = $server->database_names ?? [];
-                if ($config['database'] === '' && ! empty($config['database_names'][0])) {
+                if (($config['database'] ?? '') === '' && ! empty($config['database_names'][0])) {
                     $config['database'] = (string) $config['database_names'][0];
                 }
             }
@@ -121,7 +121,7 @@ class DatabaseProvider
                 $dbConfig['database'] = $databaseName;
             }
 
-            if ($config->databaseType === DatabaseType::FIREBIRD && $dbConfig['database'] === '') {
+            if ($config->databaseType === DatabaseType::FIREBIRD && ($dbConfig['database'] ?? '') === '') {
                 $dbConfig['database'] = $config->extraConfig['database'] ?? '';
             }
 
