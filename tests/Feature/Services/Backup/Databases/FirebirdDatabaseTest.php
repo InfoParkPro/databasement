@@ -58,7 +58,7 @@ test('restore builds gbak restore command', function () {
     $result = $this->db->restore('/tmp/backup.fbk');
 
     expect($result)->toBeInstanceOf(DatabaseOperationResult::class)
-        ->and($result->command)->toBe("gbak -rep -user 'sysdba' -password 'masterkey' '/tmp/backup.fbk' 'fb.local/3050:/data/main.fdb'");
+        ->and($result->command)->toBe("gbak -r -o -user 'sysdba' -password 'masterkey' '/tmp/backup.fbk' 'fb.local/3050:/data/main.fdb'");
 });
 
 test('prepareForRestore is a no-op', function () {

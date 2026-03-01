@@ -35,7 +35,7 @@ class FirebirdDatabase implements DatabaseInterface
     public function restore(string $inputPath): DatabaseOperationResult
     {
         return new DatabaseOperationResult(command: sprintf(
-            'gbak -rep -user %s -password %s %s %s',
+            'gbak -r -o -user %s -password %s %s %s',
             escapeshellarg((string) ($this->config['user'] ?? '')),
             escapeshellarg((string) ($this->config['pass'] ?? '')),
             escapeshellarg($inputPath),
@@ -45,7 +45,7 @@ class FirebirdDatabase implements DatabaseInterface
 
     public function prepareForRestore(string $schemaName, BackupLogger $logger): void
     {
-        // Firebird restore uses gbak -rep to replace the target database in one step.
+        // Firebird restore uses gbak -r -o to recreate (overwrite) target database in one step.
     }
 
     public function listDatabases(): array
