@@ -122,7 +122,7 @@ test('firebird restore allows path-style schema names', function () {
     Livewire::test(RestoreModal::class)
         ->dispatch('open-restore-modal', targetServerId: $targetServer->id)
         ->call('selectSnapshot', $snapshot->id)
-        ->set('schemaName', '/data/main.fdb')
+        ->set('schemaName', '/data/Main Database.fdb')
         ->call('restore')
         ->assertHasNoErrors();
 });
@@ -137,11 +137,42 @@ test('firebird restore queues ProcessRestoreJob successfully', function () {
     Livewire::test(RestoreModal::class)
         ->dispatch('open-restore-modal', targetServerId: $targetServer->id)
         ->call('selectSnapshot', $snapshot->id)
-        ->set('schemaName', '/data/main.fdb')
+        ->set('schemaName', '/data/Main Database.fdb')
         ->call('restore')
         ->assertDispatched('restore-completed');
 
     Queue::assertPushed(ProcessRestoreJob::class, 1);
+
+    $restore = \App\Models\Restore::where('snapshot_id', $snapshot->id)
+        ->where('target_server_id', $targetServer->id)
+        ->first();
+
+    expect($restore)->not->toBeNull();
+    expect($restore->schema_name)->toBe('/data/Main Database.fdb');
+    expect((string) $restore->triggered_by_user_id)->toBe((string) $this->user->id);
+    expect($restore->job)->not->toBeNull();
+    expect($restore->job->status)->toBe('pending');
+
+    $pushedJob = Queue::pushed(ProcessRestoreJob::class)->first();
+    expect($pushedJob->restoreId)->toBe($restore->id);
+});
+
+test('firebird restore rejects unsafe schema names with shell metacharacters', function () {
+    Queue::fake();
+
+    $targetServer = DatabaseServer::factory()->firebird()->create();
+    $sourceServer = DatabaseServer::factory()->firebird()->create();
+    $snapshot = Snapshot::factory()->forServer($sourceServer)->withFile()->create();
+
+    Livewire::test(RestoreModal::class)
+        ->dispatch('open-restore-modal', targetServerId: $targetServer->id)
+        ->call('selectSnapshot', $snapshot->id)
+        ->set('schemaName', '/data/main;rm -rf.fdb')
+        ->call('restore')
+        ->assertHasErrors(['schemaName' => ['regex']])
+        ->assertSee('Database name can only contain letters, numbers, spaces, slashes, dots, dashes, colons, and underscores.');
+
+    Queue::assertNotPushed(ProcessRestoreJob::class);
 });
 
 test('only shows compatible servers with same database type', function () {
