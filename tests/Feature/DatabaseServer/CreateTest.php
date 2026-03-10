@@ -1,6 +1,7 @@
 <?php
 
 use App\Livewire\DatabaseServer\Create;
+use App\Models\Agent;
 use App\Models\DatabaseServer;
 use App\Models\User;
 use App\Models\Volume;
@@ -206,4 +207,60 @@ test('can add and remove SQLite database paths', function () {
         ->call('removeDatabasePath', 0)
         ->assertCount('form.database_names', 1)
         ->assertSet('form.database_names.0', '/data/other.sqlite');
+});
+
+test('local volume options reflect use_agent state', function (bool $useAgent, bool $expectedDisabled) {
+    $user = User::factory()->create();
+    $localVolume = Volume::create(['name' => 'Local Vol', 'type' => 'local', 'config' => ['path' => '/backups']]);
+
+    $component = Livewire::actingAs($user)
+        ->test(Create::class)
+        ->set('form.use_agent', $useAgent);
+
+    $options = $component->viewData('form')->getVolumeOptions();
+    $local = collect($options)->firstWhere('id', $localVolume->id);
+
+    expect($local['disabled'])->toBe($expectedDisabled);
+})->with([
+    'disabled when use_agent is true' => [true, true],
+    'enabled when use_agent is false' => [false, false],
+]);
+
+test('toggling use_agent clears local volume but keeps remote volume', function (string $volumeType, array $volumeConfig, string $expectedVolumeId) {
+    $user = User::factory()->create();
+    $volume = Volume::create(['name' => 'Test Vol', 'type' => $volumeType, 'config' => $volumeConfig]);
+
+    $expected = $expectedVolumeId === 'keep' ? $volume->id : '';
+
+    Livewire::actingAs($user)
+        ->test(Create::class)
+        ->set('form.volume_id', $volume->id)
+        ->set('form.use_agent', true)
+        ->assertSet('form.volume_id', $expected);
+})->with([
+    'clears local volume' => ['local', ['path' => '/backups'], 'clear'],
+    'keeps s3 volume' => ['s3', ['bucket' => 'test'], 'keep'],
+]);
+
+test('cannot create agent-backed server with local volume', function () {
+    $user = User::factory()->create();
+    $agent = Agent::factory()->create();
+    $localVolume = Volume::create(['name' => 'Local Vol', 'type' => 'local', 'config' => ['path' => '/backups']]);
+
+    Livewire::actingAs($user)
+        ->test(Create::class)
+        ->set('form.name', 'Agent Server')
+        ->set('form.database_type', 'mysql')
+        ->set('form.host', 'mysql.example.com')
+        ->set('form.port', 3306)
+        ->set('form.username', 'dbuser')
+        ->set('form.password', 'secret123')
+        ->set('form.use_agent', true)
+        ->set('form.agent_id', $agent->id)
+        ->set('form.volume_id', $localVolume->id)
+        ->set('form.backup_schedule_id', dailySchedule()->id)
+        ->call('save')
+        ->assertHasErrors(['form.volume_id']);
+
+    $this->assertDatabaseMissing('database_servers', ['name' => 'Agent Server']);
 });

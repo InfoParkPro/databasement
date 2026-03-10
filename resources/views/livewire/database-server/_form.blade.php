@@ -1,6 +1,7 @@
 @props(['form', 'submitLabel' => 'Save', 'cancelRoute' => 'database-servers.index', 'isEdit' => false])
 
 @php
+use App\Enums\DatabaseSelectionMode;
 use App\Enums\DatabaseType;
 @endphp
 
@@ -30,6 +31,64 @@ use App\Enums\DatabaseType;
                     :hint="__('Notes for your team about this server\'s purpose')"
                     rows="2"
                 />
+
+                @php $agentOptions = $form->getAgentOptions(); @endphp
+                @if(count($agentOptions) > 0 || $form->hasAgent())
+                    <div class="border border-base-300 rounded-lg bg-base-200">
+                        <!-- Toggle Header -->
+                        <label class="flex items-start gap-3 p-4 cursor-pointer select-none">
+                            <x-toggle
+                                wire:model.live="form.use_agent"
+                                class="toggle-primary"
+                            />
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center gap-2 flex-wrap">
+                                    <span class="font-medium">{{ __('Use a remote agent') }}</span>
+                                    <span class="badge badge-ghost badge-sm text-base-content/50 font-normal">{{ __('Optional') }}</span>
+                                </div>
+                                <p class="text-xs text-base-content/50 mt-0.5 leading-relaxed">
+                                    {{ __('Route backups through an agent installed on a server inside your private network or behind a firewall.') }}
+                                </p>
+                            </div>
+                        </label>
+
+                        <!-- Agent Selection (shown only when enabled) -->
+                        @if($form->use_agent)
+                            <div class="border-t border-base-300 bg-base-100 p-4 rounded-b-lg space-y-3">
+                                <x-select
+                                    wire:model.live="form.agent_id"
+                                    :label="__('Agent')"
+                                    :options="$agentOptions"
+                                    :placeholder="__('Select an agent')"
+                                    placeholder-value=""
+                                />
+
+                                @if($form->hasAgent())
+                                    @php $selectedAgent = $form->getSelectedAgent(); @endphp
+                                    @if($selectedAgent)
+                                        <div class="flex items-center gap-2 text-sm">
+                                            @if($selectedAgent->isOnline())
+                                                <span class="badge badge-success badge-sm gap-1">
+                                                    <span class="w-2 h-2 rounded-full bg-success animate-pulse"></span>
+                                                    {{ __('Online') }}
+                                                </span>
+                                                <span class="text-base-content/70">{{ __('Last heartbeat :time', ['time' => $selectedAgent->last_heartbeat_at->diffForHumans()]) }}</span>
+                                            @elseif($selectedAgent->last_heartbeat_at)
+                                                <span class="badge badge-warning badge-sm gap-1">
+                                                    <span class="w-2 h-2 rounded-full bg-warning"></span>
+                                                    {{ __('Offline') }}
+                                                </span>
+                                                <span class="text-base-content/70">{{ __('Last heartbeat :time', ['time' => $selectedAgent->last_heartbeat_at->diffForHumans()]) }}</span>
+                                            @else
+                                                <span class="badge badge-ghost badge-sm">{{ __('Never connected') }}</span>
+                                            @endif
+                                        </div>
+                                    @endif
+                                @endif
+                            </div>
+                        @endif
+                    </div>
+                @endif
             </div>
         </div>
     </div>
@@ -154,78 +213,84 @@ use App\Enums\DatabaseType;
                     @endif
 
                     <!-- Test Connection Button -->
-                    <div class="flex flex-wrap items-center gap-2 pt-2">
-                        <x-button
-                            class="{{ $form->connectionTestSuccess ? 'btn-success' : 'btn-outline btn-primary' }}"
-                            type="button"
-                            icon="{{ $form->connectionTestSuccess ? 'o-check-circle' : 'o-bolt' }}"
-                            wire:click="testConnection"
-                            :disabled="$form->testingConnection"
-                            spinner="testConnection"
-                        >
-                            @if($form->testingConnection)
-                                {{ __('Testing...') }}
-                            @elseif($form->connectionTestSuccess)
-                                {{ __('Connection Verified') }}
-                                @if(!empty($form->connectionTestDetails['ping_ms']))
-                                    ({{ $form->connectionTestDetails['ping_ms'] }}ms)
+                    @if($form->hasAgent())
+                        <x-alert class="alert-info mt-2" icon="o-information-circle">
+                            {{ __('Connection testing is not available for agent-managed servers. The agent will test connectivity when running backups.') }}
+                        </x-alert>
+                    @else
+                        <div class="flex flex-wrap items-center gap-2 pt-2">
+                            <x-button
+                                class="{{ $form->connectionTestSuccess ? 'btn-success' : 'btn-outline btn-primary' }}"
+                                type="button"
+                                icon="{{ $form->connectionTestSuccess ? 'o-check-circle' : 'o-bolt' }}"
+                                wire:click="testConnection"
+                                :disabled="$form->testingConnection"
+                                spinner="testConnection"
+                            >
+                                @if($form->testingConnection)
+                                    {{ __('Testing...') }}
+                                @elseif($form->connectionTestSuccess)
+                                    {{ __('Connection Verified') }}
+                                    @if(!empty($form->connectionTestDetails['ping_ms']))
+                                        ({{ $form->connectionTestDetails['ping_ms'] }}ms)
+                                    @endif
+                                @else
+                                    {{ __('Test Connection') }}
                                 @endif
-                            @else
-                                {{ __('Test Connection') }}
+                            </x-button>
+
+                            @if($form->connectionTestSuccess && !empty($form->connectionTestDetails['output']))
+                                <x-button
+                                    wire:click="$toggle('form.showConnectionDetails')"
+                                    class="btn-ghost btn-sm"
+                                    icon="{{ $form->showConnectionDetails ? 'o-eye-slash' : 'o-eye' }}"
+                                    :label="$form->showConnectionDetails ? __('Hide Details') : __('Show Details')"
+                                />
                             @endif
-                        </x-button>
-
-                        @if($form->connectionTestSuccess && !empty($form->connectionTestDetails['output']))
-                            <x-button
-                                wire:click="$toggle('form.showConnectionDetails')"
-                                class="btn-ghost btn-sm"
-                                icon="{{ $form->showConnectionDetails ? 'o-eye-slash' : 'o-eye' }}"
-                                :label="$form->showConnectionDetails ? __('Hide Details') : __('Show Details')"
-                            />
-                        @endif
-                    </div>
-
-                    <!-- Connection Test Result -->
-                    @if($form->connectionTestMessage && !$form->connectionTestSuccess)
-                        <x-alert class="alert-error mt-2" icon="o-x-circle">
-                            <div>
-                                <span class="font-bold">{{ __('Connection failed') }}</span>
-                                <p class="text-sm">{{ $form->connectionTestMessage }}</p>
-                            </div>
-                            <x-button
-                                label="{{ __('Troubleshooting Guide') }}"
-                                link="https://david-crty.github.io/databasement/user-guide/database-servers/#troubleshooting-connection-issues"
-                                external
-                                class="btn-ghost btn-sm mt-2"
-                                icon="o-arrow-top-right-on-square"
-                            />
-                        </x-alert>
-                    @endif
-
-                    @if($form->connectionTestSuccess && !empty($form->connectionTestDetails['ssh_tunnel']))
-                        <x-alert class="alert-info mt-2" icon="o-server-stack">
-                            {{ __('Connected via SSH tunnel through') }} {{ $form->connectionTestDetails['ssh_host'] }}
-                        </x-alert>
-                    @elseif($form->connectionTestSuccess && !empty($form->connectionTestDetails['sftp']))
-                        <x-alert class="alert-info mt-2" icon="o-server-stack">
-                            {{ __('Connected via SFTP through') }} {{ $form->connectionTestDetails['ssh_host'] }}
-                        </x-alert>
-                    @endif
-
-                    @if($form->showConnectionDetails && !empty($form->connectionTestDetails['output']))
-                        <div class="mockup-code text-sm max-h-64 overflow-auto mt-2 max-w-full w-full overflow-x-auto">
-                            @foreach(explode("\n", trim($form->connectionTestDetails['output'])) as $line)
-                                <pre class="!whitespace-pre-wrap !break-all"><code>{{ $line }}</code></pre>
-                            @endforeach
                         </div>
+
+                        <!-- Connection Test Result -->
+                        @if($form->connectionTestMessage && !$form->connectionTestSuccess)
+                            <x-alert class="alert-error mt-2" icon="o-x-circle">
+                                <div>
+                                    <span class="font-bold">{{ __('Connection failed') }}</span>
+                                    <p class="text-sm">{{ $form->connectionTestMessage }}</p>
+                                </div>
+                                <x-button
+                                    :label="__('Troubleshooting Guide')"
+                                    link="https://david-crty.github.io/databasement/user-guide/database-servers/#troubleshooting-connection-issues"
+                                    external
+                                    class="btn-ghost btn-sm mt-2"
+                                    icon="o-arrow-top-right-on-square"
+                                />
+                            </x-alert>
+                        @endif
+
+                        @if($form->connectionTestSuccess && !empty($form->connectionTestDetails['ssh_tunnel']))
+                            <x-alert class="alert-info mt-2" icon="o-server-stack">
+                                {{ __('Connected via SSH tunnel through') }} {{ $form->connectionTestDetails['ssh_host'] }}
+                            </x-alert>
+                        @elseif($form->connectionTestSuccess && !empty($form->connectionTestDetails['sftp']))
+                            <x-alert class="alert-info mt-2" icon="o-server-stack">
+                                {{ __('Connected via SFTP through') }} {{ $form->connectionTestDetails['ssh_host'] }}
+                            </x-alert>
+                        @endif
+
+                        @if($form->showConnectionDetails && !empty($form->connectionTestDetails['output']))
+                            <div class="mockup-code text-sm max-h-64 overflow-auto mt-2 max-w-full w-full overflow-x-auto">
+                                @foreach(explode("\n", trim($form->connectionTestDetails['output'])) as $line)
+                                    <pre class="!whitespace-pre-wrap !break-all"><code>{{ $line }}</code></pre>
+                                @endforeach
+                            </div>
+                        @endif
                     @endif
                 @endif
             </div>
         </div>
     </div>
 
-    <!-- Enable Backups Toggle (shown after successful connection test or when editing) -->
-    @if($form->connectionTestSuccess or $isEdit)
+    <!-- Enable Backups Toggle (shown after successful connection test, agent assigned, or when editing) -->
+    @if($form->connectionTestSuccess or $form->hasAgent() or $isEdit)
         <div class="card bg-base-100 shadow-sm border border-base-200">
             <div class="card-body">
                 <x-toggle
@@ -238,8 +303,8 @@ use App\Enums\DatabaseType;
         </div>
     @endif
 
-    <!-- Section 3: Database Selection (only shown after successful connection, not for SQLite, and when backups enabled) -->
-    @if(($form->connectionTestSuccess or $isEdit) && !$form->isSqlite() && !$form->isRedis() && $form->backups_enabled)
+    <!-- Section 3: Database Selection (only shown after successful connection, agent assigned, not for SQLite, and when backups enabled) -->
+    @if(($form->connectionTestSuccess or $form->hasAgent() or $isEdit) && !$form->isSqlite() && !$form->isRedis() && $form->backups_enabled)
         <div class="card bg-base-100 shadow-sm border border-base-200">
             <div class="card-body">
                 <div class="flex items-center gap-3 mb-4">
@@ -251,9 +316,9 @@ use App\Enums\DatabaseType;
                     <!-- Segmented Control -->
                     @php
                         $modes = [
-                            'all' => ['icon' => 'o-circle-stack', 'label' => __('All Databases'), 'hint' => __('Backup everything')],
-                            'selected' => ['icon' => 'o-check-badge', 'label' => __('Selected'), 'hint' => __('Pick specific ones')],
-                            'pattern' => ['icon' => null, 'label' => __('Pattern'), 'hint' => __('Match by regex')],
+                            DatabaseSelectionMode::All->value => ['icon' => 'o-circle-stack', 'label' => __('All Databases'), 'hint' => __('Backup everything')],
+                            DatabaseSelectionMode::Selected->value => ['icon' => 'o-check-badge', 'label' => __('Selected'), 'hint' => __('Pick specific ones')],
+                            DatabaseSelectionMode::Pattern->value => ['icon' => null, 'label' => __('Pattern'), 'hint' => __('Match by regex')],
                         ];
                     @endphp
                     <div class="grid grid-cols-3 gap-2 rounded-xl bg-base-200 p-2">
@@ -276,7 +341,7 @@ use App\Enums\DatabaseType;
                     </div>
 
                     <!-- All Databases Panel -->
-                    @if($form->database_selection_mode === 'all')
+                    @if($form->database_selection_mode === DatabaseSelectionMode::All->value)
                         <x-alert class="alert-info" icon="o-information-circle">
                             {{ __('All user databases will be backed up. System databases are automatically excluded.') }}
                             @if(count($form->availableDatabases) > 0)
@@ -286,7 +351,7 @@ use App\Enums\DatabaseType;
                     @endif
 
                     <!-- Selected Databases Panel -->
-                    @if($form->database_selection_mode === 'selected')
+                    @if($form->database_selection_mode === DatabaseSelectionMode::Selected->value)
                         @if($form->loadingDatabases)
                             <div class="flex items-center gap-2 text-base-content/70">
                                 <x-loading class="loading-spinner loading-sm" />
@@ -313,7 +378,7 @@ use App\Enums\DatabaseType;
                     @endif
 
                     <!-- Pattern Panel -->
-                    @if($form->database_selection_mode === 'pattern')
+                    @if($form->database_selection_mode === DatabaseSelectionMode::Pattern->value)
                         <div class="space-y-3">
                             <div>
                                 <div class="flex items-center justify-between mb-1">
@@ -385,8 +450,8 @@ use App\Enums\DatabaseType;
                                     </div>
                                 @endif
                             @elseif(empty($form->availableDatabases))
-                                <x-alert class="alert-warning" icon="o-exclamation-triangle">
-                                    {{ __('Test connection to see pattern preview.') }}
+                                <x-alert class="alert-{{ $form->hasAgent() ? 'info' : 'warning' }}" icon="{{ $form->hasAgent() ? 'o-information-circle' : 'o-exclamation-triangle' }}">
+                                    {{ $form->hasAgent() ? __('Pattern preview is not available for agent-managed servers.') : __('Test connection to see pattern preview.') }}
                                 </x-alert>
                             @endif
                         </div>
@@ -397,7 +462,7 @@ use App\Enums\DatabaseType;
     @endif
 
     <!-- Section 4: Backup Configuration (only shown when backups enabled) -->
-    @if(($form->connectionTestSuccess or $isEdit) && $form->backups_enabled)
+    @if(($form->connectionTestSuccess or $form->hasAgent() or $isEdit) && $form->backups_enabled)
         <div class="card bg-base-100 shadow-sm border border-base-200">
             <div class="card-body">
                 <div class="flex items-center gap-3 mb-4">

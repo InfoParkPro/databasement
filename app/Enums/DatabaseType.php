@@ -54,6 +54,12 @@ enum DatabaseType: string
      */
     private function buildDsn(string $host, int $port, ?string $database = null): string
     {
+        // MySQL PDO treats 'localhost' as a Unix socket connection.
+        // Force TCP by using 127.0.0.1 instead.
+        if ($this === self::MYSQL && $host === 'localhost') {
+            $host = '127.0.0.1';
+        }
+
         return match ($this) {
             self::MYSQL => $database
                 ? sprintf('mysql:host=%s;port=%d;dbname=%s', $host, $port, $database)

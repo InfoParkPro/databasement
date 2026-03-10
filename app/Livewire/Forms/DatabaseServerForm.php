@@ -2,8 +2,10 @@
 
 namespace App\Livewire\Forms;
 
+use App\Enums\DatabaseSelectionMode;
 use App\Enums\DatabaseType;
 use App\Exceptions\Backup\EncryptionException;
+use App\Models\Agent;
 use App\Models\Backup;
 use App\Models\BackupSchedule;
 use App\Models\DatabaseServer;
@@ -74,6 +76,10 @@ class DatabaseServerForm extends Form
     public string $database_include_pattern = '';
 
     public ?string $description = null;
+
+    public bool $use_agent = false;
+
+    public ?string $agent_id = null;
 
     public bool $backups_enabled = true;
 
@@ -170,7 +176,7 @@ class DatabaseServerForm extends Form
     public function updatedDatabaseSelectionMode(): void
     {
         // Auto-load databases when switching to selected/pattern mode in edit
-        if (in_array($this->database_selection_mode, ['selected', 'pattern'])
+        if (in_array($this->database_selection_mode, [DatabaseSelectionMode::Selected->value, DatabaseSelectionMode::Pattern->value])
             && empty($this->availableDatabases)
             && $this->server !== null
             && ! $this->isSqlite()
@@ -194,6 +200,26 @@ class DatabaseServerForm extends Form
         $databaseNames = array_column($this->availableDatabases, 'name');
 
         return DatabaseServer::filterDatabasesByPattern($databaseNames, $this->database_include_pattern);
+    }
+
+    /**
+     * Called when use_agent changes - clear agent_id when toggled off.
+     */
+    public function updatedUseAgent(): void
+    {
+        if (! $this->use_agent) {
+            $this->agent_id = null;
+        }
+
+        // Clear volume selection if the current volume is local (incompatible with agents)
+        if ($this->use_agent
+            && $this->volume_id
+            && \App\Models\Volume::whereKey($this->volume_id)->where('type', \App\Enums\VolumeType::LOCAL->value)->exists()
+        ) {
+            $this->volume_id = '';
+        }
+
+        $this->resetConnectionTestState();
     }
 
     /**
@@ -319,9 +345,11 @@ class DatabaseServerForm extends Form
             $this->database_names = [''];
         }
         $this->database_names_input = implode(', ', $this->database_names);
-        $this->database_selection_mode = $server->database_selection_mode ?? 'all';
+        $this->database_selection_mode = ($server->database_selection_mode ?? DatabaseSelectionMode::All)->value;
         $this->database_include_pattern = $server->database_include_pattern ?? '';
         $this->description = $server->description;
+        $this->agent_id = $server->agent_id;
+        $this->use_agent = ! empty($server->agent_id);
         $this->backups_enabled = $server->backups_enabled ?? true;
         // Don't populate password for security
         $this->password = '';
@@ -484,16 +512,50 @@ class DatabaseServerForm extends Form
     }
 
     /**
-     * Get volume options for select
+     * Get agent options for select
      *
      * @return array<array{id: string, name: string}>
      */
+    public function getAgentOptions(): array
+    {
+        return Agent::orderBy('name')->get()->map(fn (Agent $agent) => [
+            'id' => $agent->id,
+            'name' => $agent->name,
+        ])->toArray();
+    }
+
+    public function hasAgent(): bool
+    {
+        return ! empty($this->agent_id);
+    }
+
+    public function getSelectedAgent(): ?Agent
+    {
+        if (! $this->hasAgent()) {
+            return null;
+        }
+
+        return Agent::find($this->agent_id);
+    }
+
+    /**
+     * Get volume options for select
+     *
+     * @return array<array{id: string, name: string, disabled: bool}>
+     */
     public function getVolumeOptions(): array
     {
-        return \App\Models\Volume::orderBy('name')->get()->map(fn ($v) => [
-            'id' => $v->id,
-            'name' => "{$v->name} ({$v->type})",
-        ])->toArray();
+        return \App\Models\Volume::orderBy('name')->get()->map(function ($v) {
+            $isLocalWithAgent = $this->use_agent && $v->type === \App\Enums\VolumeType::LOCAL->value;
+
+            return [
+                'id' => $v->id,
+                'name' => $isLocalWithAgent
+                    ? "{$v->name} ({$v->type}) — ".__('not available for remote agents')
+                    : "{$v->name} ({$v->type})",
+                'disabled' => $isLocalWithAgent,
+            ];
+        })->toArray();
     }
 
     /**
@@ -541,6 +603,7 @@ class DatabaseServerForm extends Form
                 DatabaseType::cases()
             ))],
             'description' => 'nullable|string|max:1000',
+            'agent_id' => 'nullable|exists:agents,id',
             'backups_enabled' => 'boolean',
         ];
     }
@@ -553,7 +616,17 @@ class DatabaseServerForm extends Form
     private function getBackupValidationRules(): array
     {
         $rules = [
-            'volume_id' => 'required|exists:volumes,id',
+            'volume_id' => [
+                'required',
+                'exists:volumes,id',
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    if ($this->use_agent
+                        && \App\Models\Volume::whereKey($value)->where('type', \App\Enums\VolumeType::LOCAL->value)->exists()
+                    ) {
+                        $fail(__('Local volumes cannot be used with remote agents.'));
+                    }
+                },
+            ],
             'path' => ['nullable', 'string', 'max:255', new SafePath],
             'backup_schedule_id' => 'required|exists:backup_schedules,id',
             'retention_policy' => 'required|string|in:'.implode(',', Backup::RETENTION_POLICIES),
@@ -676,17 +749,17 @@ class DatabaseServerForm extends Form
     private function getDatabaseSelectionRules(): array
     {
         $rules = [
-            'database_selection_mode' => 'required|string|in:all,selected,pattern',
+            'database_selection_mode' => ['required', 'string', Rule::in(array_map(fn (DatabaseSelectionMode $m) => $m->value, DatabaseSelectionMode::cases()))],
             'database_names' => 'nullable|array',
             'database_names.*' => 'string|max:255',
             'database_include_pattern' => 'nullable|string|max:500',
         ];
 
-        if ($this->backups_enabled && $this->database_selection_mode === 'selected') {
+        if ($this->backups_enabled && $this->database_selection_mode === DatabaseSelectionMode::Selected->value) {
             $rules['database_names'] = 'required|array|min:1';
         }
 
-        if ($this->backups_enabled && $this->database_selection_mode === 'pattern') {
+        if ($this->backups_enabled && $this->database_selection_mode === DatabaseSelectionMode::Pattern->value) {
             $rules['database_include_pattern'] = 'required|string|max:500';
         }
 
@@ -700,7 +773,7 @@ class DatabaseServerForm extends Form
      */
     private function validatePatternMode(): void
     {
-        if ($this->database_selection_mode === 'pattern'
+        if ($this->database_selection_mode === DatabaseSelectionMode::Pattern->value
             && ! empty($this->database_include_pattern)
             && ! DatabaseServer::isValidDatabasePattern($this->database_include_pattern)
         ) {
@@ -784,7 +857,7 @@ class DatabaseServerForm extends Form
     private function normalizeSelectionMode(array &$serverData): void
     {
         if ($this->isRedis()) {
-            $serverData['database_selection_mode'] = 'all';
+            $serverData['database_selection_mode'] = DatabaseSelectionMode::All->value;
             $serverData['database_names'] = null;
             $serverData['database_include_pattern'] = null;
 
@@ -792,7 +865,7 @@ class DatabaseServerForm extends Form
         }
 
         if ($this->isSqlite()) {
-            $serverData['database_selection_mode'] = 'selected';
+            $serverData['database_selection_mode'] = DatabaseSelectionMode::Selected->value;
             $serverData['database_include_pattern'] = null;
 
             return;
@@ -800,11 +873,11 @@ class DatabaseServerForm extends Form
 
         $mode = $serverData['database_selection_mode'] ?? $this->database_selection_mode;
 
-        if ($mode !== 'selected') {
+        if ($mode !== DatabaseSelectionMode::Selected->value) {
             $serverData['database_names'] = null;
         }
 
-        if ($mode !== 'pattern') {
+        if ($mode !== DatabaseSelectionMode::Pattern->value) {
             $serverData['database_include_pattern'] = null;
         }
     }

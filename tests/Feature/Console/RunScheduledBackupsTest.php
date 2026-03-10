@@ -182,6 +182,98 @@ test('server throwing exception when listing databases does not prevent other ba
     expect($snapshot->database_name)->toBe('production_db');
 });
 
+test('dispatches agent jobs when server has agent', function () {
+    Queue::fake();
+
+    $agent = \App\Models\Agent::factory()->create();
+    $server = DatabaseServer::factory()->create([
+        'agent_id' => $agent->id,
+        'database_names' => ['prod_db'],
+    ]);
+    $schedule = $server->backup->backupSchedule;
+
+    $this->artisan('backups:run', ['schedule' => $schedule->id])
+        ->expectsOutputToContain('via agent')
+        ->assertExitCode(0);
+
+    Queue::assertNothingPushed();
+    expect(\App\Models\AgentJob::count())->toBe(1);
+});
+
+test('dispatches discovery job for agent server with all mode', function () {
+    Queue::fake();
+
+    $agent = \App\Models\Agent::factory()->create();
+    $server = DatabaseServer::factory()->create([
+        'agent_id' => $agent->id,
+        'database_selection_mode' => 'all',
+        'database_names' => null,
+    ]);
+    $schedule = $server->backup->backupSchedule;
+
+    $this->artisan('backups:run', ['schedule' => $schedule->id])
+        ->expectsOutputToContain('Dispatched discovery for')
+        ->assertExitCode(0);
+
+    Queue::assertNothingPushed();
+
+    $discoveryJob = \App\Models\AgentJob::where('type', \App\Models\AgentJob::TYPE_DISCOVER)->first();
+    expect($discoveryJob)->not->toBeNull()
+        ->and($discoveryJob->database_server_id)->toBe($server->id)
+        ->and($discoveryJob->snapshot_id)->toBeNull()
+        ->and($discoveryJob->payload['type'])->toBe('discover');
+});
+
+test('skips duplicate discovery job when one is already in-flight', function () {
+    Queue::fake();
+
+    $agent = \App\Models\Agent::factory()->create();
+    $server = DatabaseServer::factory()->create([
+        'agent_id' => $agent->id,
+        'database_selection_mode' => 'all',
+        'database_names' => null,
+    ]);
+    $schedule = $server->backup->backupSchedule;
+
+    // Create an existing in-flight discovery job
+    \App\Models\AgentJob::factory()->create([
+        'type' => \App\Models\AgentJob::TYPE_DISCOVER,
+        'database_server_id' => $server->id,
+        'status' => \App\Models\AgentJob::STATUS_PENDING,
+    ]);
+
+    $this->artisan('backups:run', ['schedule' => $schedule->id])
+        ->expectsOutputToContain('already in-flight')
+        ->assertExitCode(0);
+
+    expect(\App\Models\AgentJob::where('type', \App\Models\AgentJob::TYPE_DISCOVER)->count())->toBe(1);
+});
+
+test('dispatches discovery job when previous one completed', function () {
+    Queue::fake();
+
+    $agent = \App\Models\Agent::factory()->create();
+    $server = DatabaseServer::factory()->create([
+        'agent_id' => $agent->id,
+        'database_selection_mode' => 'all',
+        'database_names' => null,
+    ]);
+    $schedule = $server->backup->backupSchedule;
+
+    // Create a completed discovery job (terminal state — should not block)
+    \App\Models\AgentJob::factory()->create([
+        'type' => \App\Models\AgentJob::TYPE_DISCOVER,
+        'database_server_id' => $server->id,
+        'status' => \App\Models\AgentJob::STATUS_COMPLETED,
+    ]);
+
+    $this->artisan('backups:run', ['schedule' => $schedule->id])
+        ->expectsOutputToContain('Dispatched discovery for')
+        ->assertExitCode(0);
+
+    expect(\App\Models\AgentJob::where('type', \App\Models\AgentJob::TYPE_DISCOVER)->count())->toBe(2);
+});
+
 test('skips disabled backups', function () {
     Queue::fake();
 
