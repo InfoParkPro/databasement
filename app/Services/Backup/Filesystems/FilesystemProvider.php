@@ -2,6 +2,7 @@
 
 namespace App\Services\Backup\Filesystems;
 
+use App\Enums\VolumeType;
 use App\Exceptions\Backup\FilesystemException;
 use App\Models\Snapshot;
 use App\Models\Volume;
@@ -69,6 +70,7 @@ class FilesystemProvider
     public function transfer(Volume $volume, string $source, string $destination): void
     {
         $filesystem = $this->getForVolume($volume);
+        $this->ensureRootExists($volume->type, $filesystem);
         $this->writeToFilesystem($filesystem, $source, $destination);
     }
 
@@ -95,6 +97,7 @@ class FilesystemProvider
     public function transferFromConfig(VolumeConfig $config, string $source, string $destination): void
     {
         $filesystem = $this->getForVolumeConfig($config);
+        $this->ensureRootExists($config->type, $filesystem);
         $this->writeToFilesystem($filesystem, $source, $destination);
     }
 
@@ -102,6 +105,18 @@ class FilesystemProvider
     {
         $filesystem = $this->getForVolumeConfig($config);
         $this->readFromFilesystem($filesystem, $remoteFilename, $destination);
+    }
+
+    /**
+     * SFTP volumes may not have the root directory yet.
+     * FTP adapters resolve the root on connect and throw if missing — nothing we can do here.
+     * Local and S3 don't need this — local roots are auto-created and S3 has virtual directories.
+     */
+    private function ensureRootExists(string $type, Filesystem $filesystem): void
+    {
+        if (VolumeType::tryFrom($type) === VolumeType::SFTP) {
+            $filesystem->createDirectory('.');
+        }
     }
 
     private function writeToFilesystem(Filesystem $filesystem, string $source, string $destination): void
