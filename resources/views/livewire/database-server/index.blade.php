@@ -97,9 +97,9 @@
             @scope('cell_database_names', $server)
                 @if($server->database_type === 'sqlite')
                     <span class="text-base-content/50 italic">{{ __('Single file') }}</span>
-                @elseif($server->database_selection_mode === 'all')
+                @elseif($server->database_selection_mode === \App\Enums\DatabaseSelectionMode::All)
                     <x-badge :value="__('All')" class="badge-info badge-soft" />
-                @elseif($server->database_selection_mode === 'pattern')
+                @elseif($server->database_selection_mode === \App\Enums\DatabaseSelectionMode::Pattern)
                     <x-popover>
                         <x-slot:trigger>
                             <x-badge :value="__('Pattern')" class="badge-warning badge-soft cursor-pointer" />

@@ -154,7 +154,7 @@
                                 $isSuccess = $rowState === 'success';
 
                                 $logLevel = $isCommand ? 'command' : ($log['level'] ?? 'info');
-                                $hasDetails = $isCommand || !empty($log['context']);
+                                $hasDetails = $isCommand || !empty($log['context']) || $isError;
 
                                 // Badge styling based on log level (used in multiple places)
                                 $badgeClass = match($logLevel) {
