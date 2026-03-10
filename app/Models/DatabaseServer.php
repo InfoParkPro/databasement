@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\DatabaseSelectionMode;
 use App\Enums\DatabaseType;
 use App\Exceptions\Backup\EncryptionException;
 use Database\Factories\DatabaseServerFactory;
@@ -25,14 +26,16 @@ use Illuminate\Support\Carbon;
  * @property string $username
  * @property string $password
  * @property array<string>|null $database_names
- * @property string $database_selection_mode
+ * @property DatabaseSelectionMode|null $database_selection_mode
  * @property string|null $database_include_pattern
  * @property array<string, mixed>|null $extra_config
  * @property string|null $description
  * @property bool $backups_enabled
  * @property string|null $ssh_config_id
+ * @property string|null $agent_id
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
+ * @property-read Agent|null $agent
  * @property-read Backup|null $backup
  * @property-read DatabaseServerSshConfig|null $sshConfig
  * @property-read Collection<int, Snapshot> $snapshots
@@ -92,6 +95,7 @@ class DatabaseServer extends Model
         'description',
         'backups_enabled',
         'ssh_config_id',
+        'agent_id',
         'extra_config',
     ];
 
@@ -104,11 +108,20 @@ class DatabaseServer extends Model
         return [
             'port' => 'integer',
             'database_type' => DatabaseType::class,
+            'database_selection_mode' => DatabaseSelectionMode::class,
             'backups_enabled' => 'boolean',
             'password' => 'encrypted',
             'database_names' => 'array',
             'extra_config' => 'array',
         ];
+    }
+
+    /**
+     * @return BelongsTo<Agent, DatabaseServer>
+     */
+    public function agent(): BelongsTo
+    {
+        return $this->belongsTo(Agent::class);
     }
 
     /**
