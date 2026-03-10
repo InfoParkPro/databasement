@@ -3,6 +3,7 @@
 namespace App\Services\Backup;
 
 use App\Enums\CompressionType;
+use App\Enums\DatabaseSelectionMode;
 use App\Enums\DatabaseType;
 use App\Facades\AppConfig;
 use App\Models\BackupJob;
@@ -52,9 +53,15 @@ class BackupJobFactory
             return $snapshots;
         }
 
+        // Agent-backed servers with all/pattern mode need a discovery phase —
+        // the web app can't reach the database, only the agent can list databases.
+        if ($server->agent_id && in_array($server->database_selection_mode, [DatabaseSelectionMode::All, DatabaseSelectionMode::Pattern], true)) {
+            return [];
+        }
+
         $databases = match ($server->database_selection_mode) {
-            'all' => $this->databaseProvider->listDatabasesForServer($server),
-            'pattern' => DatabaseServer::filterDatabasesByPattern(
+            DatabaseSelectionMode::All => $this->databaseProvider->listDatabasesForServer($server),
+            DatabaseSelectionMode::Pattern => DatabaseServer::filterDatabasesByPattern(
                 $this->databaseProvider->listDatabasesForServer($server),
                 $server->database_include_pattern ?? ''
             ),
@@ -77,7 +84,7 @@ class BackupJobFactory
      *
      * @param  'manual'|'scheduled'  $method
      */
-    protected function createSnapshot(
+    public function createSnapshot(
         DatabaseServer $server,
         string $databaseName,
         string $method,
