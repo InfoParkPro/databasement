@@ -3,16 +3,20 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\V1\RestoreRequest;
 use App\Http\Resources\DatabaseServerResource;
+use App\Http\Resources\RestoreResource;
 use App\Http\Resources\SnapshotResource;
+use App\Jobs\ProcessRestoreJob;
 use App\Models\DatabaseServer;
+use App\Models\Snapshot;
 use App\Queries\DatabaseServerQuery;
+use App\Services\Backup\BackupJobFactory;
 use App\Services\Backup\TriggerBackupAction;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
-use RuntimeException;
 
 /**
  * @tags Database Servers
@@ -56,19 +60,48 @@ class DatabaseServerController extends Controller
 
         $this->authorize('backup', $databaseServer);
 
-        try {
-            /** @var int|null $userId */
-            $userId = auth()->id();
-            $result = $action->execute($databaseServer, $userId);
+        /** @var int|null $userId */
+        $userId = auth()->id();
+        $result = $action->execute($databaseServer, $userId);
 
-            return response()->json([
-                'message' => $result['message'],
-                'snapshots' => SnapshotResource::collection($result['snapshots']),
-            ], 202);
-        } catch (RuntimeException $e) {
-            return response()->json([
-                'message' => $e->getMessage(),
-            ], 422);
-        }
+        return response()->json([
+            'message' => $result['message'],
+            'snapshots' => SnapshotResource::collection($result['snapshots']),
+        ], 202);
+    }
+
+    /**
+     * Trigger a restore.
+     *
+     * Queues a restore job to restore a snapshot to the specified database server.
+     *
+     * @response 202
+     */
+    public function restore(
+        RestoreRequest $request,
+        DatabaseServer $databaseServer,
+        BackupJobFactory $backupJobFactory
+    ): JsonResponse {
+        $this->authorize('restore', $databaseServer);
+
+        /** @var Snapshot $snapshot */
+        $snapshot = Snapshot::findOrFail($request->validated('snapshot_id'));
+
+        /** @var int|null $userId */
+        $userId = auth()->id();
+
+        $restore = $backupJobFactory->createRestore(
+            snapshot: $snapshot,
+            targetServer: $databaseServer,
+            schemaName: $request->validated('schema_name'),
+            triggeredByUserId: $userId
+        );
+
+        ProcessRestoreJob::dispatch($restore->id);
+
+        return response()->json([
+            'message' => 'Restore started successfully!',
+            'restore' => new RestoreResource($restore),
+        ], 202);
     }
 }
