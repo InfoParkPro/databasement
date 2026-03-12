@@ -10,15 +10,15 @@ Database servers are the source of your backups. Databasement can connect to and
 
 Databasement uses standard CLI tools to perform backup and restore operations. The table below shows which database engine versions are supported, based on the CLI tools shipped in the Docker image.
 
-| Engine | Supported Versions | CLI Tool | Restore |
-|--------|-------------------|----------|---------|
-| MySQL | 5.6, 5.7, 8.x, 9.x | `mariadb-dump` | Yes |
-| MariaDB | 10.4 - 11.x | `mariadb-dump` | Yes |
-| PostgreSQL | 12, 13, 14, 15, 16, 17, 18 | `pg_dump` v18 | Yes |
-| MongoDB | 4.2, 4.4, 5.0, 6.0, 7.0, 8.0 | `mongodump` / `mongorestore` | Yes |
-| SQLite | 3.x | File copy | Yes |
-| Redis | 2.8+ | `redis-cli --rdb` | No |
-| Valkey | 7.2+ | `redis-cli --rdb` | No |
+| Engine     | Supported Versions           | CLI Tool                     | Restore |
+|------------|------------------------------|------------------------------|---------|
+| MySQL      | 5.6, 5.7, 8.x, 9.x           | `mariadb-dump`               | Yes     |
+| MariaDB    | 10.x, 11.x, 12.x             | `mariadb-dump`               | Yes     |
+| PostgreSQL | 12, 13, 14, 15, 16, 17, 18   | `pg_dump` v18                | Yes     |
+| MongoDB    | 4.2, 4.4, 5.0, 6.0, 7.0, 8.0 | `mongodump` / `mongorestore` | Yes     |
+| SQLite     | 3.x                          | File copy                    | Yes     |
+| Redis      | 2.8+                         | `redis-cli --rdb`            | No      |
+| Valkey     | 7.2+                         | `redis-cli --rdb`            | No      |
 
 :::info How this works
 - **MySQL / MariaDB**: Databasement ships the MariaDB 11.4 client (`mariadb-dump`), which is wire-protocol compatible with MySQL servers.
