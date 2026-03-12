@@ -49,6 +49,10 @@ const config: Config = {
     themeConfig: {
         navbar: {
             title: 'Databasement',
+            logo: {
+                alt: 'Databasement Logo',
+                src: 'img/logo.png',
+            },
             items: [
                 {
                     href: 'https://databasement-demo.crty.dev/',
