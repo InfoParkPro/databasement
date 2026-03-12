@@ -17,6 +17,9 @@
   <a href="https://artifacthub.io/packages/helm/databasement/databasement">
     <img src="https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/databasement" alt="Artifact Hub" />
   </a>
+  <a href="https://hub.docker.com/r/davidcrty/databasement">
+    <img src="https://img.shields.io/docker/pulls/davidcrty/databasement" alt="Docker Pulls" />
+  </a>
 </p>
 
 <p align="center">
