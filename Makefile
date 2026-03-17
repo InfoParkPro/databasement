@@ -1,4 +1,4 @@
-.PHONY: help install start test test-sequential test-mysql test-postgres test-filter test-filter-mysql test-filter-postgres test-coverage test-coverage-filter backup-test lint-check lint-fix lint migrate migrate-fresh migrate-fresh-seed db-seed setup clean import-db docs docs-build
+.PHONY: help install start test test-sequential test-mysql test-postgres test-filter test-filter-mysql test-filter-postgres test-coverage test-coverage-filter backup-test lint-check lint-fix lint migrate migrate-fresh migrate-fresh-seed db-seed setup clean import-db docs docs-build release
 
 # Colors for output
 GREEN  := \033[0;32m
@@ -130,3 +130,28 @@ optimize: ## Optimize the application for production
 	$(PHP_ARTISAN) config:cache
 	$(PHP_ARTISAN) route:cache
 	$(PHP_ARTISAN) view:cache
+
+##@ Release
+
+release: ## Create a new release (usage: make release VERSION=1.0.1)
+	@if [ -z "$(VERSION)" ]; then \
+		echo "$(YELLOW)Usage: make release VERSION=1.0.1$(NC)"; \
+		exit 1; \
+	fi
+	@if [ "$$(git branch --show-current)" != "main" ]; then \
+		echo "$(YELLOW)Error: You must be on the main branch to create a release.$(NC)"; \
+		exit 1; \
+	fi
+	@git fetch origin main --quiet
+	@if [ "$$(git rev-parse HEAD)" != "$$(git rev-parse origin/main)" ]; then \
+		echo "$(YELLOW)Error: Local main is not up to date with origin/main. Run 'git pull' first.$(NC)"; \
+		exit 1; \
+	fi
+	@if [ -n "$$(git status --porcelain)" ]; then \
+		echo "$(YELLOW)Error: Working directory is not clean. Commit or stash changes first.$(NC)"; \
+		exit 1; \
+	fi
+	@echo "$(GREEN)Creating release v$(VERSION)...$(NC)"
+	git tag v$(VERSION)
+	git push origin v$(VERSION)
+	@echo "$(GREEN)Release v$(VERSION) created! Workflows will build Docker images, Helm chart, and GitHub Release.$(NC)"
