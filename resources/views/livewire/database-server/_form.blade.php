@@ -221,7 +221,7 @@ use App\Enums\DatabaseType;
                             <x-slot:content class="space-y-3">
                                 <x-input
                                     wire:model.live.debounce.300ms="form.dump_flags"
-                                    placeholder="{{ __('e.g., --no-tablespaces --column-statistics=0') }}"
+                                    placeholder="{{ __('e.g., --no-tablespaces --verbose') }}"
                                     :hint="__('Additional flags appended to the dump command')"
                                     :label="__('Extra Dump Flags')"
                                     type="text"
