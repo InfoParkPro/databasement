@@ -2,18 +2,16 @@
 
 namespace App\Http\Resources;
 
-use App\Models\Volume;
+use App\Models\BackupSchedule;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * @mixin Volume
+ * @mixin BackupSchedule
  */
-class VolumeResource extends JsonResource
+class BackupScheduleResource extends JsonResource
 {
     /**
-     * Transform the resource into an array.
-     *
      * @return array<string, mixed>
      */
     public function toArray(Request $request): array
@@ -21,8 +19,7 @@ class VolumeResource extends JsonResource
         return [
             'id' => $this->id,
             'name' => $this->name,
-            'type' => $this->type,
-            'config' => $this->getSafeConfig(),
+            'expression' => $this->expression,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];
