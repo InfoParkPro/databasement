@@ -103,17 +103,19 @@ class MysqlDatabase implements DatabaseInterface
         ));
     }
 
-    public function prepareForRestore(string $schemaName, BackupLogger $logger): void
+    public function prepareForRestore(string $schemaName, BackupLogger $logger, bool $forceDatabase = false): void
     {
         try {
             $pdo = $this->createPdo();
             $schemaName = str_replace('`', '', $schemaName);
 
-            $dropCommand = "DROP DATABASE IF EXISTS `{$schemaName}`";
-            $logger->logCommand($dropCommand, null, 0);
-            $pdo->exec($dropCommand);
+            if ($forceDatabase) {
+                $dropCommand = "DROP DATABASE IF EXISTS `{$schemaName}`";
+                $logger->logCommand($dropCommand, null, 0);
+                $pdo->exec($dropCommand);
+            }
 
-            $createCommand = "CREATE DATABASE `{$schemaName}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci";
+            $createCommand = "CREATE DATABASE IF NOT EXISTS `{$schemaName}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci";
             $logger->logCommand($createCommand, null, 0);
             $pdo->exec($createCommand);
         } catch (\PDOException $e) {
