@@ -70,7 +70,7 @@ class FailedNotificationMessage
             $embedFields[] = ['name' => $label, 'value' => $value, 'inline' => true];
         }
 
-        $embedFields[] = ['name' => 'Error', 'value' => "```{$this->errorMessage}```", 'inline' => false];
+        $embedFields[] = ['name' => $this->errorLabel, 'value' => "```{$this->errorMessage}```", 'inline' => false];
         $embedFields[] = ['name' => 'Job Details', 'value' => "[{$this->actionText}]({$this->actionUrl})", 'inline' => false];
 
         return DiscordMessage::create()
@@ -140,6 +140,33 @@ class FailedNotificationMessage
             'title' => $this->title,
             'message' => implode("\n", $lines),
             'priority' => 8,
+        ];
+    }
+
+    /**
+     * @return array{content: string, embeds: array<int, array<string, mixed>>}
+     */
+    public function toDiscordWebhook(): array
+    {
+        $embedFields = [];
+
+        foreach ($this->fields as $label => $value) {
+            $embedFields[] = ['name' => $label, 'value' => $value, 'inline' => true];
+        }
+
+        $embedFields[] = ['name' => $this->errorLabel, 'value' => "```{$this->errorMessage}```", 'inline' => false];
+        $embedFields[] = ['name' => 'Job Details', 'value' => "[{$this->actionText}]({$this->actionUrl})", 'inline' => false];
+
+        return [
+            'content' => $this->body,
+            'embeds' => [
+                [
+                    'title' => $this->title,
+                    'color' => 15158332,
+                    'fields' => $embedFields,
+                    'footer' => ['text' => $this->footerText],
+                ],
+            ],
         ];
     }
 
