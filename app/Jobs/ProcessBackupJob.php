@@ -8,7 +8,7 @@ use App\Services\Backup\BackupTask;
 use App\Services\Backup\DTO\BackupConfig;
 use App\Services\Backup\DTO\DatabaseConnectionConfig;
 use App\Services\Backup\DTO\VolumeConfig;
-use App\Services\FailureNotificationService;
+use App\Services\NotificationService;
 use App\Support\FilesystemSupport;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -82,6 +82,15 @@ class ProcessBackupJob implements ShouldQueue
 
             $job->markCompleted();
 
+            try {
+                app(NotificationService::class)->notifyBackupSuccess($snapshot);
+            } catch (\Throwable $notificationException) {
+                Log::warning('Backup success notification failed', [
+                    'snapshot_id' => $this->snapshotId,
+                    'error' => $notificationException->getMessage(),
+                ]);
+            }
+
             Log::info('Backup completed successfully', [
                 'snapshot_id' => $this->snapshotId,
                 'database_server_id' => $databaseServer->id,
@@ -105,6 +114,6 @@ class ProcessBackupJob implements ShouldQueue
     public function failed(\Throwable $exception): void
     {
         $snapshot = Snapshot::with(['databaseServer'])->findOrFail($this->snapshotId);
-        app(FailureNotificationService::class)->notifyBackupFailed($snapshot, $exception);
+        app(NotificationService::class)->notifyBackupFailed($snapshot, $exception);
     }
 }

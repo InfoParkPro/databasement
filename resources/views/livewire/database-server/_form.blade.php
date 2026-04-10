@@ -639,6 +639,246 @@ use App\Enums\DatabaseType;
         </div>
     @endif
 
+    <!-- Section 5: Notifications -->
+    @if($form->connectionTestSuccess or $form->hasAgent() or $isEdit)
+        <div class="card bg-base-100 shadow-sm border border-base-200">
+            <div class="card-body p-3 sm:p-8">
+                <div class="flex items-center gap-3 mb-4">
+                    @php
+                        $notifSection = ($form->isSqlite() || $form->isRedis()) ? ($form->backups_enabled ? 4 : 3) : ($form->backups_enabled ? 5 : 4);
+                    @endphp
+                    <span class="badge badge-primary badge-lg font-bold">{{ $notifSection }}</span>
+                    <h3 class="card-title text-lg">{{ __('Notifications') }}</h3>
+                </div>
+
+                @php
+                    $notificationChannels = $form->getNotificationChannels();
+                    $hasChannels = $notificationChannels->isNotEmpty();
+                    $isDisabled = $form->notification_trigger === 'none';
+                    $triggerOptions = [
+                        'all' => ['icon' => 'o-bell-alert', 'label' => __('All events'), 'hint' => __('Success & failure'), 'color' => 'info'],
+                        'success' => ['icon' => 'o-check-circle', 'label' => __('Success only'), 'hint' => __('Completed backups'), 'color' => 'success'],
+                        'failure' => ['icon' => 'o-exclamation-triangle', 'label' => __('Failure only'), 'hint' => __('Errors & timeouts'), 'color' => 'error'],
+                        'none' => ['icon' => 'o-bell-slash', 'label' => __('Disabled'), 'hint' => __('No notifications'), 'color' => 'muted'],
+                    ];
+                @endphp
+
+                <div class="space-y-5">
+                    <!-- Trigger selection -->
+                    <div class="space-y-2">
+                        <div>
+                            <p class="text-sm font-semibold">{{ __('Notify me on') }}</p>
+                            <p class="text-xs text-base-content/60">{{ __('When should this server send a notification?') }}</p>
+                        </div>
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3" role="radiogroup" aria-label="{{ __('Notification trigger') }}">
+                            @foreach($triggerOptions as $value => $opt)
+                                @php
+                                    $isActive = $form->notification_trigger === $value;
+                                    $activeClasses = match ($opt['color']) {
+                                        'info' => 'border-info bg-info/5',
+                                        'success' => 'border-success bg-success/5',
+                                        'error' => 'border-error bg-error/5',
+                                        default => 'border-base-content/30 bg-base-200',
+                                    };
+                                    $iconClasses = $isActive ? match ($opt['color']) {
+                                        'info' => 'bg-info/10 text-info',
+                                        'success' => 'bg-success/10 text-success',
+                                        'error' => 'bg-error/10 text-error',
+                                        default => 'bg-base-300 text-base-content/60',
+                                    } : 'bg-base-200 text-base-content/60';
+                                    $checkClasses = match ($opt['color']) {
+                                        'info' => 'text-info',
+                                        'success' => 'text-success',
+                                        'error' => 'text-error',
+                                        default => 'text-base-content/60',
+                                    };
+                                @endphp
+                                <button
+                                    type="button"
+                                    role="radio"
+                                    aria-checked="{{ $isActive ? 'true' : 'false' }}"
+                                    wire:click="$set('form.notification_trigger', '{{ $value }}')"
+                                    class="relative flex flex-col items-start gap-2.5 rounded-lg border-2 p-4 text-left transition-all cursor-pointer {{ $isActive ? $activeClasses.' shadow-sm' : 'border-base-300 bg-base-100 hover:bg-base-200' }}"
+                                >
+                                    @if($isActive)
+                                        <x-icon name="s-check-circle" class="absolute top-2.5 right-2.5 w-4 h-4 {{ $checkClasses }}" />
+                                    @endif
+                                    <span class="rounded-md p-1.5 {{ $iconClasses }}">
+                                        <x-icon :name="$opt['icon']" class="w-5 h-5" />
+                                    </span>
+                                    <span class="block">
+                                        <span class="block text-sm font-semibold leading-tight">{{ $opt['label'] }}</span>
+                                        <span class="block text-xs text-base-content/60 leading-snug mt-0.5">{{ $opt['hint'] }}</span>
+                                    </span>
+                                </button>
+                            @endforeach
+                        </div>
+                    </div>
+
+                    <!-- Channel selection (hidden when disabled) -->
+                    @if(! $isDisabled)
+                        @if(! $hasChannels)
+                            <!-- Empty state: no channels exist at all -->
+                            <div class="flex flex-col items-center justify-center gap-4 rounded-lg border-2 border-dashed border-base-300 bg-base-200/50 px-6 py-10 text-center">
+                                <span class="inline-flex items-center justify-center rounded-full bg-base-200 p-3">
+                                    <x-icon name="o-bell-alert" class="w-6 h-6 text-base-content/50" />
+                                </span>
+                                <div class="space-y-1">
+                                    <p class="text-sm font-semibold">{{ __('No notification channels yet') }}</p>
+                                    <p class="text-xs text-base-content/60 max-w-xs">
+                                        {{ __('Add at least one channel (Email, Slack, Webhook…) to receive backup alerts.') }}
+                                    </p>
+                                </div>
+                                <x-button
+                                    icon="o-plus"
+                                    class="btn-primary btn-sm"
+                                    link="{{ route('configuration.index') }}#notification-channels"
+                                    external
+                                    :label="__('Create your first channel')"
+                                />
+                            </div>
+                        @else
+                            <!-- Channel selection mode -->
+                            <div class="space-y-2">
+                                <div>
+                                    <p class="text-sm font-semibold">{{ __('Send to') }}</p>
+                                    <p class="text-xs text-base-content/60">{{ __('Target one or all of your notification channels.') }}</p>
+                                </div>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    @php
+                                        $modeOptions = [
+                                            'all' => [
+                                                'icon' => 'o-user-group',
+                                                'label' => __('All channels'),
+                                                'hint' => __(':count configured', ['count' => $notificationChannels->count()]),
+                                            ],
+                                            'selected' => [
+                                                'icon' => 'o-adjustments-horizontal',
+                                                'label' => __('Specific channels'),
+                                                'hint' => __('Pick individual channels'),
+                                            ],
+                                        ];
+                                    @endphp
+                                    @foreach($modeOptions as $value => $opt)
+                                        @php $isActive = $form->notification_channel_selection === $value; @endphp
+                                        <button
+                                            type="button"
+                                            wire:click="$set('form.notification_channel_selection', '{{ $value }}')"
+                                            class="flex items-center gap-3 rounded-lg border-2 px-4 py-3 text-left transition-all cursor-pointer {{ $isActive ? 'border-primary bg-primary/5 shadow-sm' : 'border-base-300 bg-base-100 hover:bg-base-200' }}"
+                                        >
+                                            <x-icon :name="$opt['icon']" class="w-5 h-5 shrink-0 {{ $isActive ? 'text-primary' : 'text-base-content/60' }}" />
+                                            <span class="flex-1 min-w-0">
+                                                <span class="block text-sm font-semibold">{{ $opt['label'] }}</span>
+                                                <span class="block text-xs text-base-content/60 mt-0.5">{{ $opt['hint'] }}</span>
+                                            </span>
+                                            @if($isActive)
+                                                <x-icon name="s-check-circle" class="w-5 h-5 text-primary shrink-0" />
+                                            @endif
+                                        </button>
+                                    @endforeach
+                                </div>
+                            </div>
+
+                            <!-- Channel picker (when 'selected') -->
+                            @if($form->notification_channel_selection === 'selected')
+                                @php $hasChannelError = $errors->has('form.notification_channel_ids'); @endphp
+                                <div class="space-y-2">
+                                    <div class="flex items-center justify-between gap-2">
+                                        <div>
+                                            <p class="text-sm font-semibold {{ $hasChannelError ? 'text-error' : '' }}">{{ __('Select channels') }}</p>
+                                            <p class="text-xs {{ $hasChannelError ? 'text-error/80' : 'text-base-content/60' }}">
+                                                {{ __(':selected of :total selected', ['selected' => count($form->notification_channel_ids), 'total' => $notificationChannels->count()]) }}
+                                            </p>
+                                        </div>
+                                        @if(count($form->notification_channel_ids) > 0)
+                                            <button
+                                                type="button"
+                                                wire:click="$set('form.notification_channel_ids', [])"
+                                                class="text-xs text-base-content/60 hover:text-base-content hover:underline cursor-pointer"
+                                            >
+                                                {{ __('Clear all') }}
+                                            </button>
+                                        @endif
+                                    </div>
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                                        @foreach($notificationChannels as $channel)
+                                            @php $isSelected = in_array($channel->id, $form->notification_channel_ids, true); @endphp
+                                            <button
+                                                type="button"
+                                                role="checkbox"
+                                                aria-checked="{{ $isSelected ? 'true' : 'false' }}"
+                                                wire:click="toggleNotificationChannel('{{ $channel->id }}')"
+                                                wire:key="channel-card-{{ $channel->id }}"
+                                                class="relative flex items-center gap-3 rounded-lg border-2 p-3 text-left transition-all cursor-pointer {{ $isSelected ? 'border-primary bg-primary/5 shadow-sm' : 'border-base-300 bg-base-100 hover:bg-base-200' }}"
+                                            >
+                                                <span class="shrink-0 rounded-md p-2 {{ $isSelected ? 'bg-primary/10 text-primary' : 'bg-base-200 text-base-content/60' }}">
+                                                    <x-icon :name="$channel->type->icon()" class="w-5 h-5" />
+                                                </span>
+                                                <span class="flex-1 min-w-0">
+                                                    <span class="block text-sm font-semibold truncate">{{ $channel->name }}</span>
+                                                    <span class="block text-xs text-base-content/60 truncate">{{ $channel->type->label() }}</span>
+                                                </span>
+                                                <span class="shrink-0 w-5 h-5 rounded-md border-2 flex items-center justify-center {{ $isSelected ? 'border-primary bg-primary' : 'border-base-300' }}">
+                                                    @if($isSelected)
+                                                        <x-icon name="s-check" class="w-3.5 h-3.5 text-primary-content" />
+                                                    @endif
+                                                </span>
+                                            </button>
+                                        @endforeach
+                                    </div>
+                                    @if($hasChannelError)
+                                        <x-alert class="alert-error" icon="o-x-circle">
+                                            {{ __('Select at least one channel, or switch to “All channels”.') }}
+                                        </x-alert>
+                                    @endif
+                                </div>
+                            @endif
+                        @endif
+                    @endif
+
+                    <!-- Live summary -->
+                    @php
+                        $channelCount = $form->notification_channel_selection === 'all'
+                            ? $notificationChannels->count()
+                            : count($form->notification_channel_ids);
+                        $summaryHasChannels = $channelCount > 0;
+                        $triggerLabels = [
+                            'all' => __('all events'),
+                            'success' => __('success events only'),
+                            'failure' => __('failure events only'),
+                        ];
+                    @endphp
+                    @if($isDisabled)
+                        <div class="flex items-start gap-2.5 rounded-lg border border-base-300 bg-base-200 px-4 py-3">
+                            <x-icon name="o-bell-slash" class="w-5 h-5 text-base-content/50 shrink-0 mt-0.5" />
+                            <p class="text-sm text-base-content/70 leading-snug">
+                                {{ __('Notifications are disabled for this server. No alerts will be sent.') }}
+                            </p>
+                        </div>
+                    @elseif($hasChannels && $summaryHasChannels)
+                        <div class="flex items-start gap-2.5 rounded-lg border border-success/30 bg-success/5 px-4 py-3">
+                            <x-icon name="o-bell-alert" class="w-5 h-5 text-success shrink-0 mt-0.5" />
+                            <p class="text-sm leading-snug">
+                                {{ __('Notifications will be sent to') }}
+                                <span class="font-semibold">{{ trans_choice('{1} :count channel|[2,*] :count channels', $channelCount, ['count' => $channelCount]) }}</span>
+                                {{ __('on') }}
+                                <span class="font-semibold">{{ $triggerLabels[$form->notification_trigger] ?? '' }}</span>.
+                            </p>
+                        </div>
+                    @elseif($hasChannels)
+                        <div class="flex items-start gap-2.5 rounded-lg border border-warning/30 bg-warning/5 px-4 py-3">
+                            <x-icon name="o-exclamation-triangle" class="w-5 h-5 text-warning shrink-0 mt-0.5" />
+                            <p class="text-sm leading-snug">
+                                <span class="font-semibold">{{ __('No channels selected.') }}</span>
+                                {{ __('Pick at least one channel above, or switch to “All channels”.') }}
+                            </p>
+                        </div>
+                    @endif
+                </div>
+            </div>
+        </div>
+    @endif
+
     <!-- Form Actions -->
     <div class="flex flex-col-reverse sm:flex-row items-center justify-end gap-3 pt-4">
         <x-button class="btn-ghost w-full sm:w-auto" link="{{ route($cancelRoute) }}" wire:navigate>

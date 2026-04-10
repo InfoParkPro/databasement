@@ -10,7 +10,7 @@ use NotificationChannels\Discord\DiscordMessage;
 use NotificationChannels\Pushover\PushoverMessage;
 use NotificationChannels\Telegram\TelegramMessage;
 
-class FailedNotificationMessage
+class SuccessNotificationMessage
 {
     /**
      * @param  array<string, string>  $fields
@@ -18,8 +18,6 @@ class FailedNotificationMessage
     public function __construct(
         public string $title,
         public string $body,
-        public string $errorMessage,
-        public string $errorLabel,
         public string $actionText,
         public string $actionUrl,
         public string $footerText,
@@ -30,12 +28,11 @@ class FailedNotificationMessage
     {
         return (new MailMessage)
             ->subject($this->title)
-            ->error()
-            ->markdown('mail.failed-notification', [
+            ->success()
+            ->markdown('mail.success-notification', [
                 'title' => $this->title,
                 'body' => $this->body,
                 'fields' => $this->fields,
-                'errorMessage' => $this->errorMessage,
                 'actionText' => $this->actionText,
                 'actionUrl' => $this->actionUrl,
                 'footerText' => $this->footerText,
@@ -46,7 +43,7 @@ class FailedNotificationMessage
     {
         return (new SlackMessage)
             ->username('Databasement')
-            ->emoji(':rotating_light:')
+            ->emoji(':white_check_mark:')
             ->text($this->title)
             ->headerBlock($this->title)
             ->contextBlock(fn (ContextBlock $block) => $block->text($this->footerText))
@@ -57,7 +54,6 @@ class FailedNotificationMessage
                     $block->field("*{$label}:*\n{$value}")->markdown();
                 }
             })
-            ->sectionBlock(fn (SectionBlock $block) => $block->text("*{$this->errorLabel}:*\n```{$this->errorMessage}```")->markdown())
             ->dividerBlock()
             ->sectionBlock(fn (SectionBlock $block) => $block->text("<{$this->actionUrl}|{$this->actionText}>")->markdown());
     }
@@ -68,7 +64,7 @@ class FailedNotificationMessage
             ->body($this->body)
             ->embed([
                 'title' => $this->title,
-                'color' => 15158332, // Red color
+                'color' => 3066993, // Green color
                 'fields' => $this->buildEmbedFields(),
                 'footer' => ['text' => $this->footerText],
             ]);
@@ -82,9 +78,6 @@ class FailedNotificationMessage
             $lines[] = '<b>'.e($label).':</b> '.e($value);
         }
 
-        $lines[] = '';
-        $lines[] = '<b>'.e($this->errorLabel).':</b>';
-        $lines[] = '<code>'.e($this->errorMessage).'</code>';
         $lines[] = '';
         $lines[] = '<i>'.e($this->footerText).'</i>';
 
@@ -102,12 +95,9 @@ class FailedNotificationMessage
             $lines[] = "{$label}: {$value}";
         }
 
-        $lines[] = '';
-        $lines[] = "{$this->errorLabel}: {$this->errorMessage}";
-
         return PushoverMessage::create(implode("\n", $lines))
             ->title($this->title)
-            ->highPriority()
+            ->normalPriority()
             ->url($this->actionUrl, $this->actionText);
     }
 
@@ -123,14 +113,12 @@ class FailedNotificationMessage
         }
 
         $lines[] = '';
-        $lines[] = "{$this->errorLabel}: {$this->errorMessage}";
-        $lines[] = '';
         $lines[] = "{$this->actionText}: {$this->actionUrl}";
 
         return [
             'title' => $this->title,
             'message' => implode("\n", $lines),
-            'priority' => 8,
+            'priority' => 4,
         ];
     }
 
@@ -144,7 +132,7 @@ class FailedNotificationMessage
             'embeds' => [
                 [
                     'title' => $this->title,
-                    'color' => 15158332,
+                    'color' => 3066993,
                     'fields' => $this->buildEmbedFields(),
                     'footer' => ['text' => $this->footerText],
                 ],
@@ -153,7 +141,7 @@ class FailedNotificationMessage
     }
 
     /**
-     * @return array{event: string, title: string, body: string, fields: array<string, string>, error: string, action_url: string, timestamp: string}
+     * @return array{event: string, title: string, body: string, fields: array<string, string>, action_url: string, timestamp: string}
      */
     public function toWebhook(string $event): array
     {
@@ -162,7 +150,6 @@ class FailedNotificationMessage
             'title' => $this->title,
             'body' => $this->body,
             'fields' => $this->fields,
-            'error' => $this->errorMessage,
             'action_url' => $this->actionUrl,
             'timestamp' => now()->toIso8601String(),
         ];
@@ -179,7 +166,6 @@ class FailedNotificationMessage
             $embedFields[] = ['name' => $label, 'value' => $value, 'inline' => true];
         }
 
-        $embedFields[] = ['name' => $this->errorLabel, 'value' => "```{$this->errorMessage}```", 'inline' => false];
         $embedFields[] = ['name' => 'Job Details', 'value' => "[{$this->actionText}]({$this->actionUrl})", 'inline' => false];
 
         return $embedFields;
