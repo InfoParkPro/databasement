@@ -132,11 +132,8 @@ return new class extends Migration
             ]);
         }
 
-        // Set database server notification preferences based on notifications.enabled
-        $notificationsEnabled = ($appConfigs['notifications.enabled'] ?? '0') === '1';
-
         DB::table('database_servers')->update([
-            'notification_trigger' => $notificationsEnabled ? 'failure' : 'none',
+            'notification_trigger' => 'failure',
             'notification_channel_selection' => 'all',
         ]);
 
