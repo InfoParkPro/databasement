@@ -216,6 +216,176 @@ class DatabaseServerForm extends Form
     }
 
     /**
+     * Resolve {year}/{month}/{day} placeholders in the subfolder path to show a preview.
+     */
+    public function getResolvedPathPreview(): ?string
+    {
+        $path = trim($this->path);
+
+        if ($path === '') {
+            return null;
+        }
+
+        return Formatters::resolveDatePlaceholders($path);
+    }
+
+    /**
+     * Get the display name of the currently selected volume, if any.
+     */
+    public function getSelectedVolumeLabel(): ?string
+    {
+        if ($this->volume_id === '') {
+            return null;
+        }
+
+        $volume = \App\Models\Volume::find($this->volume_id);
+
+        return $volume?->name;
+    }
+
+    /**
+     * Get the display label of the currently selected backup schedule, if any.
+     * Formats as "<human cron translation> (<schedule name>)", e.g. "At 02:00 (Nightly)".
+     */
+    public function getSelectedScheduleLabel(): ?string
+    {
+        if ($this->backup_schedule_id === '') {
+            return null;
+        }
+
+        $schedule = BackupSchedule::find($this->backup_schedule_id);
+
+        if (! $schedule) {
+            return null;
+        }
+
+        return Formatters::cronTranslation($schedule->expression).' ('.$schedule->name.')';
+    }
+
+    /**
+     * Short description of what will be backed up, for the live summary.
+     */
+    public function getSummarySelectionText(): ?string
+    {
+        if ($this->isSqlite() || $this->isRedis()) {
+            return null;
+        }
+
+        if ($this->database_selection_mode === DatabaseSelectionMode::All->value) {
+            return __('all databases');
+        }
+
+        if ($this->database_selection_mode === DatabaseSelectionMode::Selected->value) {
+            $count = count($this->database_names);
+
+            // Fallback path: database list couldn't be loaded and the user is
+            // typing comma-separated names into the text input — mirror the
+            // parsing used by normalizeDatabaseNamesInput() for the summary.
+            if ($count === 0 && empty($this->availableDatabases) && $this->database_names_input !== '') {
+                $count = count(array_filter(
+                    array_map('trim', explode(',', $this->database_names_input))
+                ));
+            }
+
+            if ($count === 0) {
+                return null;
+            }
+
+            return trans_choice('{1} :count database|[2,*] :count databases', $count, ['count' => $count]);
+        }
+
+        if ($this->database_selection_mode === DatabaseSelectionMode::Pattern->value) {
+            if ($this->database_include_pattern === '') {
+                return null;
+            }
+
+            return __('databases matching /:pattern/i', ['pattern' => $this->database_include_pattern]);
+        }
+
+        return null;
+    }
+
+    /**
+     * Short description of the retention policy, for the live summary.
+     */
+    public function getSummaryRetentionText(): string
+    {
+        if ($this->retention_policy === Backup::RETENTION_FOREVER) {
+            return __('indefinitely');
+        }
+
+        if ($this->retention_policy === Backup::RETENTION_DAYS) {
+            $days = $this->retention_days ?? 14;
+
+            return trans_choice('{1} the last :count day|[2,*] the last :count days', $days, ['count' => $days]);
+        }
+
+        $parts = [];
+
+        if ($this->gfs_keep_daily) {
+            $parts[] = trans_choice(
+                '{1} :count daily|[2,*] :count daily',
+                $this->gfs_keep_daily,
+                ['count' => $this->gfs_keep_daily],
+            );
+        }
+
+        if ($this->gfs_keep_weekly) {
+            $parts[] = trans_choice(
+                '{1} :count weekly|[2,*] :count weekly',
+                $this->gfs_keep_weekly,
+                ['count' => $this->gfs_keep_weekly],
+            );
+        }
+
+        if ($this->gfs_keep_monthly) {
+            $parts[] = trans_choice(
+                '{1} :count monthly|[2,*] :count monthly',
+                $this->gfs_keep_monthly,
+                ['count' => $this->gfs_keep_monthly],
+            );
+        }
+
+        if ($parts === []) {
+            return __('GFS (not configured)');
+        }
+
+        return __('GFS (:tiers)', ['tiers' => implode(', ', $parts)]);
+    }
+
+    /**
+     * Whether the backup configuration has enough information to render a summary.
+     *
+     * Mirrors the retention-branch rules in getBackupValidationRules() and
+     * validateGfsPolicy() so the summary callout only flips to "complete"
+     * when the form would actually pass validation.
+     */
+    public function isBackupConfigComplete(): bool
+    {
+        if ($this->volume_id === '' || $this->backup_schedule_id === '') {
+            return false;
+        }
+
+        if ($this->retention_policy === Backup::RETENTION_DAYS && empty($this->retention_days)) {
+            return false;
+        }
+
+        if ($this->retention_policy === Backup::RETENTION_GFS
+            && empty($this->gfs_keep_daily)
+            && empty($this->gfs_keep_weekly)
+            && empty($this->gfs_keep_monthly)
+        ) {
+            return false;
+        }
+
+        if ($this->isSqlite() || $this->isRedis()) {
+            return true;
+        }
+
+        return $this->getSummarySelectionText() !== null;
+    }
+
+    /**
      * Called when use_agent changes - clear agent_id when toggled off.
      */
     public function updatedUseAgent(): void
