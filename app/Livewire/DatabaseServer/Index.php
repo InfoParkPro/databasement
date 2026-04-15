@@ -71,7 +71,6 @@ class Index extends Component
     {
         return [
             ['key' => 'name', 'label' => __('Name'), 'class' => 'w-80'],
-            ['key' => 'database_names', 'label' => __('Databases'), 'sortable' => false],
             ['key' => 'backup', 'label' => __('Backup'), 'sortable' => false],
             ['key' => 'jobs', 'label' => __('Jobs'), 'sortable' => false, 'class' => 'w-32'],
         ];
@@ -130,18 +129,30 @@ class Index extends Component
         $this->dispatch('open-restore-modal', targetServerId: $id);
     }
 
-    public function runBackup(string $id, TriggerBackupAction $action): void
+    public function runBackupAll(string $serverId, TriggerBackupAction $action): void
     {
-        $server = DatabaseServer::with(['backup.volume'])->findOrFail($id);
+        $server = DatabaseServer::with(['backups.volume', 'backups.backupSchedule'])->findOrFail($serverId);
 
         $this->authorize('backup', $server);
 
-        try {
-            $userId = auth()->id();
-            $result = $action->execute($server, is_int($userId) ? $userId : null);
-            $this->success($result['message'], position: 'toast-bottom');
-        } catch (\Throwable $e) {
-            $this->error($e->getMessage(), position: 'toast-bottom');
+        $userId = auth()->id();
+        $failures = [];
+        $success = [];
+
+        foreach ($server->backups as $backup) {
+            try {
+                $result = $action->execute($backup, is_int($userId) ? $userId : null);
+                $success[] = $result['message'];
+            } catch (\Throwable $e) {
+                $failures[] = $e->getMessage();
+            }
+        }
+        foreach ($success as $message) {
+            $this->success($message, position: 'toast-bottom');
+        }
+
+        foreach ($failures as $message) {
+            $this->error($message, position: 'toast-bottom');
         }
     }
 

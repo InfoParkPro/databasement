@@ -95,57 +95,43 @@
                 </div>
             @endscope
 
-            @scope('cell_database_names', $server)
-                @if($server->database_type === 'sqlite')
-                    <span class="text-base-content/50 italic">{{ __('Single file') }}</span>
-                @elseif($server->database_selection_mode === \App\Enums\DatabaseSelectionMode::All)
-                    <x-badge :value="__('All')" class="badge-info badge-soft" />
-                @elseif($server->database_selection_mode === \App\Enums\DatabaseSelectionMode::Pattern)
-                    <x-popover>
-                        <x-slot:trigger>
-                            <x-badge :value="__('Pattern')" class="badge-warning badge-soft cursor-pointer" />
-                        </x-slot:trigger>
-                        <x-slot:content class="text-sm font-mono">
-                            /{{ $server->database_include_pattern }}/i
-                        </x-slot:content>
-                    </x-popover>
-                @elseif($server->database_names && count($server->database_names) > 0)
-                    @if(count($server->database_names) === 1)
-                        {{ $server->database_names[0] }}
-                    @else
-                        <span title="{{ implode(', ', $server->database_names) }}">
-                            {{ $server->database_names[0] }}
-                            <span class="text-base-content/50">+{{ count($server->database_names) - 1 }}</span>
-                        </span>
-                    @endif
-                @else
-                    -
-                @endif
-            @endscope
-
             @scope('cell_backup', $server)
-                @if(!$server->backups_enabled)
+                @if(! $server->backups_enabled)
                     <span class="badge badge-warning badge-soft badge-xs gap-1">
                         <x-icon name="o-no-symbol" class="w-3 h-3" />
                         {{ __('Disabled') }}
                     </span>
-                @elseif($server->backup)
-                    <div class="table-cell-primary flex items-center gap-1.5">
-                        <x-volume-type-icon :type="$server->backup->volume->type" class="w-4 h-4 text-base-content/70" />
-                        {{ $server->backup->volume->name }}
-                    </div>
-                    <div class="text-sm text-base-content/70">
-                        {{ $server->backup->backupSchedule->name }}
-                        @if($server->backup->retention_policy === 'gfs')
-                            <span class="text-info">(GFS: {{ $server->backup->gfs_keep_daily ?? 0 }}d/{{ $server->backup->gfs_keep_weekly ?? 0 }}w/{{ $server->backup->gfs_keep_monthly ?? 0 }}m)</span>
-                        @elseif($server->backup->retention_policy === 'forever')
-                            <span class="text-warning">({{ __('Forever') }})</span>
-                        @elseif($server->backup->retention_days)
-                            <span>({{ $server->backup->retention_days }}d)</span>
-                        @endif
-                    </div>
+                @elseif($server->backups->isEmpty())
+                    <span class="text-base-content/50">—</span>
                 @else
-                    <span class="text-base-content/50">-</span>
+                    <div class="flex flex-col gap-1 min-w-[200px] max-w-[400px]">
+                        @foreach($server->backups as $backup)
+                            @php $label = $backup->getDisplayLabel(false); @endphp
+                            <div class="rounded-md bg-base-200/60 border border-base-300 px-2 py-1.5" title="{{ $backup->getDisplayLabel() }}">
+                                <div class="flex items-center gap-1.5 min-w-0 flex-wrap">
+                                    {{-- Primary: schedule → volume --}}
+                                    <x-icon name="o-clock" class="w-3 h-3 shrink-0 text-primary/80" />
+                                    <span class="text-xs font-semibold text-base-content truncate">{{ $label['schedule'] }}</span>
+                                    <span class="text-base-content/30 text-[0.625rem] shrink-0">→</span>
+                                    <x-volume-type-icon :type="$backup->volume->type" class="w-3 h-3 shrink-0 text-primary/80" />
+                                    <span class="text-xs font-semibold text-base-content truncate">{{ $label['volume'] }}</span>
+                                    {{-- Secondary: databases + retention badges (wrap to next line if needed) --}}
+                                    @if($label['databases'])
+                                        <span class="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[0.625rem] font-medium leading-none bg-base-300/60 text-base-content/60">
+                                            <x-icon name="o-circle-stack" class="w-2.5 h-2.5 shrink-0" />
+                                            <span class="max-w-[120px] truncate">{{ $label['databases'] }}</span>
+                                        </span>
+                                    @endif
+                                    @if($label['retention'])
+                                        <span class="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[0.625rem] font-medium leading-none bg-info/10 text-info">
+                                            <x-icon name="o-archive-box" class="w-2.5 h-2.5 shrink-0" />
+                                            <span>{{ $label['retention'] }}</span>
+                                        </span>
+                                    @endif
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
                 @endif
             @endscope
 
@@ -186,15 +172,13 @@
             @scope('actions', $server)
                 <div class="flex gap-2 justify-end">
                     @can('backup', $server)
-                        @if($server->backup)
-                            <x-button
-                                icon="o-arrow-down-tray"
-                                wire:click="runBackup('{{ $server->id }}')"
-                                spinner
-                                tooltip="{{ __('Backup Now') }}"
-                                class="btn-ghost btn-sm text-info"
-                            />
-                        @endif
+                        <x-button
+                            icon="o-arrow-down-tray"
+                            wire:click="runBackupAll('{{ $server->id }}')"
+                            spinner
+                            tooltip="{{ __('Backup now') }}"
+                            class="btn-ghost btn-sm text-info"
+                        />
                     @endcan
                     @can('restore', $server)
                         <x-button
