@@ -46,7 +46,7 @@ class VersionStatus extends Component
         if ($version = config('app.version')) {
             $this->currentVersion = str_starts_with($version, 'v') ? $version : 'v'.$version;
         } elseif (config('app.commit_hash')) {
-            $this->currentVersion = config('app.commit_hash');
+            $this->currentVersion = substr(config('app.commit_hash'), 0, 7);
         } elseif ($gitHash = $this->getGitShortHash()) {
             $this->currentVersion = $gitHash;
         }
