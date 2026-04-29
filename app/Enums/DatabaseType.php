@@ -58,6 +58,12 @@ enum DatabaseType: string
      */
     private function buildDsn(string $host, int $port, ?string $database = null): string
     {
+        // MySQL PDO treats 'localhost' as a Unix socket connection.
+        // Force TCP by using 127.0.0.1 instead.
+        if ($this === self::MYSQL && $host === 'localhost') {
+            $host = '127.0.0.1';
+        }
+
         return match ($this) {
             self::MYSQL => $database
                 ? sprintf('mysql:host=%s;port=%d;dbname=%s', $host, $port, $database)
@@ -90,10 +96,15 @@ enum DatabaseType: string
 
         $host = $server->host;
         if ($this === self::SQLITE) {
-            if (empty($server->database_names) || empty($server->database_names[0])) {
-                throw new \InvalidArgumentException('SQLite database server requires at least one path in database_names');
+            $paths = $server->resolveDatabaseNames();
+            if ($database !== null && trim($database) !== '') {
+                $host = $database;
+            } elseif (! empty($paths)) {
+                $host = $paths[0];
+            } else {
+                throw new \InvalidArgumentException('SQLite database server requires at least one file path');
             }
-            $host = $server->database_names[0];
+            $database = null;
         }
 
         $dsn = $this->buildDsn($host, $server->port, $database);

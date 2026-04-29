@@ -35,8 +35,13 @@ class MongodbDatabase implements DatabaseInterface
             ...$this->buildBaseArgs(),
             ...$this->buildAuthFlags(),
             '--db='.escapeshellarg($this->config['database']),
-            '--archive='.escapeshellarg($outputPath),
         ];
+
+        if (! empty($this->config['dump_flags'])) {
+            $parts[] = DatabaseOperationResult::escapeFlags($this->config['dump_flags']);
+        }
+
+        $parts[] = '--archive='.escapeshellarg($outputPath);
 
         return new DatabaseOperationResult(command: implode(' ', $parts));
     }
@@ -59,7 +64,7 @@ class MongodbDatabase implements DatabaseInterface
         return new DatabaseOperationResult(command: implode(' ', $parts));
     }
 
-    public function prepareForRestore(string $schemaName, BackupLogger $logger): void
+    public function prepareForRestore(string $schemaName, BackupLogger $logger, bool $forceDatabase = false): void
     {
         // MongoDB restore uses --drop flag to handle existing collections; no separate preparation needed
     }

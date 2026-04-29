@@ -22,6 +22,7 @@ Databasement is a web application for managing database server backups. It allow
 - **Cross-server restore**: Restore snapshots from one server to another
 - **Failure notifications**: Get alerted via Email, Slack, Discord, Telegram, Pushover, Gotify, or Webhook when jobs fail
 - **User management**: Multi-user support with two-factor authentication
+- **Automation**: REST API and MCP server for scripting, CI/CD, and AI assistant integration
 - **Simple deployment**: Single container with built-in web server, queue worker, and scheduler
 
 ## Quick Start
@@ -35,7 +36,7 @@ docker run -d \
   -e DB_DATABASE=/data/database.sqlite \
   -e ENABLE_QUEUE_WORKER=true \
   -v ./databasement-data:/data \
-  davidcrty/databasement:latest
+  davidcrty/databasement:1
 ```
 
 Open http://localhost:2226 and create your first admin account.

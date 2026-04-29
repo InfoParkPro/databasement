@@ -51,6 +51,13 @@ class Volume extends Model
     {
         // Delete snapshots through Eloquent to trigger their deleting events
         // (which clean up associated BackupJobs, Restores, and backup files)
+        // Type is immutable after creation — changing it would leave ghost config fields.
+        static::updating(function (Volume $volume) {
+            if ($volume->isDirty('type')) {
+                throw new \RuntimeException('Changing volume type is not allowed.');
+            }
+        });
+
         static::deleting(function (Volume $volume) {
             foreach ($volume->snapshots as $snapshot) {
                 $snapshot->skipFileCleanup = $volume->skipFileCleanup;

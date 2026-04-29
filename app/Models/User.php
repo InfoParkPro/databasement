@@ -85,6 +85,17 @@ class User extends Authenticatable
         self::ROLE_ADMIN,
     ];
 
+    public static function roleIcon(string $role): string
+    {
+        return match ($role) {
+            self::ROLE_ADMIN => 'o-shield-check',
+            self::ROLE_MEMBER => 'o-pencil-square',
+            self::ROLE_VIEWER => 'o-eye',
+            self::ROLE_DEMO => 'o-beaker',
+            default => 'o-user',
+        };
+    }
+
     /**
      * The attributes that are mass assignable.
      *
@@ -180,7 +191,7 @@ class User extends Authenticatable
 
     public function canPerformActions(): bool
     {
-        return ! $this->isViewer();
+        return ! $this->isViewer() && ! $this->isDemo();
     }
 
     public function isPending(): bool

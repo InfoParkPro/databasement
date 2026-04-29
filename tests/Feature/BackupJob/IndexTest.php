@@ -7,7 +7,6 @@ use App\Models\Restore;
 use App\Models\User;
 use App\Models\Volume;
 use App\Services\Backup\BackupJobFactory;
-use App\Services\Backup\Filesystems\Awss3Filesystem;
 use Livewire\Livewire;
 
 test('mount opens logs modal when valid job ID provided in URL', function () {
@@ -15,7 +14,7 @@ test('mount opens logs modal when valid job ID provided in URL', function () {
     $factory = app(BackupJobFactory::class);
 
     $server = DatabaseServer::factory()->create(['database_names' => ['testdb']]);
-    $snapshots = $factory->createSnapshots($server, 'manual', $user->id);
+    $snapshots = $factory->createSnapshots($server->backups->first(), 'manual', $user->id);
     $job = $snapshots[0]->job;
 
     Livewire::actingAs($user)
@@ -43,10 +42,10 @@ test('can search backup jobs by server name', function () {
     $server1 = DatabaseServer::factory()->create(['name' => 'Production MySQL', 'database_names' => ['production_db']]);
     $server2 = DatabaseServer::factory()->create(['name' => 'Development PostgreSQL', 'database_names' => ['development_db']]);
 
-    $snapshots1 = $factory->createSnapshots($server1, 'manual', $user->id);
+    $snapshots1 = $factory->createSnapshots($server1->backups->first(), 'manual', $user->id);
     $snapshots1[0]->job->update(['status' => 'completed']);
 
-    $snapshots2 = $factory->createSnapshots($server2, 'manual', $user->id);
+    $snapshots2 = $factory->createSnapshots($server2->backups->first(), 'manual', $user->id);
     $snapshots2[0]->job->update(['status' => 'completed']);
 
     // Search by server name - check database names to verify filtering
@@ -64,17 +63,17 @@ test('can filter backup jobs by status', function () {
 
     $server = DatabaseServer::factory()->create(['name' => 'Test Server', 'database_names' => ['test_db']]);
 
-    $completedSnapshots = $factory->createSnapshots($server, 'manual', $user->id);
+    $completedSnapshots = $factory->createSnapshots($server->backups->first(), 'manual', $user->id);
     $completedSnapshot = $completedSnapshots[0];
     $completedSnapshot->job->update(['status' => 'completed']);
     $completedSnapshot->update(['database_name' => 'completed_db']);
 
-    $failedSnapshots = $factory->createSnapshots($server, 'scheduled', $user->id);
+    $failedSnapshots = $factory->createSnapshots($server->backups->first(), 'scheduled', $user->id);
     $failedSnapshot = $failedSnapshots[0];
     $failedSnapshot->job->update(['status' => 'failed']);
     $failedSnapshot->update(['database_name' => 'failed_db']);
 
-    $runningSnapshots = $factory->createSnapshots($server, 'manual', $user->id);
+    $runningSnapshots = $factory->createSnapshots($server->backups->first(), 'manual', $user->id);
     $runningSnapshot = $runningSnapshots[0];
     $runningSnapshot->job->update(['status' => 'running']);
     $runningSnapshot->update(['database_name' => 'running_db']);
@@ -102,7 +101,7 @@ test('can filter backup jobs by type', function () {
 
     $server = DatabaseServer::factory()->create(['name' => 'Test Server', 'database_names' => ['test_db']]);
 
-    $snapshots = $factory->createSnapshots($server, 'manual', $user->id);
+    $snapshots = $factory->createSnapshots($server->backups->first(), 'manual', $user->id);
     $snapshots[0]->job->update(['status' => 'completed']);
 
     Livewire::actingAs($user)
@@ -123,10 +122,10 @@ test('can filter backup jobs by server', function () {
     $server1 = DatabaseServer::factory()->create(['name' => 'Production Server', 'database_names' => ['production_db']]);
     $server2 = DatabaseServer::factory()->create(['name' => 'Development Server', 'database_names' => ['development_db']]);
 
-    $snapshots1 = $factory->createSnapshots($server1, 'manual', $user->id);
+    $snapshots1 = $factory->createSnapshots($server1->backups->first(), 'manual', $user->id);
     $snapshots1[0]->job->update(['status' => 'completed']);
 
-    $snapshots2 = $factory->createSnapshots($server2, 'manual', $user->id);
+    $snapshots2 = $factory->createSnapshots($server2->backups->first(), 'manual', $user->id);
     $snapshots2[0]->job->update(['status' => 'completed']);
 
     // Filter by server1 - should see only production_db
@@ -158,12 +157,12 @@ test('can filter jobs by file missing status', function () {
     $server = DatabaseServer::factory()->create(['name' => 'Test Server', 'database_names' => ['test_db']]);
 
     // Create a snapshot with missing file
-    $missingSnapshots = $factory->createSnapshots($server, 'manual', $user->id);
+    $missingSnapshots = $factory->createSnapshots($server->backups->first(), 'manual', $user->id);
     $missingSnapshots[0]->update(['database_name' => 'missing_db', 'file_exists' => false, 'file_verified_at' => now()]);
     $missingSnapshots[0]->job->update(['status' => 'completed']);
 
     // Create a normal snapshot
-    $normalSnapshots = $factory->createSnapshots($server, 'manual', $user->id);
+    $normalSnapshots = $factory->createSnapshots($server->backups->first(), 'manual', $user->id);
     $normalSnapshots[0]->update(['database_name' => 'normal_db']);
     $normalSnapshots[0]->job->update(['status' => 'completed']);
 
@@ -191,111 +190,78 @@ test('clear resets file missing filter', function () {
         ->assertSet('fileMissing', '');
 });
 
-test('can download snapshot from local storage route', function () {
+test('can cancel a pending backup job', function () {
     $user = User::factory()->create();
-
-    // Create volume with temp directory (factory handles directory creation)
-    $volume = Volume::factory()->local()->create();
-    $tempDir = $volume->config['path'];
-
-    // Create a backup file in the volume directory
-    $backupFilename = 'test-backup.sql.gz';
-    $backupFilePath = $tempDir.'/'.$backupFilename;
-    file_put_contents($backupFilePath, 'test backup content');
-
-    $server = DatabaseServer::factory()->create([
-        'database_names' => ['test_db'],
-    ]);
-    $server->backup->update(['volume_id' => $volume->id]);
-
     $factory = app(BackupJobFactory::class);
-    $snapshots = $factory->createSnapshots($server, 'manual', $user->id);
+
+    $server = DatabaseServer::factory()->create(['database_names' => ['test_db']]);
+    $snapshots = $factory->createSnapshots($server->backups->first(), 'manual', $user->id);
     $snapshot = $snapshots[0];
-    $snapshot->update([
-        'filename' => $backupFilename,
-        'file_size' => filesize($backupFilePath),
-    ]);
-    $snapshot->job->markCompleted();
+    $job = $snapshot->job;
 
-    $response = $this->actingAs($user)
-        ->get(route('snapshots.download', $snapshot));
+    expect($job->status)->toBe('pending');
 
-    $response->assertOk();
-    $response->assertHeader('content-disposition');
+    Livewire::actingAs($user)
+        ->test(Index::class)
+        ->call('confirmCancelJob', $job->id)
+        ->assertSet('showDeleteModal', true)
+        ->assertSet('cancelJobId', $job->id)
+        ->call('deletePendingJob')
+        ->assertSet('showDeleteModal', false);
+
+    expect(BackupJob::find($job->id))->toBeNull();
 });
 
-test('snapshot download route redirects to s3 presigned url', function () {
+test('cannot cancel a non-pending backup job', function () {
     $user = User::factory()->create();
-
-    $volume = Volume::factory()->s3()->create();
-
-    $server = DatabaseServer::factory()->create([
-        'database_names' => ['test_db'],
-    ]);
-    $server->backup->update(['volume_id' => $volume->id]);
-
     $factory = app(BackupJobFactory::class);
-    $snapshots = $factory->createSnapshots($server, 'manual', $user->id);
+
+    $server = DatabaseServer::factory()->create(['database_names' => ['test_db']]);
+    $snapshots = $factory->createSnapshots($server->backups->first(), 'manual', $user->id);
     $snapshot = $snapshots[0];
-    $snapshot->update([
-        'filename' => 'test-backup.sql.gz',
-        'file_size' => 1024,
-    ]);
-    $snapshot->job->markCompleted();
+    $job = $snapshot->job;
 
-    // Mock the S3 filesystem to return a presigned URL
-    $mockS3Filesystem = Mockery::mock(Awss3Filesystem::class);
-    $mockS3Filesystem->shouldReceive('getPresignedUrl')
-        ->once()
-        ->with(
-            $volume->getDecryptedConfig(),
-            $snapshot->filename,
-            Mockery::any()
-        )
-        ->andReturn('https://test-bucket.s3.amazonaws.com/test-backup.sql.gz?presigned=token');
+    $component = Livewire::actingAs($user)
+        ->test(Index::class)
+        ->call('confirmCancelJob', $job->id)
+        ->assertSet('showDeleteModal', true);
 
-    app()->instance(Awss3Filesystem::class, $mockS3Filesystem);
+    // Job starts running while modal is open
+    $job->markRunning();
 
-    $this->actingAs($user)
-        ->get(route('snapshots.download', $snapshot))
-        ->assertRedirect('https://test-bucket.s3.amazonaws.com/test-backup.sql.gz?presigned=token');
+    $component
+        ->call('deletePendingJob')
+        ->assertSet('showDeleteModal', false);
+
+    expect(BackupJob::find($job->id))->not->toBeNull();
 });
 
-test('s3 download presigned url includes volume prefix in key path', function () {
+test('deleting database server cleans up cross-server restore jobs', function () {
     $user = User::factory()->create();
-
-    // Create S3 volume WITH a prefix and all AWS config
-    $volume = Volume::factory()->create([
-        'type' => 's3',
-        'config' => [
-            'bucket' => 'my-backup-bucket',
-            'prefix' => 'backups/production',
-            'region' => 'us-east-1',
-            'access_key_id' => 'test-key',
-            'secret_access_key' => 'test-secret',
-            'custom_endpoint' => 'http://minio:9000',
-            'public_endpoint' => 'https://127.0.0.1:9022',
-            'use_path_style_endpoint' => true,
-        ],
-    ]);
-
-    $server = DatabaseServer::factory()->create([
-        'database_names' => ['myapp_db'],
-    ]);
-    $server->backup->update(['volume_id' => $volume->id]);
-
     $factory = app(BackupJobFactory::class);
-    $snapshots = $factory->createSnapshots($server, 'manual', $user->id);
-    $snapshot = $snapshots[0];
-    $snapshot->update([
-        'filename' => 'myapp-backup-2024-01-13.sql.gz',
-        'file_size' => 2048,
+
+    $sourceServer = DatabaseServer::factory()->create(['database_names' => ['source_db']]);
+    $targetServer = DatabaseServer::factory()->create([
+        'database_names' => ['target_db'],
+        'database_type' => $sourceServer->database_type,
     ]);
+
+    // Create a backup on source server
+    $snapshots = $factory->createSnapshots($sourceServer->backups->first(), 'manual', $user->id);
+    $snapshot = $snapshots[0];
+    $snapshot->update(['filename' => 'test.sql.gz', 'file_size' => 100]);
     $snapshot->job->markCompleted();
 
-    $this->actingAs($user)
-        ->get(route('snapshots.download', $snapshot))
-        ->assertRedirectContains('https://127.0.0.1:9022/my-backup-bucket/backups/production/myapp-backup-2024-01-13.sql.gz');
+    // Create a cross-server restore (source → target)
+    $restore = $factory->createRestore($snapshot, $targetServer, 'restored_db', $user->id);
+    $restoreJobId = $restore->job->id;
+
+    // Delete the TARGET server
+    $targetServer->skipFileCleanup = true;
+    $targetServer->delete();
+
+    // The restore's BackupJob should be cleaned up
+    expect(BackupJob::find($restoreJobId))->toBeNull();
 });
 
 test('can delete snapshot with file and cascades restores and jobs', function () {
@@ -312,11 +278,11 @@ test('can delete snapshot with file and cascades restores and jobs', function ()
 
     // Create server with backup using our volume
     $server = DatabaseServer::factory()->create(['database_names' => ['test_db']]);
-    $server->backup->update(['volume_id' => $volume->id]);
+    $server->backups->first()->update(['volume_id' => $volume->id]);
 
     // Create snapshot with real file
     $factory = app(BackupJobFactory::class);
-    $snapshots = $factory->createSnapshots($server, 'manual', $user->id);
+    $snapshots = $factory->createSnapshots($server->backups->first(), 'manual', $user->id);
     $snapshot = $snapshots[0];
     $snapshot->update([
         'filename' => $backupFilename,

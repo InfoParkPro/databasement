@@ -63,17 +63,27 @@ class MysqlDatabase implements DatabaseInterface
             $options[] = '--skip_ssl';
         }
 
-        return new DatabaseOperationResult(command: sprintf(
-            '%s %s --host=%s --port=%s --user=%s --password=%s %s > %s',
+        $extraFlags = '';
+        if (! empty($this->config['dump_flags'])) {
+            $extraFlags = ' '.DatabaseOperationResult::escapeFlags($this->config['dump_flags']);
+        }
+
+        // Flags must come before the database name; mysqldump treats anything after it as table names
+        $command = sprintf(
+            '%s %s --host=%s --port=%s --user=%s --password=%s%s %s',
             self::CLI_BINARIES[$this->getMysqlCliType()]['dump'],
             implode(' ', $options),
             escapeshellarg($this->config['host']),
             escapeshellarg((string) $this->config['port']),
             escapeshellarg($this->config['user']),
             escapeshellarg($this->config['pass']),
+            $extraFlags,
             escapeshellarg($this->config['database']),
-            escapeshellarg($outputPath)
-        ));
+        );
+
+        $command .= ' > '.escapeshellarg($outputPath);
+
+        return new DatabaseOperationResult(command: $command);
     }
 
     public function restore(string $inputPath): DatabaseOperationResult
@@ -93,17 +103,19 @@ class MysqlDatabase implements DatabaseInterface
         ));
     }
 
-    public function prepareForRestore(string $schemaName, BackupLogger $logger): void
+    public function prepareForRestore(string $schemaName, BackupLogger $logger, bool $forceDatabase = false): void
     {
         try {
             $pdo = $this->createPdo();
             $schemaName = str_replace('`', '', $schemaName);
 
-            $dropCommand = "DROP DATABASE IF EXISTS `{$schemaName}`";
-            $logger->logCommand($dropCommand, null, 0);
-            $pdo->exec($dropCommand);
+            if ($forceDatabase) {
+                $dropCommand = "DROP DATABASE IF EXISTS `{$schemaName}`";
+                $logger->logCommand($dropCommand, null, 0);
+                $pdo->exec($dropCommand);
+            }
 
-            $createCommand = "CREATE DATABASE `{$schemaName}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci";
+            $createCommand = "CREATE DATABASE IF NOT EXISTS `{$schemaName}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci";
             $logger->logCommand($createCommand, null, 0);
             $pdo->exec($createCommand);
         } catch (\PDOException $e) {

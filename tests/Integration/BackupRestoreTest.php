@@ -61,14 +61,14 @@ test('client-server database backup and restore workflow', function (string $typ
     $this->volume = IntegrationTestHelpers::createVolume($type);
     $this->databaseServer = IntegrationTestHelpers::createDatabaseServer($type);
     $this->backup = IntegrationTestHelpers::createBackup($this->databaseServer, $this->volume);
-    $this->databaseServer->load('backup.volume');
+    $this->databaseServer->load('backups.volume');
 
     // Load test data
     IntegrationTestHelpers::loadTestData($type, $this->databaseServer);
 
     // Run backup
     $snapshots = $this->backupJobFactory->createSnapshots(
-        server: $this->databaseServer,
+        backup: $this->backup,
         method: 'manual',
     );
     $this->snapshot = $snapshots[0];
@@ -110,52 +110,39 @@ test('client-server database backup and restore workflow', function (string $typ
     'mysql with encrypted' => ['mysql', 'encrypted', '7z'],
 ]);
 
-test('postgresql prepareForRestore drops and recreates existing database', function () {
-    // Create models
-    $this->volume = IntegrationTestHelpers::createVolume('postgres');
-    $this->databaseServer = IntegrationTestHelpers::createDatabaseServer('postgres');
+test('backup with extra dump flags succeeds', function (string $type, string $flag) {
+    // Create models with dump flags in extra_config
+    $this->volume = IntegrationTestHelpers::createVolume($type);
+    $this->databaseServer = IntegrationTestHelpers::createDatabaseServer($type);
+    $this->databaseServer->update([
+        'extra_config' => array_merge(
+            $this->databaseServer->extra_config ?? [],
+            ['dump_flags' => $flag],
+        ),
+    ]);
+    $this->backup = IntegrationTestHelpers::createBackup($this->databaseServer, $this->volume);
+    $this->databaseServer->load('backups.volume');
 
-    $suffix = IntegrationTestHelpers::getParallelSuffix();
-    $this->restoredDatabaseName = 'testdb_prepare_'.hrtime(true).$suffix;
+    // Load test data
+    IntegrationTestHelpers::loadTestData($type, $this->databaseServer);
 
-    // Pre-create the database so the "if ($exists)" branch is exercised
-    $adminPdo = \App\Enums\DatabaseType::POSTGRESQL->createPdo($this->databaseServer);
-    $safe = str_replace('"', '""', $this->restoredDatabaseName);
-    $adminPdo->exec("CREATE DATABASE \"{$safe}\"");
-
-    // Insert a table into the pre-existing database to verify it gets dropped
-    $dbPdo = IntegrationTestHelpers::connectToDatabase('postgres', $this->databaseServer, $this->restoredDatabaseName);
-    $dbPdo->exec('CREATE TABLE sentinel (id int)');
-    unset($dbPdo); // Close connection so terminate_backend can work
-
-    // Build a configured PostgresqlDatabase and a BackupJob for logging
-    $database = app(\App\Services\Backup\Databases\DatabaseProvider::class)->makeForServer(
-        $this->databaseServer,
-        $this->restoredDatabaseName,
-        $this->databaseServer->host,
-        $this->databaseServer->port,
+    // Run backup — this would fail if flags are mispositioned (e.g., after the database name)
+    $snapshots = $this->backupJobFactory->createSnapshots(
+        backup: $this->backup,
+        method: 'manual',
     );
+    $this->snapshot = $snapshots[0];
+    ProcessBackupJob::dispatchSync($this->snapshot->id);
+    $this->snapshot->refresh();
+    $this->snapshot->load('job');
 
-    $job = \App\Models\BackupJob::create(['status' => 'running']);
-
-    // Act — this should hit the $exists branch: terminate connections, drop, then create
-    $database->prepareForRestore($this->restoredDatabaseName, $job);
-
-    // Assert — the database exists but the sentinel table should be gone (fresh database)
-    $freshPdo = IntegrationTestHelpers::connectToDatabase('postgres', $this->databaseServer, $this->restoredDatabaseName);
-    $stmt = $freshPdo->query("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'sentinel'");
-    expect((int) $stmt->fetchColumn())->toBe(0);
-
-    // Verify the job logged the drop and create commands
-    $job->refresh();
-    $loggedCommands = collect($job->logs)
-        ->where('type', 'command')
-        ->pluck('command')
-        ->toArray();
-
-    expect($loggedCommands)->toContain("DROP DATABASE IF EXISTS \"{$safe}\"")
-        ->and($loggedCommands)->toContain("CREATE DATABASE \"{$safe}\"");
-});
+    expect($this->snapshot->job->status)->toBe('completed')
+        ->and($this->snapshot->file_size)->toBeGreaterThan(0);
+})->with([
+    'mysql with --verbose' => ['mysql', '--verbose'],
+    'postgres with --verbose' => ['postgres', '--verbose'],
+    'mongodb with --verbose' => ['mongodb', '--verbose'],
+]);
 
 test('sqlite backup and restore workflow', function () {
     // Create a test SQLite database with some data (use unique names for parallel testing)
@@ -169,11 +156,11 @@ test('sqlite backup and restore workflow', function () {
     $this->volume = IntegrationTestHelpers::createVolume('sqlite');
     $this->databaseServer = IntegrationTestHelpers::createSqliteDatabaseServer($sourceSqlitePath);
     $this->backup = IntegrationTestHelpers::createBackup($this->databaseServer, $this->volume);
-    $this->databaseServer->load('backup.volume');
+    $this->databaseServer->load('backups.volume');
 
     // Run backup
     $snapshots = $this->backupJobFactory->createSnapshots(
-        server: $this->databaseServer,
+        backup: $this->backup,
         method: 'manual',
         triggeredByUserId: null
     );
@@ -220,14 +207,14 @@ test('mongodb backup and restore workflow', function () {
     $this->volume = IntegrationTestHelpers::createVolume('mongodb');
     $this->databaseServer = IntegrationTestHelpers::createDatabaseServer('mongodb');
     $this->backup = IntegrationTestHelpers::createBackup($this->databaseServer, $this->volume);
-    $this->databaseServer->load('backup.volume');
+    $this->databaseServer->load('backups.volume');
 
     // Load test data
     IntegrationTestHelpers::loadMongodbTestData($this->databaseServer);
 
     // Run backup
     $snapshots = $this->backupJobFactory->createSnapshots(
-        server: $this->databaseServer,
+        backup: $this->backup,
         method: 'manual',
     );
     $this->snapshot = $snapshots[0];
@@ -262,14 +249,14 @@ test('redis backup workflow', function () {
     $this->volume = IntegrationTestHelpers::createVolume('redis');
     $this->databaseServer = IntegrationTestHelpers::createRedisDatabaseServer();
     $this->backup = IntegrationTestHelpers::createBackup($this->databaseServer, $this->volume);
-    $this->databaseServer->load('backup.volume');
+    $this->databaseServer->load('backups.volume');
 
     // Load test data
     IntegrationTestHelpers::loadRedisTestData($this->databaseServer);
 
     // Run backup
     $snapshots = $this->backupJobFactory->createSnapshots(
-        server: $this->databaseServer,
+        backup: $this->backup,
         method: 'manual',
     );
     $this->snapshot = $snapshots[0];

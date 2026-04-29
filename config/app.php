@@ -67,7 +67,7 @@ return [
     |
     */
 
-    'trusted_proxies' => env('TRUSTED_PROXIES', '127.0.0.0/8,10.0.0.0/8,100.64.0.0/10,169.254.0.0/16,172.16.0.0/12,192.168.0.0/16'),
+    'trusted_proxies' => env('TRUSTED_PROXIES', TRUSTED_PROXIES_DEFAULT),
 
     /*
     |--------------------------------------------------------------------------
@@ -103,7 +103,6 @@ return [
 
     'has_deprecated_aws_env' => (bool) (env('AWS_REGION') || env('AWS_DEFAULT_REGION')),
     'has_deprecated_backup_env' => (bool) env('BACKUP_WORKING_DIRECTORY'),
-    'has_deprecated_notification_env' => (bool) env('NOTIFICATION_ENABLED'),
 
     'available_locales' => [
         'en' => 'English',
@@ -174,6 +173,19 @@ return [
     */
 
     'commit_hash' => env('APP_COMMIT_HASH'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Application Version
+    |--------------------------------------------------------------------------
+    |
+    | The semver version of the current build. Set via APP_VERSION
+    | environment variable during deployment (injected at Docker build time
+    | from the git tag).
+    |
+    */
+
+    'version' => env('APP_VERSION'),
 
     /*
     |--------------------------------------------------------------------------

@@ -1,9 +1,12 @@
 <?php
 
+use App\Enums\DatabaseSelectionMode;
 use App\Jobs\ProcessBackupJob;
+use App\Models\Agent;
+use App\Models\AgentJob;
+use App\Models\Backup;
 use App\Models\DatabaseServer;
 use App\Models\User;
-use App\Models\Volume;
 use App\Services\Backup\TriggerBackupAction;
 use Illuminate\Support\Facades\Queue;
 
@@ -11,60 +14,44 @@ beforeEach(function () {
     Queue::fake();
 });
 
-test('it throws exception when server has no backup configuration', function () {
-    // Create server without using the factory's afterCreating hook
-    $server = DatabaseServer::factory()->make();
-    $server->saveQuietly();
-
-    $action = app(TriggerBackupAction::class);
-
-    expect(fn () => $action->execute($server))
-        ->toThrow(RuntimeException::class, 'No backup configuration found for this database server.');
-});
-
 test('it creates a snapshot and dispatches backup job for single database', function () {
-    // Factory automatically creates backup via afterCreating hook
-    $server = DatabaseServer::factory()->create([
-        'database_names' => ['test_db'],
-        'database_selection_mode' => 'selected',
-    ]);
-    $server->load('backup.volume');
+    $server = DatabaseServer::factory()->withoutBackups()->create();
+    $backup = Backup::factory()->for($server)->selected(['test_db'])->create();
 
     $action = app(TriggerBackupAction::class);
-    $result = $action->execute($server);
+    $result = $action->execute($backup);
 
     expect($result['snapshots'])->toHaveCount(1)
         ->and($result['message'])->toBe('Backup started successfully!')
         ->and($result['snapshots'][0]->database_name)->toBe('test_db')
-        ->and($result['snapshots'][0]->method)->toBe('manual');
+        ->and($result['snapshots'][0]->method)->toBe('manual')
+        ->and($result['snapshots'][0]->backup_id)->toBe($backup->id);
 
     Queue::assertPushed(ProcessBackupJob::class, 1);
 });
 
 test('it tracks the user who triggered the backup', function () {
     $user = User::factory()->create();
-    $server = DatabaseServer::factory()->create([
-        'database_names' => ['test_db'],
-        'database_selection_mode' => 'selected',
-    ]);
-    $server->load('backup.volume');
+    $server = DatabaseServer::factory()->withoutBackups()->create();
+    $backup = Backup::factory()->for($server)->selected(['test_db'])->create();
 
     $action = app(TriggerBackupAction::class);
-    $result = $action->execute($server, $user->id);
+    $result = $action->execute($backup, $user->id);
 
     expect($result['snapshots'][0]->triggered_by_user_id)->toBe($user->id);
 });
 
 test('it returns correct message for multiple database backups', function () {
-    $server = DatabaseServer::factory()->create([
+    $server = DatabaseServer::factory()->withoutBackups()->create([
         'host' => 'localhost',
         'port' => 3306,
         'database_type' => 'mysql',
         'username' => 'root',
         'password' => 'password',
-        'database_selection_mode' => 'all',
     ]);
-    $server->load('backup.volume');
+    $backup = Backup::factory()->for($server)->create([
+        'database_selection_mode' => DatabaseSelectionMode::All->value,
+    ]);
 
     // Mock the DatabaseProvider to return multiple databases
     $this->mock(\App\Services\Backup\Databases\DatabaseProvider::class, function ($mock) {
@@ -72,7 +59,7 @@ test('it returns correct message for multiple database backups', function () {
     });
 
     $action = app(TriggerBackupAction::class);
-    $result = $action->execute($server);
+    $result = $action->execute($backup);
 
     expect($result['snapshots'])->toHaveCount(3)
         ->and($result['message'])->toBe('3 database backups started successfully!');
@@ -81,12 +68,8 @@ test('it returns correct message for multiple database backups', function () {
 });
 
 test('pattern mode creates snapshots only for matching databases', function () {
-    $server = DatabaseServer::factory()->create([
-        'database_selection_mode' => 'pattern',
-        'database_include_pattern' => '^prod_',
-        'database_names' => null,
-    ]);
-    $server->load('backup.volume');
+    $server = DatabaseServer::factory()->withoutBackups()->create();
+    $backup = Backup::factory()->for($server)->pattern('^prod_')->create();
 
     $this->mock(\App\Services\Backup\Databases\DatabaseProvider::class, function ($mock) {
         $mock->shouldReceive('listDatabasesForServer')
@@ -94,7 +77,7 @@ test('pattern mode creates snapshots only for matching databases', function () {
     });
 
     $action = app(TriggerBackupAction::class);
-    $result = $action->execute($server);
+    $result = $action->execute($backup);
 
     expect($result['snapshots'])->toHaveCount(2)
         ->and($result['snapshots'][0]->database_name)->toBe('prod_users')
@@ -103,93 +86,66 @@ test('pattern mode creates snapshots only for matching databases', function () {
     Queue::assertPushed(ProcessBackupJob::class, 2);
 });
 
-test('it still creates backup snapshot using legacy volume_id when volume_ids is not configured', function () {
-    $firstVolume = Volume::factory()->local()->create();
-
-    $server = DatabaseServer::factory()->create([
-        'database_names' => ['test_db'],
-        'database_selection_mode' => 'selected',
+test('agent server with all mode dispatches discovery job instead of snapshots', function () {
+    $agent = Agent::factory()->create();
+    $server = DatabaseServer::factory()->withoutBackups()->create([
+        'agent_id' => $agent->id,
     ]);
-
-    $server->backup->update([
-        'volume_id' => $firstVolume->id,
-        'volume_ids' => null,
+    $backup = Backup::factory()->for($server)->create([
+        'database_selection_mode' => DatabaseSelectionMode::All->value,
     ]);
 
     $action = app(TriggerBackupAction::class);
-    $result = $action->execute($server);
+    $result = $action->execute($backup);
 
-    expect($result['snapshots'])->toHaveCount(1)
-        ->and($result['snapshots'][0]->volume_id)->toBe($firstVolume->id);
+    expect($result['snapshots'])->toBeEmpty()
+        ->and($result['message'])->toContain('discovery');
 
-    Queue::assertPushed(ProcessBackupJob::class, 1);
+    Queue::assertNothingPushed();
+
+    $discoveryJob = AgentJob::where('database_server_id', $server->id)->sole();
+    expect($discoveryJob->type)->toBe(AgentJob::TYPE_DISCOVER)
+        ->and($discoveryJob->snapshot_id)->toBeNull()
+        ->and($discoveryJob->payload['type'])->toBe('discover')
+        ->and($discoveryJob->payload['selection_mode'])->toBe('all')
+        ->and($discoveryJob->payload['backup_id'])->toBe($backup->id);
 });
 
-test('selected mode creates one snapshot per configured volume', function () {
-    $firstVolume = Volume::factory()->local()->create();
-    $secondVolume = Volume::factory()->local()->create();
-
-    $server = DatabaseServer::factory()->create([
-        'database_names' => ['test_db'],
-        'database_selection_mode' => 'selected',
+test('agent server with pattern mode dispatches discovery job', function () {
+    $agent = Agent::factory()->create();
+    $server = DatabaseServer::factory()->withoutBackups()->create([
+        'agent_id' => $agent->id,
     ]);
-
-    $server->backup->update([
-        'volume_id' => $firstVolume->id,
-        'volume_ids' => [$firstVolume->id, $secondVolume->id],
-    ]);
+    $backup = Backup::factory()->for($server)->pattern('^prod_')->create();
 
     $action = app(TriggerBackupAction::class);
-    $result = $action->execute($server);
+    $result = $action->execute($backup);
+
+    expect($result['snapshots'])->toBeEmpty();
+
+    $discoveryJob = AgentJob::where('database_server_id', $server->id)->sole();
+    expect($discoveryJob->payload['selection_mode'])->toBe('pattern')
+        ->and($discoveryJob->payload['pattern'])->toBe('^prod_')
+        ->and($discoveryJob->payload['backup_id'])->toBe($backup->id);
+});
+
+test('agent server with selected mode creates backup agent jobs directly', function () {
+    $agent = Agent::factory()->create();
+    $server = DatabaseServer::factory()->withoutBackups()->create([
+        'agent_id' => $agent->id,
+    ]);
+    $backup = Backup::factory()->for($server)->selected(['db1', 'db2'])->create();
+
+    $action = app(TriggerBackupAction::class);
+    $result = $action->execute($backup);
 
     expect($result['snapshots'])->toHaveCount(2)
-        ->and($result['message'])->toBe('2 database backups started successfully!')
-        ->and(collect($result['snapshots'])->pluck('volume_id')->sort()->values()->all())
-        ->toBe(collect([$firstVolume->id, $secondVolume->id])->sort()->values()->all());
+        ->and($result['message'])->toBe('2 database backups started successfully!');
 
-    foreach ($result['snapshots'] as $snapshot) {
-        expect($snapshot->metadata['volume']['type'])->toBe($snapshot->volume->type);
-    }
+    Queue::assertNothingPushed();
 
-    Queue::assertPushed(ProcessBackupJob::class, 2);
-});
-
-test('all mode fans out snapshots across databases and volumes', function () {
-    $firstVolume = Volume::factory()->local()->create();
-    $secondVolume = Volume::factory()->s3()->create();
-
-    $server = DatabaseServer::factory()->create([
-        'database_selection_mode' => 'all',
-        'database_names' => null,
-    ]);
-
-    $server->backup->update([
-        'volume_id' => $firstVolume->id,
-        'volume_ids' => [$firstVolume->id, $secondVolume->id],
-    ]);
-
-    $this->mock(\App\Services\Backup\Databases\DatabaseProvider::class, function ($mock) {
-        $mock->shouldReceive('listDatabasesForServer')->andReturn(['db1', 'db2']);
-    });
-
-    $action = app(TriggerBackupAction::class);
-    $result = $action->execute($server);
-
-    expect($result['snapshots'])->toHaveCount(4)
-        ->and($result['message'])->toBe('4 database backups started successfully!');
-
-    $pairs = collect($result['snapshots'])
-        ->map(fn ($snapshot) => "{$snapshot->database_name}:{$snapshot->volume_id}")
-        ->sort()
-        ->values()
-        ->all();
-
-    expect($pairs)->toBe(collect([
-        "db1:{$firstVolume->id}",
-        "db1:{$secondVolume->id}",
-        "db2:{$firstVolume->id}",
-        "db2:{$secondVolume->id}",
-    ])->sort()->values()->all());
-
-    Queue::assertPushed(ProcessBackupJob::class, 4);
+    $agentJobs = AgentJob::where('database_server_id', $server->id)->get();
+    expect($agentJobs)->toHaveCount(2)
+        ->and($agentJobs[0]->type)->toBe(AgentJob::TYPE_BACKUP)
+        ->and($agentJobs[0]->snapshot_id)->not->toBeNull();
 });

@@ -2,7 +2,6 @@
 
 namespace App\Providers;
 
-use App\Facades\AppConfig;
 use App\Services\AppConfigService;
 use App\Services\Backup\Compressors\CompressorFactory;
 use App\Services\Backup\Compressors\CompressorInterface;
@@ -15,9 +14,11 @@ use App\Services\Backup\ShellProcessor;
 use Dedoc\Scramble\Scramble;
 use Dedoc\Scramble\Support\Generator\OpenApi;
 use Dedoc\Scramble\Support\Generator\SecurityScheme;
+use Illuminate\Routing\Route;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Str;
 use SocialiteProviders\Manager\SocialiteWasCalled;
 
 class AppServiceProvider extends ServiceProvider
@@ -85,11 +86,11 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->warnDeprecatedEnvVars();
-        $this->registerNotificationServiceConfigs();
         $this->registerOidcSocialiteProvider();
         $this->validateOAuthConfiguration();
 
         Scramble::configure()
+            ->routes(fn (Route $route) => Str::startsWith($route->uri, 'api/') && ! Str::startsWith($route->uri, 'api/v1/agent'))
             ->withDocumentTransformers(function (OpenApi $openApi) {
                 $openApi->secure(
                     SecurityScheme::http('bearer')
@@ -111,9 +112,6 @@ class AppServiceProvider extends ServiceProvider
             Log::warning('Deprecated BACKUP_* environment variables detected. Backup settings are now configured in the UI. You can safely remove BACKUP_* variables from your environment.');
         }
 
-        if (config('app.has_deprecated_notification_env')) {
-            Log::warning('Deprecated NOTIFICATION_* environment variables detected. Notification settings are now configured in the UI. You can safely remove NOTIFICATION_* variables from your environment.');
-        }
     }
 
     /**
@@ -124,27 +122,6 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(function (SocialiteWasCalled $event) {
             $event->extendSocialite('oidc', \SocialiteProviders\OIDC\Provider::class);
         });
-    }
-
-    /**
-     * Register notification channel tokens in config/services.php format
-     * that the third-party notification packages expect at boot time.
-     */
-    private function registerNotificationServiceConfigs(): void
-    {
-        $tokenMap = [
-            'notifications.discord.token' => 'services.discord.token',
-            'notifications.telegram.bot_token' => 'services.telegram-bot-api.token',
-            'notifications.pushover.token' => 'services.pushover.token',
-        ];
-
-        foreach ($tokenMap as $appConfigKey => $servicesConfigKey) {
-            $token = AppConfig::get($appConfigKey);
-
-            if ($token) {
-                config([$servicesConfigKey => $token]);
-            }
-        }
     }
 
     /**
@@ -192,6 +169,20 @@ class AppServiceProvider extends ServiceProvider
             if ($name === 'oidc' && empty($providerConfig['base_url'])) {
                 throw new \InvalidArgumentException(
                     "OAuth provider 'oidc' is enabled but missing required base URL"
+                );
+            }
+        }
+
+        // Validate role mapping: strict mode requires at least one mapping (only when OIDC is enabled)
+        if (config('oauth.providers.oidc.enabled', false)) {
+            $roleMapping = config('oauth.role_mapping', []);
+            $hasMapping = trim((string) ($roleMapping['admin'] ?? '')) !== ''
+                || trim((string) ($roleMapping['member'] ?? '')) !== ''
+                || trim((string) ($roleMapping['viewer'] ?? '')) !== '';
+
+            if (! empty($roleMapping['strict']) && ! $hasMapping) {
+                throw new \InvalidArgumentException(
+                    'OAUTH_OIDC_ROLE_STRICT is enabled but no role mappings are configured. Set at least one of: OAUTH_OIDC_ROLE_MAP_ADMIN, OAUTH_OIDC_ROLE_MAP_MEMBER, OAUTH_OIDC_ROLE_MAP_VIEWER'
                 );
             }
         }

@@ -9,6 +9,7 @@ use App\Models\Snapshot;
 use App\Queries\SnapshotQuery;
 use App\Services\Backup\BackupJobFactory;
 use App\Services\Backup\Databases\DatabaseProvider;
+use App\Traits\Toast;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
@@ -18,7 +19,6 @@ use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use Livewire\Component;
 use Livewire\WithPagination;
-use Mary\Traits\Toast;
 
 class RestoreModal extends Component
 {
@@ -38,6 +38,10 @@ class RestoreModal extends Component
     public array $existingDatabases = [];
 
     public bool $showModal = false;
+
+    public bool $forceDatabase = false;
+
+    public string $ownerUser = '';
 
     public string $snapshotSearch = '';
 
@@ -83,13 +87,11 @@ class RestoreModal extends Component
     #[On('open-restore-modal')]
     public function openModal(string $targetServerId): void
     {
-        $this->reset(['selectedSnapshotId', 'schemaName', 'currentStep', 'existingDatabases', 'snapshotSearch', 'serverFilter']);
+        $this->reset(['selectedSnapshotId', 'schemaName', 'forceDatabase', 'ownerUser', 'currentStep', 'existingDatabases', 'snapshotSearch', 'serverFilter']);
         $this->resetPage('snapshots');
         $this->targetServer = DatabaseServer::find($targetServerId);
 
         $this->authorize('restore', $this->targetServer);
-
-        $this->currentStep = 1;
 
         $this->showModal = true;
     }
@@ -98,9 +100,10 @@ class RestoreModal extends Component
     {
         $this->selectedSnapshotId = $snapshotId;
 
-        // Pre-fill schema name: use target server's first database path for SQLite, otherwise snapshot's database name
-        if ($this->targetServer?->database_type === DatabaseType::SQLITE && ! empty($this->targetServer->database_names)) {
-            $this->schemaName = $this->targetServer->database_names[0];
+        // Pre-fill schema name: use target server's first SQLite path for SQLite, otherwise snapshot's database name
+        if ($this->targetServer?->database_type === DatabaseType::SQLITE) {
+            $paths = $this->targetServer->resolveDatabaseNames();
+            $this->schemaName = $paths[0] ?? Snapshot::findOrFail($snapshotId)->database_name;
         } else {
             $this->schemaName = Snapshot::findOrFail($snapshotId)->database_name;
         }
@@ -116,49 +119,6 @@ class RestoreModal extends Component
         if ($this->currentStep > 1) {
             $this->currentStep--;
         }
-    }
-
-    /**
-     * Check if the target server and schema match the application's own database.
-     */
-    protected function isAppDatabase(): bool
-    {
-        if (! $this->targetServer) {
-            return false;
-        }
-
-        $targetType = $this->targetServer->database_type;
-        $appDatabaseTypes = [DatabaseType::MYSQL, DatabaseType::POSTGRESQL];
-
-        if (! in_array($targetType, $appDatabaseTypes)) {
-            return false;
-        }
-
-        $defaultConnection = config('database.default');
-        $appDbDriver = config("database.connections.{$defaultConnection}.driver");
-
-        // Map Laravel driver names to DatabaseType enum
-        $driverToType = [
-            'mysql' => DatabaseType::MYSQL,
-            'mariadb' => DatabaseType::MYSQL,
-            'pgsql' => DatabaseType::POSTGRESQL,
-        ];
-
-        $appDbType = $driverToType[$appDbDriver] ?? null;
-
-        // If database types don't match, it's not the app database
-        if ($appDbType !== $targetType) {
-            return false;
-        }
-
-        // Compare host, port, and database name
-        $appDbHost = config("database.connections.{$defaultConnection}.host");
-        $appDbPort = (int) config("database.connections.{$defaultConnection}.port");
-        $appDbDatabase = config("database.connections.{$defaultConnection}.database");
-
-        return $this->targetServer->host === $appDbHost
-            && $this->targetServer->port === $appDbPort
-            && $this->schemaName === $appDbDatabase;
     }
 
     /**
@@ -219,13 +179,6 @@ class RestoreModal extends Component
 
         $this->validateSchemaName();
 
-        // Prevent restoring over the app's own database
-        if ($this->isAppDatabase()) {
-            $this->error(__('Cannot restore over the application database. This would crash the application.'));
-
-            return;
-        }
-
         try {
             $snapshot = Snapshot::findOrFail($this->selectedSnapshotId);
 
@@ -234,27 +187,32 @@ class RestoreModal extends Component
                 snapshot: $snapshot,
                 targetServer: $this->targetServer,
                 schemaName: $this->schemaName,
-                triggeredByUserId: is_int($userId) ? $userId : null
+                triggeredByUserId: is_int($userId) ? $userId : null,
+                options: array_filter([
+                    'force_database' => $this->forceDatabase ?: null,
+                    'owner_user' => ($trimmedOwner = trim($this->ownerUser)) !== '' ? $trimmedOwner : null,
+                ]),
             );
 
             ProcessRestoreJob::dispatch($restore->id);
 
-            $this->success('Restore started successfully!');
+            $this->success(__('Restore started successfully!'));
 
             $this->showModal = false;
 
             $this->dispatch('restore-completed');
         } catch (\Exception $e) {
-            $this->error('Failed to queue restore: '.$e->getMessage());
+            report($e);
+            $this->error(__('Failed to queue restore. Please try again.'));
         }
     }
 
     /**
      * Get compatible servers for the filter dropdown.
      *
-     * @return \Illuminate\Database\Eloquent\Collection<int, DatabaseServer>|Collection<int, never>
+     * @return Collection<int, DatabaseServer>
      */
-    public function getCompatibleServersProperty(): Collection|\Illuminate\Database\Eloquent\Collection
+    public function getCompatibleServersProperty(): Collection
     {
         if (! $this->targetServer) {
             return collect();

@@ -1,4 +1,8 @@
 <div wire:poll.5s>
+    @if($errorMessage)
+        <x-alert title="{{ $errorMessage }}" class="alert-error mb-4" icon="o-x-circle" />
+    @endif
+
     <!-- HEADER with filters (Desktop) -->
     <x-header title="{{ __('Jobs') }}" separator progress-indicator>
         <x-slot:actions>
@@ -8,11 +12,6 @@
         </x-slot:actions>
     </x-header>
 
-    @if (session('error'))
-        <x-alert class="alert-error mb-4" icon="o-exclamation-circle" dismissible>
-            {{ session('error') }}
-        </x-alert>
-    @endif
 
     <!-- FILTERS (Tablet & Mobile) -->
     <div class="lg:hidden mb-4" x-data="{ showFilters: false }">
@@ -52,7 +51,7 @@
             @scope('cell_server', $job)
                 @if($job->snapshot && $job->snapshot->databaseServer)
                     <div class="flex items-center gap-2">
-                        <x-database-type-icon :type="$job->snapshot->database_type" />
+                        <x-icon :name="$job->snapshot->database_type->icon()" class="w-5 h-5" />
                         <div>
                             <div class="table-cell-primary">{{ $job->snapshot->databaseServer->name }}</div>
                             <div class="text-sm text-base-content/70">{{ $job->snapshot->database_name }}</div>
@@ -61,7 +60,7 @@
                 @elseif($job->restore && $job->restore->targetServer)
                     <div class="flex items-center gap-2">
                         @if($job->restore->snapshot)
-                            <x-database-type-icon :type="$job->restore->snapshot->database_type" />
+                            <x-icon :name="$job->restore->snapshot->database_type->icon()" class="w-5 h-5" />
                         @endif
                         <div>
                             <div class="table-cell-primary">{{ $job->restore->targetServer->name }} (Target)</div>
@@ -134,13 +133,13 @@
                 <div class="flex gap-2 justify-end">
                     @if($job->snapshot && $job->status === 'completed')
                         @can('download', $job->snapshot)
-                            <a
-                                href="{{ route('snapshots.download', $job->snapshot) }}"
-                                class="btn btn-ghost btn-sm text-info"
-                                title="{{ __('Download') }}"
-                            >
-                                <x-icon name="o-arrow-down-tray" class="w-5 h-5" />
-                            </a>
+                            <x-button
+                                icon="o-arrow-down-tray"
+                                :link="route('snapshots.download', $job->snapshot)"
+                                external
+                                tooltip="{{ __('Download') }}"
+                                class="btn-ghost btn-sm text-info"
+                            />
                         @endcan
                     @endif
                     <x-button
@@ -151,12 +150,22 @@
                         :class="empty($job->logs) ? 'opacity-30' : ''"
                         :disabled="empty($job->logs)"
                     />
-                    @if($job->snapshot)
+                    @if($job->snapshot && in_array($job->status, ['completed', 'failed']))
                         @can('delete', $job->snapshot)
                             <x-button
                                 icon="o-trash"
                                 wire:click="confirmDeleteSnapshot('{{ $job->snapshot->id }}')"
                                 tooltip="{{ __('Delete') }}"
+                                class="btn-ghost btn-sm text-error"
+                            />
+                        @endcan
+                    @endif
+                    @if($job->status === 'pending')
+                        @can('delete', $job)
+                            <x-button
+                                icon="o-x-mark"
+                                wire:click="confirmCancelJob('{{ $job->id }}')"
+                                tooltip="{{ __('Cancel') }}"
                                 class="btn-ghost btn-sm text-error"
                             />
                         @endcan
@@ -170,10 +179,18 @@
     @include('livewire.backup-job._logs-modal')
 
     <!-- DELETE CONFIRMATION MODAL -->
-    <x-delete-confirmation-modal
-        :title="__('Delete Snapshot')"
-        :message="__('Are you sure you want to delete this snapshot? The backup file will be permanently removed.')"
-        onConfirm="deleteSnapshot"
-        :showKeepFiles="true"
-    />
+    @if($cancelJobId)
+        <x-delete-confirmation-modal
+            :title="__('Cancel Job')"
+            :message="__('Are you sure you want to cancel this pending job?')"
+            onConfirm="deletePendingJob"
+        />
+    @else
+        <x-delete-confirmation-modal
+            :title="__('Delete Snapshot')"
+            :message="__('Are you sure you want to delete this snapshot? The backup file will be permanently removed.')"
+            onConfirm="deleteSnapshot"
+            :showKeepFiles="true"
+        />
+    @endif
 </div>

@@ -6,6 +6,7 @@ use App\Models\BackupJob;
 use App\Models\DatabaseServer;
 use App\Models\Snapshot;
 use App\Queries\BackupJobQuery;
+use App\Traits\Toast;
 use Illuminate\Contracts\View\View;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Livewire\Attributes\Locked;
@@ -13,7 +14,6 @@ use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
-use Mary\Traits\Toast;
 
 #[Title('Jobs')]
 class Index extends Component
@@ -43,8 +43,13 @@ class Index extends Component
     #[Url(as: 'job')]
     public ?string $selectedJobId = null;
 
+    public ?string $errorMessage = null;
+
     #[Locked]
     public ?string $deleteSnapshotId = null;
+
+    #[Locked]
+    public ?string $cancelJobId = null;
 
     public bool $showDeleteModal = false;
 
@@ -57,7 +62,7 @@ class Index extends Component
             $job = BackupJob::find($this->selectedJobId);
 
             if (! $job) {
-                session()->flash('error', __('Job not found: ').$this->selectedJobId);
+                $this->errorMessage = __('Job not found: ').$this->selectedJobId;
                 $this->selectedJobId = null;
 
                 return;
@@ -108,7 +113,7 @@ class Index extends Component
     {
         $this->reset('search', 'statusFilter', 'typeFilter', 'serverFilter', 'fileMissing');
         $this->resetPage();
-        $this->success('Filters cleared.', position: 'toast-bottom');
+        $this->success(__('Filters cleared.'));
     }
 
     /**
@@ -194,7 +199,19 @@ class Index extends Component
         $this->authorize('delete', $snapshot);
 
         $this->deleteSnapshotId = $snapshotId;
+        $this->cancelJobId = null;
         $this->keepFiles = false;
+        $this->showDeleteModal = true;
+    }
+
+    public function confirmCancelJob(string $jobId): void
+    {
+        $job = BackupJob::findOrFail($jobId);
+
+        $this->authorize('delete', $job);
+
+        $this->cancelJobId = $jobId;
+        $this->deleteSnapshotId = null;
         $this->showDeleteModal = true;
     }
 
@@ -213,7 +230,31 @@ class Index extends Component
         $this->deleteSnapshotId = null;
         $this->showDeleteModal = false;
 
-        $this->success(__('Snapshot deleted successfully!'), position: 'toast-bottom');
+        $this->success(__('Snapshot deleted successfully!'));
+    }
+
+    public function deletePendingJob(): void
+    {
+        if (! $this->cancelJobId) {
+            return;
+        }
+
+        $job = BackupJob::findOrFail($this->cancelJobId);
+
+        if ($job->status !== 'pending') {
+            $this->error(__('Job is no longer pending and cannot be deleted.'));
+            $this->showDeleteModal = false;
+
+            return;
+        }
+
+        $this->authorize('delete', $job);
+
+        $job->delete();
+        $this->cancelJobId = null;
+        $this->showDeleteModal = false;
+
+        $this->success(__('Job deleted successfully!'));
     }
 
     public function render(): View

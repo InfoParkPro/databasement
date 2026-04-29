@@ -2,19 +2,19 @@
 
 namespace App\Livewire\Volume;
 
-use App\Livewire\Concerns\HandlesDemoMode;
 use App\Livewire\Forms\VolumeForm;
 use App\Models\Volume;
+use App\Traits\Toast;
 use Illuminate\Contracts\View\View;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
 #[Title('Edit Volume')]
 class Edit extends Component
 {
-    use AuthorizesRequests;
-    use HandlesDemoMode;
+    use AuthorizesRequests, Toast;
 
     public VolumeForm $form;
 
@@ -22,7 +22,7 @@ class Edit extends Component
 
     public function mount(Volume $volume): void
     {
-        $this->authorize('update', $volume);
+        $this->authorize('viewForm', $volume);
 
         $this->hasSnapshots = $volume->hasSnapshots();
         $this->form->setVolume($volume);
@@ -30,11 +30,15 @@ class Edit extends Component
 
     public function save(): void
     {
-        if ($this->abortIfDemoMode('volumes.index')) {
+        if (Gate::denies('update', $this->form->volume)) {
+            $this->warning(
+                title: __('Demo mode is enabled. Changes cannot be saved.'),
+                redirectTo: route('volumes.index'),
+                flashAs: 'demo_notice',
+            );
+
             return;
         }
-
-        $this->authorize('update', $this->form->volume);
 
         if ($this->hasSnapshots) {
             $this->form->updateNameOnly();
@@ -42,9 +46,10 @@ class Edit extends Component
             $this->form->update();
         }
 
-        session()->flash('status', 'Volume updated successfully!');
-
-        $this->redirect(route('volumes.index'), navigate: true);
+        $this->success(
+            title: __('Volume updated successfully!'),
+            redirectTo: route('volumes.index')
+        );
     }
 
     public function testConnection(): void

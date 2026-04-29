@@ -2,10 +2,7 @@ name: Helm Chart
 
 on:
   push:
-    branches: ['**']
-    paths:
-      - 'helm/**'
-      - '.github/workflows/helm.yml'
+    tags: ['v*']
 
 jobs:
   test:
@@ -14,20 +11,19 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
-      - name: Set up Helm
-        uses: azure/setup-helm@v4
+      - name: Install Helm
+        run: curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 
       - name: Helm lint
         run: helm lint helm/databasement/
 
       - name: Install helm-unittest plugin
-        run: helm plugin install --verify=false https://github.com/helm-unittest/helm-unittest.git
+        run: helm plugin install https://github.com/helm-unittest/helm-unittest.git
 
       - name: Run helm unittest
         run: helm unittest helm/databasement/
 
   release:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: test
     runs-on: ubuntu-latest
     permissions:
@@ -39,24 +35,49 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Configure Git
+      - name: Install Helm
+        run: curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+      - name: Extract version from tag
+        id: version
         run: |
+          VERSION="${GITHUB_REF#refs/tags/v}"
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+
+      - name: Patch Chart.yaml and values.yaml with release version
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          sed -i "s/^version:.*/version: ${VERSION}/" helm/databasement/Chart.yaml
+          sed -i "s/^appVersion:.*/appVersion: \"${VERSION}\"/" helm/databasement/Chart.yaml
+          sed -i 's/^  tag:.*/  tag: "'"${VERSION}"'"/' helm/databasement/values.yaml
+
+      - name: Package Helm chart
+        run: |
+          mkdir -p .cr-release-packages
+          helm package helm/databasement/ -d .cr-release-packages/
+
+      - name: Publish Helm chart to GitHub Pages
+        run: |
+          # Configure git
           git config user.name "$GITHUB_ACTOR"
           git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
 
-      - name: Set up Helm
-        uses: azure/setup-helm@v4
+          # Checkout gh-pages branch into a temp directory
+          git fetch origin gh-pages
+          TMPDIR=$(mktemp -d)
+          git worktree add "$TMPDIR" gh-pages
 
-      - name: Prepare charts directory
-        run: |
-          mkdir -p .cr-release-packages
-          mkdir -p .cr-index
+          # Copy the packaged chart and update root index
+          mkdir -p "$TMPDIR/charts"
+          cp .cr-release-packages/*.tgz "$TMPDIR/charts/"
+          helm repo index "$TMPDIR" --url https://david-crty.github.io/databasement --merge "$TMPDIR/index.yaml"
 
-      - name: Run chart-releaser
-        uses: helm/chart-releaser-action@v1.6.0
-        with:
-          charts_dir: helm
-          charts_repo_url: https://david-crty.github.io/databasement/charts
-          pages_index_path: charts
-        env:
-          CR_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+          # Commit and push
+          cd "$TMPDIR"
+          git add charts/ index.yaml
+          git commit -m "Release Helm chart ${{ steps.version.outputs.version }}"
+          git push origin gh-pages
+
+          # Cleanup worktree
+          cd -
+          git worktree remove "$TMPDIR"

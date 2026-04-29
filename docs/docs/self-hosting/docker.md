@@ -9,26 +9,47 @@ This guide will help you deploy Databasement using Docker. This is the simplest 
 ## Prerequisites
 
 - [Docker](https://docs.docker.com/engine/install/) installed on your system
+- A [supported application database](intro#supported-application-database-versions) (SQLite, MySQL, MariaDB, or PostgreSQL)
 
 ## Quick Start (SQLite)
 
-The simplest way to run Databasement with SQLite as the database:
+### 1. Create Project Directory
 
 ```bash
-# Generate an application key
-APP_KEY=$(docker run --rm davidcrty/databasement:latest php artisan key:generate --show)
+mkdir databasement && cd databasement
+```
 
+### 2. Generate Application Key
 
-# Run the container
+```bash
+APP_KEY=$(docker run --rm davidcrty/databasement:1 php artisan key:generate --show)
+```
+
+### 3. Create Environment File
+
+Create a `.env` file with your configuration:
+
+```bash title=".env"
+APP_URL=http://localhost:2226
+APP_KEY=base64:your-generated-key-here
+
+# Database (SQLite)
+DB_CONNECTION=sqlite
+DB_DATABASE=/data/database.sqlite
+
+# Enable the background queue worker inside the container
+ENABLE_QUEUE_WORKER=true
+```
+
+### 4. Run the Container
+
+```bash
 docker run -d \
   --name databasement \
   -p 2226:2226 \
-  -e APP_KEY=$APP_KEY \
-  -e DB_CONNECTION=sqlite \
-  -e DB_DATABASE=/data/database.sqlite \
-  -e ENABLE_QUEUE_WORKER=true \
+  --env-file .env \
   -v ./databasement-data:/data \
-  davidcrty/databasement:latest
+  davidcrty/databasement:1
 ```
 
 :::note
@@ -37,21 +58,17 @@ The `ENABLE_QUEUE_WORKER=true` environment variable enables the background queue
 
 Access the application at http://localhost:2226
 
-:::tip S3 Storage
-To store backups in AWS S3 or S3-compatible storage (MinIO, DigitalOcean Spaces, etc.), see the [S3 Storage Configuration](./configuration/backup#s3-storage) section.
+:::tip Pin a version
+See [Versioning](versioning) for available tags.
 :::
 
 ## Custom User ID (PUID/PGID)
 
-By default, the application runs as PUID/PGID `1000`. You can customize this using the `PUID` and `PGID` environment variables:
+By default, the application runs as PUID/PGID `1000`. You can customize this by adding `PUID` and `PGID` to your `.env` file:
 
-```bash
-# Run with custom PUID/PGID
-docker run -d \
-...
-  -e PUID=1001 \
-  -e PGID=1001 \
-...
+```bash title=".env"
+PUID=1001
+PGID=1001
 ```
 
 :::tip
@@ -76,6 +93,23 @@ docker run -d \
 :::note
 When using `--user`, you must manually set `/data` directory volume permissions before starting the container since the automatic permission fix requires root: `sudo chown 499:499 /path/to/databasement/data`
 :::
+
+## Updating
+
+Pull the new image and recreate the container. Migrations run automatically on startup.
+
+```bash
+docker pull davidcrty/databasement:1
+docker stop databasement && docker rm databasement
+docker run -d \
+  --name databasement \
+  -p 2226:2226 \
+  --env-file .env \
+  -v ./databasement-data:/data \
+  davidcrty/databasement:1
+```
+
+See [Versioning](versioning) for available versions.
 
 ## Troubleshooting
 

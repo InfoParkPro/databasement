@@ -58,9 +58,19 @@ Route::middleware(['auth'])->group(function () {
     Route::livewire('configuration', \App\Livewire\Configuration\Index::class)
         ->name('configuration.index');
 
+    // Agents
+    Route::livewire('agents', \App\Livewire\Agent\Index::class)
+        ->name('agents.index');
+
     // API Tokens
-    Route::livewire('api-tokens', \App\Livewire\ApiToken\Index::class)
+    Route::livewire('tokens', \App\Livewire\ApiToken\Index::class)
         ->name('api-tokens.index');
+});
+
+// Snapshot download - dedicated route to avoid Livewire OOM on large files
+Route::middleware(['auth'])->group(function () {
+    Route::get('snapshots/{snapshot}/download', \App\Http\Controllers\Web\SnapshotDownloadController::class)
+        ->name('snapshots.download');
 });
 
 // Action routes - authorization handled by Policies in components
@@ -76,6 +86,12 @@ Route::middleware(['auth'])->group(function () {
         ->name('volumes.create');
     Route::livewire('volumes/{volume}/edit', \App\Livewire\Volume\Edit::class)
         ->name('volumes.edit');
+
+    // Agents
+    Route::livewire('agents/create', \App\Livewire\Agent\Create::class)
+        ->name('agents.create');
+    Route::livewire('agents/{agent}/edit', \App\Livewire\Agent\Edit::class)
+        ->name('agents.edit');
 
     // User management
     Route::livewire('users/create', \App\Livewire\User\Create::class)

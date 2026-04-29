@@ -17,6 +17,9 @@
   <a href="https://artifacthub.io/packages/helm/databasement/databasement">
     <img src="https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/databasement" alt="Artifact Hub" />
   </a>
+  <a href="https://hub.docker.com/r/davidcrty/databasement">
+    <img src="https://img.shields.io/docker/pulls/davidcrty/databasement" alt="Docker Pulls" />
+  </a>
 </p>
 
 <p align="center">
@@ -42,6 +45,7 @@
 - **Real-time monitoring** — Track backup and restore progress with detailed job logs
 - **Failure notifications** — Get alerted via Email, Slack, Discord, Telegram, Pushover, Gotify, or Webhook when jobs fail
 - **Team ready** — Multi-user support with role-based access and optional two-factor authentication
+- **Automation** — REST API and MCP server for scripting, CI/CD, and AI assistant integration
 - **Simple deployment** — Single Docker container with built-in web server, queue worker, and scheduler
 
 > **Try it out!** Explore the [live demo](https://databasement-demo.crty.dev/) to see Databasement in action before installing.
@@ -50,12 +54,12 @@
 
 Databasement is designed to be self-hosted. We provide several deployment options:
 
-| Method | Description | Guide |
-|--------|-------------|-------|
-| **Docker** | Single container deployment | [View Guide](https://david-crty.github.io/databasement/self-hosting/docker) |
-| **Docker Compose** | Multi-container setup with external database | [View Guide](https://david-crty.github.io/databasement/self-hosting/docker-compose) |
-| **Kubernetes + Helm** | For Kubernetes clusters | [View Guide](https://david-crty.github.io/databasement/self-hosting/kubernetes-helm) |
-| **Native Ubuntu** | Traditional installation without Docker | [View Guide](https://david-crty.github.io/databasement/self-hosting/native-ubuntu) |
+| Method                | Description                                  | Guide                                                                                |
+|-----------------------|----------------------------------------------|--------------------------------------------------------------------------------------|
+| **Docker**            | Single container deployment                  | [View Guide](https://david-crty.github.io/databasement/self-hosting/docker)          |
+| **Docker Compose**    | Multi-container setup with external database | [View Guide](https://david-crty.github.io/databasement/self-hosting/docker-compose)  |
+| **Kubernetes + Helm** | For Kubernetes clusters                      | [View Guide](https://david-crty.github.io/databasement/self-hosting/kubernetes-helm) |
+| **Native Ubuntu**     | Traditional installation without Docker      | [View Guide](https://david-crty.github.io/databasement/self-hosting/native-ubuntu)   |
 
 ### Quick Start
 
@@ -68,7 +72,7 @@ docker run -d \
   -e DB_DATABASE=/data/database.sqlite \
   -e ENABLE_QUEUE_WORKER=true \
   -v ./databasement-data:/data \
-  davidcrty/databasement:latest
+  davidcrty/databasement:1
 ```
 
 Open http://localhost:2226 and create your first admin account.
@@ -76,6 +80,27 @@ Open http://localhost:2226 and create your first admin account.
 > **Note:** The container automatically handles volume permissions. You can use `PUID` and `PGID` environment variables to match your system's user/group IDs.
 
 For production deployments, see our [configuration guide](https://david-crty.github.io/databasement/self-hosting/configuration) for environment variables and best practices.
+
+## Supported Database Versions
+
+| Engine     | Supported Versions           | CLI Tool                     | Restore |
+|------------|------------------------------|------------------------------|---------|
+| MySQL      | 5.6, 5.7, 8.x, 9.x           | `mariadb-dump`               | Yes     |
+| MariaDB    | 10.x, 11.x, 12.x             | `mariadb-dump`               | Yes     |
+| PostgreSQL | 12, 13, 14, 15, 16, 17, 18   | `pg_dump` v18                | Yes     |
+| MongoDB    | 4.2, 4.4, 5.0, 6.0, 7.0, 8.0 | `mongodump` / `mongorestore` | Yes     |
+| SQLite     | 3.x                          | File copy                    | Yes     |
+| Redis      | 2.8+                         | `redis-cli --rdb`            | No      |
+| Valkey     | 7.2+                         | `redis-cli --rdb`            | No      |
+
+See the [Database Servers documentation](https://david-crty.github.io/databasement/user-guide/database-servers#supported-versions) for version-specific backup and restore details.
+
+## Automation
+
+Databasement can be managed programmatically through its **REST API** and **MCP server**, enabling integration with scripts, CI/CD pipelines, and AI assistants.
+
+- **REST API** — Full API for managing servers, backups, and restores. See the [API documentation](https://david-crty.github.io/databasement/user-guide/api).
+- **MCP Server** — Connect AI assistants (Claude Code, Cursor, VS Code Copilot, etc.) to manage backups through natural language. See the [MCP documentation](https://david-crty.github.io/databasement/user-guide/mcp).
 
 ## Documentation
 

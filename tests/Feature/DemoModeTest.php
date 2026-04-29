@@ -5,6 +5,7 @@ use App\Livewire\DatabaseServer\Create as DatabaseServerCreate;
 use App\Livewire\DatabaseServer\Edit as DatabaseServerEdit;
 use App\Livewire\DatabaseServer\Index as DatabaseServerIndex;
 use App\Livewire\Volume\Create as VolumeCreate;
+use App\Livewire\Volume\Edit as VolumeEdit;
 use App\Livewire\Volume\Index as VolumeIndex;
 use App\Models\DatabaseServer;
 use App\Models\User;
@@ -33,7 +34,7 @@ test('demo user can view create database server page but cannot save', function 
         ->set('form.database_type', 'mysql')
         ->set('form.username', 'root')
         ->set('form.password', 'password')
-        ->set('form.database_names', ['testdb'])
+        ->set('form.backups.0.database_names', ['testdb'])
         ->call('save')
         ->assertRedirect(route('database-servers.index'))
         ->assertSessionHas('demo_notice');
@@ -81,12 +82,21 @@ test('demo user can view create volume page but cannot save', function () {
         ->assertSessionHas('demo_notice');
 });
 
-test('demo user cannot access edit volume page', function () {
+test('demo user can view edit volume page but cannot save', function () {
     $volume = Volume::factory()->create();
 
+    // Demo user can view the edit page
     $this->actingAs($this->demoUser)
         ->get(route('volumes.edit', $volume))
-        ->assertForbidden();
+        ->assertOk();
+
+    // But attempting to save redirects with a demo notice
+    Livewire::actingAs($this->demoUser)
+        ->test(VolumeEdit::class, ['volume' => $volume])
+        ->set('form.name', 'Updated Volume')
+        ->call('save')
+        ->assertRedirect(route('volumes.index'))
+        ->assertSessionHas('demo_notice');
 });
 
 test('demo user cannot delete volume', function () {
@@ -102,7 +112,7 @@ test('demo user cannot delete volume', function () {
 test('demo user cannot delete snapshot', function () {
     $server = DatabaseServer::factory()->create(['database_names' => ['testdb']]);
     $factory = app(BackupJobFactory::class);
-    $snapshot = $factory->createSnapshots($server, 'manual')[0];
+    $snapshot = $factory->createSnapshots($server->backups->first(), 'manual')[0];
 
     Livewire::actingAs($this->demoUser)
         ->test(BackupJobIndex::class)
@@ -160,10 +170,10 @@ test('demo user cannot access two-factor settings', function () {
     $response->assertForbidden();
 });
 
-test('demo user cannot access api tokens settings', function () {
+test('demo user can access api tokens settings', function () {
     $this->actingAs($this->demoUser)
         ->get(route('api-tokens.index'))
-        ->assertForbidden();
+        ->assertOk();
 });
 
 test('demo user can access preferences settings', function () {

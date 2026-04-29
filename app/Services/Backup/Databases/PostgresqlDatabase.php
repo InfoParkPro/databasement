@@ -39,16 +39,26 @@ class PostgresqlDatabase implements DatabaseInterface
 
     public function dump(string $outputPath): DatabaseOperationResult
     {
-        return new DatabaseOperationResult(command: sprintf(
-            'PGPASSWORD=%s pg_dump %s --host=%s --port=%s --username=%s %s -f %s',
+        $extraFlags = '';
+        if (! empty($this->config['dump_flags'])) {
+            $extraFlags = ' '.DatabaseOperationResult::escapeFlags($this->config['dump_flags']);
+        }
+
+        // Flags must come before the database name (last positional argument)
+        $command = sprintf(
+            'PGPASSWORD=%s pg_dump %s --host=%s --port=%s --username=%s%s %s',
             escapeshellarg($this->config['pass']),
             implode(' ', self::DUMP_OPTIONS),
             escapeshellarg($this->config['host']),
             escapeshellarg((string) $this->config['port']),
             escapeshellarg($this->config['user']),
+            $extraFlags,
             escapeshellarg($this->config['database']),
-            escapeshellarg($outputPath)
-        ));
+        );
+
+        $command .= ' -f '.escapeshellarg($outputPath);
+
+        return new DatabaseOperationResult(command: $command);
     }
 
     public function restore(string $inputPath): DatabaseOperationResult
@@ -64,7 +74,7 @@ class PostgresqlDatabase implements DatabaseInterface
         ));
     }
 
-    public function prepareForRestore(string $schemaName, BackupLogger $logger): void
+    public function prepareForRestore(string $schemaName, BackupLogger $logger, bool $forceDatabase = false): void
     {
         try {
             $pdo = $this->createPdo();
@@ -84,16 +94,50 @@ class PostgresqlDatabase implements DatabaseInterface
                 $terminateStmt = $pdo->prepare($terminateCommand);
                 $terminateStmt->execute([$schemaName]);
 
-                $dropCommand = "DROP DATABASE IF EXISTS \"{$safeIdentifier}\"";
-                $logger->logCommand($dropCommand, null, 0);
-                $pdo->exec($dropCommand);
-            }
+                if ($forceDatabase) {
+                    $dropCommand = "DROP DATABASE IF EXISTS \"{$safeIdentifier}\"";
+                    $logger->logCommand($dropCommand, null, 0);
+                    $pdo->exec($dropCommand);
 
-            $createCommand = "CREATE DATABASE \"{$safeIdentifier}\"";
-            $logger->logCommand($createCommand, null, 0);
-            $pdo->exec($createCommand);
+                    $createCommand = "CREATE DATABASE \"{$safeIdentifier}\"";
+                    $logger->logCommand($createCommand, null, 0);
+                    $pdo->exec($createCommand);
+                }
+            } else {
+                $createCommand = "CREATE DATABASE \"{$safeIdentifier}\"";
+                $logger->logCommand($createCommand, null, 0);
+                $pdo->exec($createCommand);
+            }
         } catch (\PDOException $e) {
             throw new ConnectionException("Failed to prepare database: {$e->getMessage()}", 0, $e);
+        }
+    }
+
+    public function transferOwnership(string $schemaName, string $username, BackupLogger $logger): void
+    {
+        try {
+            $safeUser = str_replace('"', '""', $username);
+            $safeDb = str_replace('"', '""', $schemaName);
+            $safeRestoreUser = str_replace('"', '""', $this->config['user']);
+
+            // Transfer database ownership
+            $adminPdo = $this->createPdo();
+            $ownerCmd = "ALTER DATABASE \"{$safeDb}\" OWNER TO \"{$safeUser}\"";
+            $logger->logCommand($ownerCmd, null, 0);
+            $adminPdo->exec($ownerCmd);
+
+            // Reassign all objects from the restore connection user to the target user.
+            // Skip when users are the same (would be a no-op).
+            if ($this->config['user'] !== $username) {
+                $targetPdo = $this->createPdoForDatabase($schemaName);
+                $reassignCmd = "REASSIGN OWNED BY \"{$safeRestoreUser}\" TO \"{$safeUser}\"";
+                $logger->logCommand($reassignCmd, null, 0);
+                $targetPdo->exec($reassignCmd);
+            } else {
+                $logger->log('Restore user and target user are the same, skipping object reassignment');
+            }
+        } catch (\PDOException $e) {
+            throw new ConnectionException("Failed to transfer ownership: {$e->getMessage()}", 0, $e);
         }
     }
 
@@ -166,7 +210,12 @@ class PostgresqlDatabase implements DatabaseInterface
 
     protected function createPdo(): \PDO
     {
-        $dsn = sprintf('pgsql:host=%s;port=%d;dbname=postgres', $this->config['host'], $this->config['port']);
+        return $this->createPdoForDatabase('postgres');
+    }
+
+    protected function createPdoForDatabase(string $database): \PDO
+    {
+        $dsn = sprintf('pgsql:host=%s;port=%d;dbname=%s', $this->config['host'], $this->config['port'], $database);
 
         return new \PDO($dsn, $this->config['user'], $this->config['pass'], [
             \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION,
