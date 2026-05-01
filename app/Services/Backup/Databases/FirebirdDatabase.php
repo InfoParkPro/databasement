@@ -125,7 +125,7 @@ else
   echo "Neither isql-fb nor isql is installed" >&2
   exit 127
 fi
-printf '%%s\n' "SELECT 1 FROM RDB\$DATABASE;" | "$ISQL" -user %s -password %s %s
+printf '%%s\n' "SELECT 1 FROM RDB\$DATABASE;" | "$ISQL" -b -user %s -password %s %s
 BASH;
 
         return sprintf(

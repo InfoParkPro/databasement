@@ -45,6 +45,14 @@ return [
             'database' => env('TEST_MONGODB_DATABASE', 'databasement_test'),
             'auth_source' => env('TEST_MONGODB_AUTH_SOURCE', 'admin'),
         ],
+
+        'firebird' => [
+            'host' => env('TEST_FIREBIRD_HOST', 'firebird'),
+            'port' => env('TEST_FIREBIRD_PORT', 3050),
+            'username' => env('TEST_FIREBIRD_USERNAME', 'SYSDBA'),
+            'password' => env('TEST_FIREBIRD_PASSWORD', 'masterkey'),
+            'database' => env('TEST_FIREBIRD_DATABASE', '/var/lib/firebird/data/databasement_test.fdb'),
+        ],
     ],
 
     /*
