@@ -548,20 +548,23 @@ test('creates firebird server with selected database mode and names', function (
         ->set('form.port', 3050)
         ->set('form.username', 'sysdba')
         ->set('form.password', 'masterkey')
-        ->set('form.database_names.0', '/db/main.fdb')
-        ->set('form.volume_id', $volume->id)
-        ->set('form.backup_schedule_id', dailySchedule()->id)
-        ->set('form.retention_days', 14)
+        ->set('form.backups.0.database_names.0', '/db/main.fdb')
+        ->set('form.backups.0.database_names_input', '/db/main.fdb')
+        ->set('form.backups.0.volume_id', $volume->id)
+        ->set('form.backups.0.backup_schedule_id', dailySchedule()->id)
+        ->set('form.backups.0.retention_days', 14)
         ->call('save')
         ->assertHasNoErrors()
         ->assertRedirect(route('database-servers.index'));
 
     $server = DatabaseServer::where('name', 'Firebird Primary')->first();
+    $backup = $server?->backups()->sole();
 
     expect($server)->not->toBeNull()
         ->and($server->database_type->value)->toBe('firebird')
-        ->and($server->database_selection_mode)->toBe('selected')
-        ->and($server->database_names)->toBe(['/db/main.fdb']);
+        ->and($backup)->not->toBeNull()
+        ->and($backup->database_selection_mode->value)->toBe('selected')
+        ->and($backup->database_names)->toBe(['/db/main.fdb']);
 });
 
 test('firebird cannot be saved with all-databases selection mode', function () {
@@ -580,18 +583,20 @@ test('firebird cannot be saved with all-databases selection mode', function () {
         ->set('form.port', 3050)
         ->set('form.username', 'sysdba')
         ->set('form.password', 'masterkey')
-        ->set('form.database_selection_mode', 'all')
-        ->set('form.volume_id', $volume->id)
-        ->set('form.backup_schedule_id', dailySchedule()->id)
-        ->set('form.retention_days', 14)
+        ->set('form.backups.0.database_selection_mode', 'all')
+        ->set('form.backups.0.volume_id', $volume->id)
+        ->set('form.backups.0.backup_schedule_id', dailySchedule()->id)
+        ->set('form.backups.0.retention_days', 14)
         ->call('save')
-        ->assertHasErrors(['form.database_names']);
+        ->assertHasErrors(['form.backups.0.database_names']);
 });
 
-test('can create server with multiple backup volumes', function () {
+test('can create server with multiple backup configurations targeting different volumes', function () {
     $user = User::factory()->create();
     $firstVolume = Volume::factory()->local()->create();
     $secondVolume = Volume::factory()->local()->create();
+    $daily = dailySchedule();
+    $weekly = weeklySchedule();
 
     Livewire::actingAs($user)
         ->test(Create::class)
@@ -601,18 +606,26 @@ test('can create server with multiple backup volumes', function () {
         ->set('form.port', 3306)
         ->set('form.username', 'dbuser')
         ->set('form.password', 'secret123')
-        ->set('form.database_names.0', 'myapp')
-        ->set('form.volume_ids', [$firstVolume->id, $secondVolume->id])
-        ->set('form.backup_schedule_id', dailySchedule()->id)
-        ->set('form.retention_days', 14)
+        ->set('form.backups.0.database_names', ['myapp'])
+        ->set('form.backups.0.database_names_input', 'myapp')
+        ->set('form.backups.0.volume_id', $firstVolume->id)
+        ->set('form.backups.0.backup_schedule_id', $daily->id)
+        ->set('form.backups.0.retention_days', 14)
+        ->call('addBackup', $weekly->id)
+        ->set('form.backups.1.database_selection_mode', 'selected')
+        ->set('form.backups.1.database_names', ['myapp'])
+        ->set('form.backups.1.database_names_input', 'myapp')
+        ->set('form.backups.1.volume_id', $secondVolume->id)
+        ->set('form.backups.1.backup_schedule_id', $weekly->id)
+        ->set('form.backups.1.retention_days', 14)
         ->call('save')
         ->assertHasNoErrors();
 
     $server = DatabaseServer::where('name', 'Multi Volume MySQL')->firstOrFail();
-    $backup = $server->backup()->firstOrFail();
+    $backups = $server->backups()->orderBy('backup_schedule_id')->get();
 
-    expect($backup->volume_ids)->toBe([$firstVolume->id, $secondVolume->id])
-        ->and($backup->volume_id)->toBe($firstVolume->id);
+    expect($backups)->toHaveCount(2)
+        ->and($backups->pluck('volume_id')->all())->toContain($firstVolume->id, $secondVolume->id);
 });
 
 test('cannot create server with backups enabled when no volume is selected', function () {
@@ -626,11 +639,12 @@ test('cannot create server with backups enabled when no volume is selected', fun
         ->set('form.port', 3306)
         ->set('form.username', 'dbuser')
         ->set('form.password', 'secret123')
-        ->set('form.database_names.0', 'myapp')
-        ->set('form.volume_ids', [])
-        ->set('form.volume_id', '')
-        ->set('form.backup_schedule_id', dailySchedule()->id)
-        ->set('form.retention_days', 14)
+        ->set('form.backups.0.database_selection_mode', 'selected')
+        ->set('form.backups.0.database_names', ['myapp'])
+        ->set('form.backups.0.database_names_input', 'myapp')
+        ->set('form.backups.0.volume_id', '')
+        ->set('form.backups.0.backup_schedule_id', dailySchedule()->id)
+        ->set('form.backups.0.retention_days', 14)
         ->call('save')
-        ->assertHasErrors(['form.volume_ids']);
+        ->assertHasErrors(['form.backups.0.volume_id']);
 });

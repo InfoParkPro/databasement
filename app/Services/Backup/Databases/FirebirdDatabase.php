@@ -43,7 +43,7 @@ class FirebirdDatabase implements DatabaseInterface
         ));
     }
 
-    public function prepareForRestore(string $schemaName, BackupLogger $logger): void
+    public function prepareForRestore(string $schemaName, BackupLogger $logger, bool $forceDatabase = false): void
     {
         // Firebird restore uses gbak -r -o to recreate (overwrite) target database in one step.
     }

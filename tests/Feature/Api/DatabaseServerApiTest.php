@@ -112,42 +112,45 @@ test('show endpoint includes backup schedule details', function () {
         ->assertJsonPath('data.backups.0.backup_schedule.expression', '0 2 * * *');
 });
 
-test('show endpoint includes configured backup volume_ids', function () {
+test('show endpoint includes configured backups with volume ids', function () {
     $user = User::factory()->create();
     $firstVolume = Volume::factory()->local()->create();
     $secondVolume = Volume::factory()->s3()->create();
 
     $server = DatabaseServer::factory()->create();
-    $server->backup->update([
-        'volume_id' => $firstVolume->id,
-        'volume_ids' => [$firstVolume->id, $secondVolume->id],
+    $firstBackup = $server->backups()->firstOrFail();
+    $firstBackup->update(['volume_id' => $firstVolume->id]);
+    $server->backups()->create([
+        'volume_id' => $secondVolume->id,
+        'backup_schedule_id' => $firstBackup->backup_schedule_id,
+        'retention_policy' => $firstBackup->retention_policy,
+        'retention_days' => $firstBackup->retention_days,
+        'database_selection_mode' => $firstBackup->database_selection_mode,
+        'database_names' => ['secondary_db'],
     ]);
 
     $response = $this->actingAs($user, 'sanctum')
         ->getJson("/api/v1/database-servers/{$server->id}");
 
     $response->assertOk()
-        ->assertJsonPath('data.backup.volume_id', $firstVolume->id)
-        ->assertJsonPath('data.backup.volume_ids.0', $firstVolume->id)
-        ->assertJsonPath('data.backup.volume_ids.1', $secondVolume->id);
+        ->assertJsonPath('data.backups.0.volume_id', $firstVolume->id)
+        ->assertJsonPath('data.backups.1.volume_id', $secondVolume->id);
 });
 
-test('show endpoint falls back to legacy volume_id when volume_ids is missing', function () {
+test('show endpoint includes legacy volume_id on backup payload', function () {
     $user = User::factory()->create();
     $firstVolume = Volume::factory()->local()->create();
 
     $server = DatabaseServer::factory()->create();
-    $server->backup->update([
+    $server->backups()->firstOrFail()->update([
         'volume_id' => $firstVolume->id,
-        'volume_ids' => null,
     ]);
 
     $response = $this->actingAs($user, 'sanctum')
         ->getJson("/api/v1/database-servers/{$server->id}");
 
     $response->assertOk()
-        ->assertJsonPath('data.backup.volume_id', $firstVolume->id)
-        ->assertJsonPath('data.backup.volume_ids.0', $firstVolume->id);
+        ->assertJsonPath('data.backups.0.volume_id', $firstVolume->id);
 });
 
 test('password is not exposed in database server api response', function () {

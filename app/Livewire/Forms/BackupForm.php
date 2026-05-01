@@ -135,6 +135,13 @@ final class BackupForm
             return;
         }
 
+        if ($serverType === DatabaseType::FIREBIRD) {
+            $entry['database_selection_mode'] = DatabaseSelectionMode::Selected->value;
+            $entry['database_include_pattern'] = null;
+
+            return;
+        }
+
         $mode = $entry['database_selection_mode'] ?? null;
 
         if ($mode !== DatabaseSelectionMode::Selected->value) {
@@ -160,7 +167,7 @@ final class BackupForm
         DatabaseType $serverType,
     ): void {
         // SQLite uses its own row-based UI; Redis has no selection.
-        if (in_array($serverType, [DatabaseType::SQLITE, DatabaseType::REDIS], true)) {
+        if (in_array($serverType, [DatabaseType::SQLITE, DatabaseType::REDIS, DatabaseType::FIREBIRD], true)) {
             return;
         }
 
@@ -225,6 +232,19 @@ final class BackupForm
         if ($serverType === DatabaseType::SQLITE) {
             $rules[$prefix.'database_names'] = 'required|array|min:1';
             $rules[$prefix.'database_names.*'] = 'required|string|max:1000';
+        }
+
+        if ($serverType === DatabaseType::FIREBIRD) {
+            $rules[$prefix.'database_selection_mode'] = [
+                'required',
+                'string',
+                Rule::in([DatabaseSelectionMode::Selected->value]),
+            ];
+            $rules[$prefix.'database_names'] = 'required|array|min:1';
+            $rules[$prefix.'database_names.*'] = 'required|string|max:255';
+            $rules[$prefix.'database_include_pattern'] = 'nullable|string|max:500';
+
+            return $rules;
         }
 
         // Database selection only applies to client-server types (not SQLite

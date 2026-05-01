@@ -74,7 +74,7 @@ class DatabaseProvider
             }
 
             if ($server->database_type === DatabaseType::FIREBIRD) {
-                $config['database_names'] = $server->database_names ?? [];
+                $config['database_names'] = $server->resolveDatabaseNames();
                 if (($config['database'] ?? '') === '' && ! empty($config['database_names'][0])) {
                     $config['database'] = (string) $config['database_names'][0];
                 }
@@ -233,6 +233,12 @@ class DatabaseProvider
             $paths = $server->resolveDatabaseNames();
 
             return $paths[0] ?? '';
+        }
+
+        if ($server->database_type === DatabaseType::FIREBIRD) {
+            $names = $server->resolveDatabaseNames();
+
+            return $names[0] ?? '';
         }
 
         return $server->database_type === DatabaseType::POSTGRESQL ? 'postgres' : '';

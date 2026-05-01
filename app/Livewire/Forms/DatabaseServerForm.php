@@ -177,7 +177,7 @@ class DatabaseServerForm extends Form
             return;
         }
 
-        if ($this->server === null || $this->isSqlite() || $this->isRedis()) {
+        if ($this->server === null || $this->isSqlite() || $this->isRedis() || $this->isFirebird()) {
             return;
         }
 
@@ -213,6 +213,12 @@ class DatabaseServerForm extends Form
                 if (empty($this->backups[$index]['database_names'])) {
                     $this->backups[$index]['database_names'] = [''];
                 }
+            }
+        }
+
+        if ($value === 'firebird') {
+            foreach ($this->backups as $index => $backup) {
+                $this->backups[$index]['database_selection_mode'] = 'selected';
             }
         }
 
@@ -500,6 +506,28 @@ class DatabaseServerForm extends Form
     }
 
     /**
+     * Flatten, de-duplicate and return configured database names across the
+     * backup cards. Used for connection testing for database types that
+     * require explicit per-database targets such as Firebird.
+     *
+     * @return array<int, string>
+     */
+    private function collectConfiguredDatabaseNames(): array
+    {
+        $names = [];
+
+        foreach ($this->backups as $backup) {
+            foreach ($backup['database_names'] ?? [] as $name) {
+                if (is_string($name) && trim($name) !== '') {
+                    $names[] = trim($name);
+                }
+            }
+        }
+
+        return array_values(array_unique($names));
+    }
+
+    /**
      * Add an empty SQLite file path row to the given backup card.
      */
     public function addDatabasePath(int $backupIndex): void
@@ -543,6 +571,14 @@ class DatabaseServerForm extends Form
     public function isRedis(): bool
     {
         return $this->database_type === 'redis';
+    }
+
+    /**
+     * Check if current database type is Firebird
+     */
+    public function isFirebird(): bool
+    {
+        return $this->database_type === 'firebird';
     }
 
     /**
@@ -1100,7 +1136,7 @@ class DatabaseServerForm extends Form
             'port' => $this->port,
             'username' => $this->username,
             'password' => $password,
-            'database_names' => $this->isSqlite() ? $this->collectSqlitePaths() : null,
+            'database_names' => $this->isSqlite() ? $this->collectSqlitePaths() : ($this->isFirebird() ? $this->collectConfiguredDatabaseNames() : null),
             'extra_config' => $this->isMongodb() ? ['auth_source' => $this->auth_source] : null,
         ], $sshConfig);
 
@@ -1112,7 +1148,7 @@ class DatabaseServerForm extends Form
         $this->testingConnection = false;
 
         // If connection successful and supports per-database backups, load available databases
-        if ($this->connectionTestSuccess && ! $this->isSqlite() && ! $this->isRedis()) {
+        if ($this->connectionTestSuccess && ! $this->isSqlite() && ! $this->isRedis() && ! $this->isFirebird()) {
             $this->loadAvailableDatabases();
         }
     }

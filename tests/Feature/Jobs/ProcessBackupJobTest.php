@@ -3,7 +3,9 @@
 use App\Contracts\BackupLogger;
 use App\Facades\AppConfig;
 use App\Jobs\ProcessBackupJob;
+use App\Models\Backup;
 use App\Models\DatabaseServer;
+use App\Models\NotificationChannel;
 use App\Models\Volume;
 use App\Notifications\BackupFailedNotification;
 use App\Services\Backup\BackupJobFactory;
@@ -216,12 +218,17 @@ test('multi-volume snapshots are processed independently', function () {
         'database_names' => ['myapp'],
     ]);
 
-    $server->backup->update([
-        'volume_id' => $firstVolume->id,
-        'volume_ids' => [$firstVolume->id, $secondVolume->id],
-    ]);
+    $firstBackup = $server->backups->first();
+    $firstBackup->update(['volume_id' => $firstVolume->id]);
+    $secondBackup = Backup::factory()
+        ->for($server)
+        ->selected(['myapp'])
+        ->create(['volume_id' => $secondVolume->id]);
 
-    $snapshots = app(BackupJobFactory::class)->createSnapshots($server->fresh(['backup']), 'manual');
+    $snapshots = [
+        ...app(BackupJobFactory::class)->createSnapshots($firstBackup->fresh(['volume', 'databaseServer']), 'manual'),
+        ...app(BackupJobFactory::class)->createSnapshots($secondBackup->fresh(['volume', 'databaseServer']), 'manual'),
+    ];
     expect($snapshots)->toHaveCount(2);
 
     foreach ($snapshots as $snapshot) {
@@ -246,8 +253,7 @@ test('multi-volume snapshots are processed independently', function () {
 
 test('failure on one volume does not affect successful snapshot on another volume', function () {
     Notification::fake();
-    AppConfig::set('notifications.enabled', true);
-    AppConfig::set('notifications.mail.to', 'admin@example.com');
+    NotificationChannel::factory()->email()->create(['config' => ['to' => 'admin@example.com']]);
 
     $firstVolume = Volume::factory()->local()->create();
     $secondVolume = Volume::factory()->s3()->create();
@@ -256,12 +262,17 @@ test('failure on one volume does not affect successful snapshot on another volum
         'database_names' => ['myapp'],
     ]);
 
-    $server->backup->update([
-        'volume_id' => $firstVolume->id,
-        'volume_ids' => [$firstVolume->id, $secondVolume->id],
-    ]);
+    $firstBackup = $server->backups->first();
+    $firstBackup->update(['volume_id' => $firstVolume->id]);
+    $secondBackup = Backup::factory()
+        ->for($server)
+        ->selected(['myapp'])
+        ->create(['volume_id' => $secondVolume->id]);
 
-    $snapshots = app(BackupJobFactory::class)->createSnapshots($server->fresh(['backup']), 'manual');
+    $snapshots = [
+        ...app(BackupJobFactory::class)->createSnapshots($firstBackup->fresh(['volume', 'databaseServer']), 'manual'),
+        ...app(BackupJobFactory::class)->createSnapshots($secondBackup->fresh(['volume', 'databaseServer']), 'manual'),
+    ];
     expect($snapshots)->toHaveCount(2);
 
     $failingSnapshot = collect($snapshots)->firstWhere('volume_id', $firstVolume->id);
@@ -297,8 +308,5 @@ test('failure on one volume does not affect successful snapshot on another volum
         ->and($successfulSnapshot->job->status)->toBe('completed')
         ->and($successfulSnapshot->filename)->toBe('ok.fbk');
 
-    Notification::assertSentOnDemand(
-        BackupFailedNotification::class,
-        fn (BackupFailedNotification $notification) => $notification->snapshot->id === $failingSnapshot->id
-    );
+    Notification::assertSentTimes(BackupFailedNotification::class, 1);
 });

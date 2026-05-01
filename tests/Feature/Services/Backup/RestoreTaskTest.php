@@ -487,7 +487,7 @@ test('execute restores firebird snapshot and runs download/decompress/cleanup li
     mkdir($config->workingDirectory, 0755, true);
 
     $mockHandler = Mockery::mock(DatabaseInterface::class);
-    $mockHandler->shouldReceive('prepareForRestore')->once()->with('/data/restore-target.fdb', Mockery::any())->andReturnNull();
+    $mockHandler->shouldReceive('prepareForRestore')->once()->with('/data/restore-target.fdb', Mockery::any(), false)->andReturnNull();
     $mockHandler->shouldReceive('restore')
         ->once()
         ->with(Mockery::on(function (string $workingFile): bool {
@@ -539,7 +539,7 @@ test('execute propagates firebird restore command failure and cleans up working 
     mkdir($config->workingDirectory, 0755, true);
 
     $mockHandler = Mockery::mock(DatabaseInterface::class);
-    $mockHandler->shouldReceive('prepareForRestore')->once()->with('/data/restore-target.fdb', Mockery::any())->andReturnNull();
+    $mockHandler->shouldReceive('prepareForRestore')->once()->with('/data/restore-target.fdb', Mockery::any(), false)->andReturnNull();
     $mockHandler->shouldReceive('restore')
         ->once()
         ->andReturn(new DatabaseOperationResult(command: "echo 'firebird restore command'"));
