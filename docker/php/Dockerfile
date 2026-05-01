@@ -42,6 +42,7 @@ RUN apk add --no-cache git \
         sshpass \
         redis \
         sqlite
+        sqlite \
         gcompat \
         libc6-compat \
         procps-ng \
