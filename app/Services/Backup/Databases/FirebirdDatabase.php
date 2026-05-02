@@ -45,7 +45,7 @@ class FirebirdDatabase implements DatabaseInterface
 
     public function prepareForRestore(string $schemaName, BackupLogger $logger): void
     {
-        // Firebird restore uses gbak -rep to replace the target database in one step.
+        // Firebird restore uses gbak -rep to replace an existing target database in one step.
     }
 
     public function listDatabases(): array
