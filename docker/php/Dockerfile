@@ -41,7 +41,6 @@ RUN apk add --no-cache git \
         openssh-client \
         sshpass \
         redis \
-        sqlite
         sqlite \
         gcompat \
         libc6-compat \
