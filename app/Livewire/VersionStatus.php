@@ -2,6 +2,7 @@
 
 namespace App\Livewire;
 
+use App\Traits\Toast;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
@@ -12,6 +13,8 @@ use Livewire\Component;
 #[Lazy]
 class VersionStatus extends Component
 {
+    use Toast;
+
     public bool $showModal = false;
 
     public string $dockerComposeCommand = "docker compose pull\ndocker compose up -d";
