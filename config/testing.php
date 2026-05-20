@@ -53,6 +53,14 @@ return [
             'password' => env('TEST_MSSQL_PASSWORD', 'Databasement!Strong1'),
             'database' => env('TEST_MSSQL_DATABASE', 'databasement_test'),
         ],
+
+        'firebird' => [
+            'host' => env('TEST_FIREBIRD_HOST', 'firebird'),
+            'port' => env('TEST_FIREBIRD_PORT', 3050),
+            'username' => env('TEST_FIREBIRD_USERNAME', 'SYSDBA'),
+            'password' => env('TEST_FIREBIRD_PASSWORD', 'masterkey'),
+            'database' => env('TEST_FIREBIRD_DATABASE', '/var/lib/firebird/data/databasement_test.fdb'),
+        ],
     ],
 
     /*

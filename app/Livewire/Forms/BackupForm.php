@@ -164,7 +164,9 @@ final class BackupForm
             return;
         }
 
-        // Only needed when no multiselect options are loaded.
+        // Firebird uses the same free-text input as other client-server
+        // databases, but it never loads a selectable database list.
+        // Only skip normalization when a multiselect dropdown is actually in use.
         if (! empty($availableDatabases)) {
             return;
         }

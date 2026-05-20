@@ -27,6 +27,7 @@ class DatabaseProvider
             DatabaseType::REDIS => new RedisDatabase,
             DatabaseType::MONGODB => new MongodbDatabase,
             DatabaseType::MSSQL => new MssqlDatabase,
+            DatabaseType::FIREBIRD => new FirebirdDatabase,
         };
     }
 
@@ -113,6 +114,10 @@ class DatabaseProvider
 
         if ($config->databaseType !== DatabaseType::REDIS) {
             $dbConfig['database'] = $databaseName;
+        }
+
+        if ($config->databaseType === DatabaseType::FIREBIRD && ($dbConfig['database'] ?? '') === '') {
+            $dbConfig['database'] = $extra['database'] ?? '';
         }
 
         if ($config->databaseType === DatabaseType::MONGODB) {
@@ -236,6 +241,7 @@ class DatabaseProvider
         return match ($server->database_type) {
             DatabaseType::POSTGRESQL => 'postgres',
             DatabaseType::MSSQL => 'master',
+            DatabaseType::FIREBIRD => $server->resolveDatabaseNames()[0] ?? '',
             default => '',
         };
     }

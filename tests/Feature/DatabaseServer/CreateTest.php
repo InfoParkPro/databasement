@@ -207,6 +207,43 @@ test('sqlite test connection fails when no paths provided', function () {
         ->assertSet('form.connectionTestMessage', 'Add at least one SQLite database path before testing the connection.');
 });
 
+test('firebird test connection fails when no database paths provided', function () {
+    $user = User::factory()->create();
+
+    Livewire::actingAs($user)
+        ->test(Create::class)
+        ->set('form.database_type', 'firebird')
+        ->set('form.host', '192.168.1.57')
+        ->set('form.port', 3050)
+        ->set('form.username', 'SYSDBA')
+        ->set('form.password', 'masterkey')
+        ->call('testConnection')
+        ->assertSet('form.connectionTestSuccess', false)
+        ->assertSet('form.connectionTestMessage', 'Add at least one Firebird database path before testing the connection.');
+});
+
+test('firebird test connection succeeds with configured database path', function () {
+    $user = User::factory()->create();
+
+    $mock = Mockery::mock(DatabaseProvider::class);
+    $mock->shouldReceive('testConnectionForServer')
+        ->once()
+        ->andReturn(['success' => true, 'message' => 'Connection successful', 'details' => []]);
+    app()->instance(DatabaseProvider::class, $mock);
+
+    Livewire::actingAs($user)
+        ->test(Create::class)
+        ->set('form.database_type', 'firebird')
+        ->set('form.host', '192.168.1.57')
+        ->set('form.port', 3050)
+        ->set('form.username', 'SYSDBA')
+        ->set('form.password', 'masterkey')
+        ->set('form.backups.0.database_names.0', '/var/lib/firebird/data/main.fdb')
+        ->call('testConnection')
+        ->assertSet('form.connectionTestSuccess', true)
+        ->assertSet('form.connectionTestMessage', 'Connection successful');
+});
+
 test('sqlite test connection succeeds with valid paths', function () {
     $user = User::factory()->create();
 
@@ -568,4 +605,93 @@ test('cannot remove the last remaining backup card', function () {
         ->assertCount('form.backups', 1)
         ->call('removeBackup', 0)
         ->assertCount('form.backups', 1);
+});
+
+test('creates firebird server with selected database mode and names', function () {
+    $user = User::factory()->create();
+    $volume = Volume::create([
+        'name' => 'Test Volume',
+        'type' => 'local',
+        'config' => ['path' => '/var/backups'],
+    ]);
+
+    Livewire::actingAs($user)
+        ->test(Create::class)
+        ->set('form.name', 'Firebird Primary')
+        ->set('form.database_type', 'firebird')
+        ->set('form.host', 'firebird.example.com')
+        ->set('form.port', 3050)
+        ->set('form.username', 'sysdba')
+        ->set('form.password', 'masterkey')
+        ->set('form.database_names.0', '/db/main.fdb')
+        ->set('form.volume_id', $volume->id)
+        ->set('form.backup_schedule_id', dailySchedule()->id)
+        ->set('form.retention_days', 14)
+        ->call('save')
+        ->assertHasNoErrors()
+        ->assertRedirect(route('database-servers.index'));
+
+    $server = DatabaseServer::where('name', 'Firebird Primary')->first();
+
+    expect($server)->not->toBeNull()
+        ->and($server->database_type->value)->toBe('firebird')
+        ->and($server->database_selection_mode)->toBe('selected')
+        ->and($server->database_names)->toBe(['/db/main.fdb']);
+});
+
+test('creates firebird server when only database_names_input is provided', function () {
+    $user = User::factory()->create();
+    $volume = Volume::create([
+        'name' => 'Test Volume',
+        'type' => 'local',
+        'config' => ['path' => '/var/backups'],
+    ]);
+
+    Livewire::actingAs($user)
+        ->test(Create::class)
+        ->set('form.name', 'Firebird Input Only')
+        ->set('form.database_type', 'firebird')
+        ->set('form.host', 'firebird.example.com')
+        ->set('form.port', 3050)
+        ->set('form.username', 'sysdba')
+        ->set('form.password', 'masterkey')
+        ->set('form.backups.0.database_names', [])
+        ->set('form.backups.0.database_names_input', '/db/input-only.fdb')
+        ->set('form.backups.0.volume_id', $volume->id)
+        ->set('form.backups.0.backup_schedule_id', dailySchedule()->id)
+        ->set('form.backups.0.retention_days', 14)
+        ->call('save')
+        ->assertHasNoErrors()
+        ->assertRedirect(route('database-servers.index'));
+
+    $server = DatabaseServer::where('name', 'Firebird Input Only')->first();
+    $backup = $server?->backups()->sole();
+
+    expect($server)->not->toBeNull()
+        ->and($backup)->not->toBeNull()
+        ->and($backup->database_names)->toBe(['/db/input-only.fdb']);
+});
+
+test('firebird cannot be saved with all-databases selection mode', function () {
+    $user = User::factory()->create();
+    $volume = Volume::create([
+        'name' => 'Test Volume',
+        'type' => 'local',
+        'config' => ['path' => '/var/backups'],
+    ]);
+
+    Livewire::actingAs($user)
+        ->test(Create::class)
+        ->set('form.name', 'Firebird Invalid Mode')
+        ->set('form.database_type', 'firebird')
+        ->set('form.host', 'firebird.example.com')
+        ->set('form.port', 3050)
+        ->set('form.username', 'sysdba')
+        ->set('form.password', 'masterkey')
+        ->set('form.database_selection_mode', 'all')
+        ->set('form.volume_id', $volume->id)
+        ->set('form.backup_schedule_id', dailySchedule()->id)
+        ->set('form.retention_days', 14)
+        ->call('save')
+        ->assertHasErrors(['form.database_names']);
 });
