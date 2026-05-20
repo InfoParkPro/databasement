@@ -116,8 +116,8 @@ class DatabaseProvider
             $dbConfig['database'] = $databaseName;
         }
 
-        if ($config->databaseType === DatabaseType::FIREBIRD && ($dbConfig['database'] ?? '') === '') {
-            $dbConfig['database'] = $extra['database'] ?? '';
+        if ($config->databaseType === DatabaseType::FIREBIRD && $databaseName === '') {
+            $dbConfig['database'] = is_string($extra['database'] ?? null) ? $extra['database'] : '';
         }
 
         if ($config->databaseType === DatabaseType::MONGODB) {
