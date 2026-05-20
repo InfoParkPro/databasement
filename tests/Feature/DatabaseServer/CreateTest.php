@@ -8,14 +8,26 @@ use App\Models\Volume;
 use App\Services\Backup\Databases\DatabaseProvider;
 use Livewire\Livewire;
 
+function createLocalTestVolume(): Volume
+{
+    return Volume::factory()->local()->create(['name' => 'Test Volume']);
+}
+
+function firebirdCreateComponent(User $user, string $name = 'Firebird Server')
+{
+    return Livewire::actingAs($user)
+        ->test(Create::class)
+        ->set('form.name', $name)
+        ->set('form.database_type', 'firebird')
+        ->set('form.host', 'firebird.example.com')
+        ->set('form.port', 3050)
+        ->set('form.username', 'sysdba')
+        ->set('form.password', 'masterkey');
+}
+
 test('can create database server', function (array $config) {
     $user = User::factory()->create();
-    $volume = Volume::create([
-        'name' => 'Test Volume',
-        'type' => 'local',
-        'config' => ['path' => '/var/backups'],
-        'organization_id' => \App\Models\Organization::first()->id,
-    ]);
+    $volume = createLocalTestVolume();
 
     $component = Livewire::actingAs($user)
         ->test(Create::class)
@@ -210,13 +222,7 @@ test('sqlite test connection fails when no paths provided', function () {
 test('firebird test connection fails when no database paths provided', function () {
     $user = User::factory()->create();
 
-    Livewire::actingAs($user)
-        ->test(Create::class)
-        ->set('form.database_type', 'firebird')
-        ->set('form.host', '192.168.1.57')
-        ->set('form.port', 3050)
-        ->set('form.username', 'SYSDBA')
-        ->set('form.password', 'masterkey')
+    firebirdCreateComponent($user)
         ->call('testConnection')
         ->assertSet('form.connectionTestSuccess', false)
         ->assertSet('form.connectionTestMessage', 'Add at least one Firebird database path before testing the connection.');
@@ -231,13 +237,7 @@ test('firebird test connection succeeds with configured database path', function
         ->andReturn(['success' => true, 'message' => 'Connection successful', 'details' => []]);
     app()->instance(DatabaseProvider::class, $mock);
 
-    Livewire::actingAs($user)
-        ->test(Create::class)
-        ->set('form.database_type', 'firebird')
-        ->set('form.host', '192.168.1.57')
-        ->set('form.port', 3050)
-        ->set('form.username', 'SYSDBA')
-        ->set('form.password', 'masterkey')
+    firebirdCreateComponent($user)
         ->set('form.backups.0.database_names.0', '/var/lib/firebird/data/main.fdb')
         ->call('testConnection')
         ->assertSet('form.connectionTestSuccess', true)
@@ -609,21 +609,9 @@ test('cannot remove the last remaining backup card', function () {
 
 test('creates firebird server with selected database mode and names', function () {
     $user = User::factory()->create();
-    $volume = Volume::create([
-        'name' => 'Test Volume',
-        'type' => 'local',
-        'config' => ['path' => '/var/backups'],
-        'organization_id' => \App\Models\Organization::first()->id,
-    ]);
+    $volume = createLocalTestVolume();
 
-    Livewire::actingAs($user)
-        ->test(Create::class)
-        ->set('form.name', 'Firebird Primary')
-        ->set('form.database_type', 'firebird')
-        ->set('form.host', 'firebird.example.com')
-        ->set('form.port', 3050)
-        ->set('form.username', 'sysdba')
-        ->set('form.password', 'masterkey')
+    firebirdCreateComponent($user, 'Firebird Primary')
         ->set('form.backups.0.database_names_input', '/db/main.fdb')
         ->set('form.backups.0.volume_id', $volume->id)
         ->set('form.backups.0.backup_schedule_id', dailySchedule()->id)
@@ -644,21 +632,9 @@ test('creates firebird server with selected database mode and names', function (
 
 test('creates firebird server when only database_names_input is provided', function () {
     $user = User::factory()->create();
-    $volume = Volume::create([
-        'name' => 'Test Volume',
-        'type' => 'local',
-        'config' => ['path' => '/var/backups'],
-        'organization_id' => \App\Models\Organization::first()->id,
-    ]);
+    $volume = createLocalTestVolume();
 
-    Livewire::actingAs($user)
-        ->test(Create::class)
-        ->set('form.name', 'Firebird Input Only')
-        ->set('form.database_type', 'firebird')
-        ->set('form.host', 'firebird.example.com')
-        ->set('form.port', 3050)
-        ->set('form.username', 'sysdba')
-        ->set('form.password', 'masterkey')
+    firebirdCreateComponent($user, 'Firebird Input Only')
         ->set('form.backups.0.database_names', [])
         ->set('form.backups.0.database_names_input', '/db/input-only.fdb')
         ->set('form.backups.0.volume_id', $volume->id)
@@ -678,21 +654,9 @@ test('creates firebird server when only database_names_input is provided', funct
 
 test('firebird cannot be saved with all-databases selection mode', function () {
     $user = User::factory()->create();
-    $volume = Volume::create([
-        'name' => 'Test Volume',
-        'type' => 'local',
-        'config' => ['path' => '/var/backups'],
-        'organization_id' => \App\Models\Organization::first()->id,
-    ]);
+    $volume = createLocalTestVolume();
 
-    Livewire::actingAs($user)
-        ->test(Create::class)
-        ->set('form.name', 'Firebird Invalid Mode')
-        ->set('form.database_type', 'firebird')
-        ->set('form.host', 'firebird.example.com')
-        ->set('form.port', 3050)
-        ->set('form.username', 'sysdba')
-        ->set('form.password', 'masterkey')
+    firebirdCreateComponent($user, 'Firebird Invalid Mode')
         ->set('form.backups.0.database_selection_mode', 'all')
         ->set('form.backups.0.volume_id', $volume->id)
         ->set('form.backups.0.backup_schedule_id', dailySchedule()->id)

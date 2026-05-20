@@ -72,11 +72,9 @@ class FirebirdDatabase implements DatabaseInterface
         } catch (ProcessTimedOutException) {
             $durationMs = (int) round((microtime(true) - $startTime) * 1000);
 
-            return [
-                'success' => false,
-                'message' => 'Connection timed out after '.Formatters::humanDuration($durationMs).'. Please check the host and port are correct and accessible.',
-                'details' => [],
-            ];
+            return $this->connectionFailure(
+                'Connection timed out after '.Formatters::humanDuration($durationMs).'. Please check the host and port are correct and accessible.'
+            );
         }
 
         $durationMs = (int) round((microtime(true) - $startTime) * 1000);
@@ -84,20 +82,36 @@ class FirebirdDatabase implements DatabaseInterface
         if ($result->failed()) {
             $errorOutput = trim($result->errorOutput() ?: $result->output());
 
-            return [
-                'success' => false,
-                'message' => $errorOutput ?: 'Connection failed with exit code '.$result->exitCode(),
-                'details' => [],
-            ];
+            return $this->connectionFailure($errorOutput ?: 'Connection failed with exit code '.$result->exitCode());
         }
 
+        return $this->connectionSuccess($durationMs, trim($result->output()));
+    }
+
+    /**
+     * @return array{success: true, message: string, details: array{ping_ms: int, output: string}}
+     */
+    private function connectionSuccess(int $durationMs, string $output): array
+    {
         return [
             'success' => true,
             'message' => 'Connection successful',
             'details' => [
                 'ping_ms' => $durationMs,
-                'output' => trim($result->output()),
+                'output' => $output,
             ],
+        ];
+    }
+
+    /**
+     * @return array{success: false, message: string, details: array{}}
+     */
+    private function connectionFailure(string $message): array
+    {
+        return [
+            'success' => false,
+            'message' => $message,
+            'details' => [],
         ];
     }
 

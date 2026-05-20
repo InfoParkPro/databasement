@@ -30,6 +30,28 @@ beforeEach(function () {
     $this->restoredDatabaseName = null;
 });
 
+function prepareBackupWorkflow(string $databaseType): void
+{
+    test()->volume = IntegrationTestHelpers::createVolume($databaseType);
+    test()->databaseServer = IntegrationTestHelpers::createDatabaseServer($databaseType);
+    test()->backup = IntegrationTestHelpers::createBackup(test()->databaseServer, test()->volume);
+    test()->databaseServer->load('backups.volume');
+
+    IntegrationTestHelpers::loadTestData($databaseType, test()->databaseServer);
+}
+
+function runManualBackupSnapshot(): void
+{
+    test()->snapshot = test()->backupJobFactory->createSnapshots(
+        backup: test()->backup,
+        method: 'manual',
+    )[0];
+
+    ProcessBackupJob::dispatchSync(test()->snapshot->id);
+    test()->snapshot->refresh();
+    test()->snapshot->load('job');
+}
+
 afterEach(function () {
     // Cleanup restored database on the external database server
     if ($this->restoredDatabaseName && $this->databaseServer) {
@@ -366,21 +388,12 @@ test('redis backup workflow', function () {
 });
 
 test('firebird backup and restore workflow', function () {
-    $this->volume = IntegrationTestHelpers::createVolume('firebird');
-    $this->databaseServer = IntegrationTestHelpers::createDatabaseServer('firebird');
-    $this->backup = IntegrationTestHelpers::createBackup($this->databaseServer, $this->volume);
-    $this->databaseServer->load('backups.volume');
+    if (! IntegrationTestHelpers::canRunFirebirdIntegration()) {
+        test()->markTestSkipped('Firebird CLI and service are required for this integration test.');
+    }
 
-    IntegrationTestHelpers::loadTestData('firebird', $this->databaseServer);
-
-    $snapshots = $this->backupJobFactory->createSnapshots(
-        backup: $this->backup,
-        method: 'manual',
-    );
-    $this->snapshot = $snapshots[0];
-    ProcessBackupJob::dispatchSync($this->snapshot->id);
-    $this->snapshot->refresh();
-    $this->snapshot->load('job');
+    prepareBackupWorkflow('firebird');
+    runManualBackupSnapshot();
 
     $filesystem = $this->filesystemProvider->getForVolume($this->snapshot->volume);
 

@@ -413,6 +413,25 @@ class IntegrationTestHelpers
         return $exitCode === 0 && isset($output[0]) ? $output[0] : 'isql';
     }
 
+    public static function canRunFirebirdIntegration(): bool
+    {
+        exec('command -v isql-fb 2>/dev/null', $output, $exitCode);
+        if ($exitCode !== 0) {
+            return false;
+        }
+
+        $host = (string) config('testing.databases.firebird.host');
+        $port = (int) config('testing.databases.firebird.port');
+        $socket = @fsockopen($host, $port, $errno, $errstr, 1.0);
+        if (! is_resource($socket)) {
+            return false;
+        }
+
+        fclose($socket);
+
+        return true;
+    }
+
     /**
      * Get SSH tunnel test configuration.
      *

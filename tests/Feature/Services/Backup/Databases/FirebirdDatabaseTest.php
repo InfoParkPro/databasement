@@ -4,6 +4,8 @@ use App\Services\Backup\Databases\FirebirdDatabase;
 use App\Services\Backup\DTO\DatabaseOperationResult;
 use Illuminate\Support\Facades\Process;
 
+const FIREBIRD_TEST_DATABASE = '/data/main.fdb';
+
 beforeEach(function () {
     $this->db = new FirebirdDatabase;
     $this->db->setConfig([
@@ -11,7 +13,7 @@ beforeEach(function () {
         'port' => 3050,
         'user' => 'sysdba',
         'pass' => 'masterkey',
-        'database' => '/data/main.fdb',
+        'database' => FIREBIRD_TEST_DATABASE,
     ]);
 });
 
@@ -19,12 +21,12 @@ test('dump builds gbak backup command', function () {
     $result = $this->db->dump('/tmp/backup.fbk');
 
     expect($result)->toBeInstanceOf(DatabaseOperationResult::class)
-        ->and($result->command)->toBe("gbak -b -g -user 'sysdba' -password 'masterkey' 'fb.local/3050:/data/main.fdb' '/tmp/backup.fbk'");
+        ->and($result->command)->toBe("gbak -b -g -user 'sysdba' -password 'masterkey' 'fb.local/3050:".FIREBIRD_TEST_DATABASE."' '/tmp/backup.fbk'");
 });
 
 test('testConnection returns success when isql probe succeeds', function () {
     Process::fake([
-        '*' => Process::result(output: 'Database: /data/main.fdb'),
+        '*' => Process::result(output: 'Database: '.FIREBIRD_TEST_DATABASE),
     ]);
 
     $result = $this->db->testConnection();
@@ -32,7 +34,7 @@ test('testConnection returns success when isql probe succeeds', function () {
     expect($result['success'])->toBeTrue()
         ->and($result['message'])->toBe('Connection successful')
         ->and($result['details'])->toHaveKey('ping_ms')
-        ->and($result['details']['output'])->toContain('Database: /data/main.fdb');
+        ->and($result['details']['output'])->toContain('Database: '.FIREBIRD_TEST_DATABASE);
 });
 
 test('testConnection returns failure when probe fails', function () {
@@ -48,22 +50,22 @@ test('testConnection returns failure when probe fails', function () {
 
 test('listDatabases returns configured names', function () {
     $this->db->setConfig([
-        'database_names' => ['/data/main.fdb', '/data/archive.fdb'],
+        'database_names' => [FIREBIRD_TEST_DATABASE, '/data/archive.fdb'],
     ]);
 
-    expect($this->db->listDatabases())->toBe(['/data/main.fdb', '/data/archive.fdb']);
+    expect($this->db->listDatabases())->toBe([FIREBIRD_TEST_DATABASE, '/data/archive.fdb']);
 });
 
 test('restore builds gbak restore command', function () {
     $result = $this->db->restore('/tmp/backup.fbk');
 
     expect($result)->toBeInstanceOf(DatabaseOperationResult::class)
-        ->and($result->command)->toBe("gbak -rep -user 'sysdba' -password 'masterkey' '/tmp/backup.fbk' 'fb.local/3050:/data/main.fdb'");
+        ->and($result->command)->toBe("gbak -rep -user 'sysdba' -password 'masterkey' '/tmp/backup.fbk' 'fb.local/3050:".FIREBIRD_TEST_DATABASE."'");
 });
 
 test('prepareForRestore is a no-op', function () {
     $logger = Mockery::mock(\App\Contracts\BackupLogger::class);
 
-    expect(fn () => $this->db->prepareForRestore('/data/main.fdb', $logger))
+    expect(fn () => $this->db->prepareForRestore(FIREBIRD_TEST_DATABASE, $logger))
         ->not->toThrow(Exception::class);
 });

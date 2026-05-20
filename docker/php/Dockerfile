@@ -1,4 +1,4 @@
-FROM firebirdsql/firebird AS firebird
+FROM firebirdsql/firebird:5.0.3 AS firebird
 
 FROM dunglas/frankenphp:1.12-php8.5-alpine
 
@@ -81,11 +81,15 @@ COPY --from=firebird /lib/x86_64-linux-gnu/libtommath.so.1 /opt/firebird/compat/
 COPY --from=firebird /lib64/ld-linux-x86-64.so.2 /opt/firebird/compat/
 RUN printf '%s\n' \
     '#!/bin/sh' \
-    'exec /opt/firebird/compat/ld-linux-x86-64.so.2 --library-path /opt/firebird/lib:/opt/firebird/compat /opt/firebird/bin/gbak "$@"' \
+    'LOADER=/opt/firebird/compat/ld-linux-x86-64.so.2' \
+    'LIBRARY_PATH=/opt/firebird/lib:/opt/firebird/compat' \
+    'exec "$LOADER" --library-path "$LIBRARY_PATH" /opt/firebird/bin/gbak "$@"' \
     > /usr/local/bin/gbak && \
     printf '%s\n' \
     '#!/bin/sh' \
-    'exec /opt/firebird/compat/ld-linux-x86-64.so.2 --library-path /opt/firebird/lib:/opt/firebird/compat /opt/firebird/bin/isql "$@"' \
+    'LOADER=/opt/firebird/compat/ld-linux-x86-64.so.2' \
+    'LIBRARY_PATH=/opt/firebird/lib:/opt/firebird/compat' \
+    'exec "$LOADER" --library-path "$LIBRARY_PATH" /opt/firebird/bin/isql "$@"' \
     > /usr/local/bin/isql && \
     ln -sf /usr/local/bin/isql /usr/local/bin/isql-fb && \
     chmod 755 /usr/local/bin/gbak /usr/local/bin/isql

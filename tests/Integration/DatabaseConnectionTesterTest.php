@@ -12,7 +12,13 @@ use App\Models\DatabaseServer;
 use App\Services\Backup\Databases\DatabaseProvider;
 use Tests\Support\IntegrationTestHelpers;
 
+const FIREBIRD_INTEGRATION_SKIP_MESSAGE = 'Firebird CLI and service are required for this integration test.';
+
 test('connection succeeds', function (string $databaseType) {
+    if ($databaseType === 'firebird' && ! IntegrationTestHelpers::canRunFirebirdIntegration()) {
+        test()->markTestSkipped(FIREBIRD_INTEGRATION_SKIP_MESSAGE);
+    }
+
     $config = IntegrationTestHelpers::getDatabaseConfig($databaseType);
 
     if ($databaseType === 'sqlite') {
@@ -50,6 +56,10 @@ test('connection succeeds', function (string $databaseType) {
 })->with(['mysql', 'postgres', 'sqlite', 'redis', 'firebird']);
 
 test('connection fails with invalid credentials', function (string $databaseType) {
+    if ($databaseType === 'firebird' && ! IntegrationTestHelpers::canRunFirebirdIntegration()) {
+        test()->markTestSkipped(FIREBIRD_INTEGRATION_SKIP_MESSAGE);
+    }
+
     $config = IntegrationTestHelpers::getDatabaseConfig($databaseType);
 
     $server = DatabaseServer::forConnectionTest([
@@ -68,6 +78,10 @@ test('connection fails with invalid credentials', function (string $databaseType
 })->with(['mysql', 'postgres', 'firebird']);
 
 test('connection fails with unreachable host', function (string $databaseType, int $port) {
+    if ($databaseType === 'firebird' && ! IntegrationTestHelpers::canRunFirebirdIntegration()) {
+        test()->markTestSkipped(FIREBIRD_INTEGRATION_SKIP_MESSAGE);
+    }
+
     $server = DatabaseServer::forConnectionTest([
         'database_type' => $databaseType,
         'host' => '127.0.0.1',
