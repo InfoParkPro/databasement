@@ -7,6 +7,7 @@
     /** @var array<string, mixed> $backup */
     $serverType = DatabaseType::tryFrom($form->database_type);
     $isSqlite = $serverType === DatabaseType::SQLITE;
+    $isFirebird = $serverType === DatabaseType::FIREBIRD;
     $showDatabaseSelection = $serverType !== null
         && ! in_array($serverType, [DatabaseType::SQLITE, DatabaseType::REDIS], true);
 

@@ -613,6 +613,7 @@ test('creates firebird server with selected database mode and names', function (
         'name' => 'Test Volume',
         'type' => 'local',
         'config' => ['path' => '/var/backups'],
+        'organization_id' => \App\Models\Organization::first()->id,
     ]);
 
     Livewire::actingAs($user)
@@ -623,20 +624,22 @@ test('creates firebird server with selected database mode and names', function (
         ->set('form.port', 3050)
         ->set('form.username', 'sysdba')
         ->set('form.password', 'masterkey')
-        ->set('form.database_names.0', '/db/main.fdb')
-        ->set('form.volume_id', $volume->id)
-        ->set('form.backup_schedule_id', dailySchedule()->id)
-        ->set('form.retention_days', 14)
+        ->set('form.backups.0.database_names_input', '/db/main.fdb')
+        ->set('form.backups.0.volume_id', $volume->id)
+        ->set('form.backups.0.backup_schedule_id', dailySchedule()->id)
+        ->set('form.backups.0.retention_days', 14)
         ->call('save')
         ->assertHasNoErrors()
         ->assertRedirect(route('database-servers.index'));
 
     $server = DatabaseServer::where('name', 'Firebird Primary')->first();
+    $backup = $server?->backups()->sole();
 
     expect($server)->not->toBeNull()
         ->and($server->database_type->value)->toBe('firebird')
-        ->and($server->database_selection_mode)->toBe('selected')
-        ->and($server->database_names)->toBe(['/db/main.fdb']);
+        ->and($backup)->not->toBeNull()
+        ->and($backup->database_selection_mode->value)->toBe('selected')
+        ->and($backup->database_names)->toBe(['/db/main.fdb']);
 });
 
 test('creates firebird server when only database_names_input is provided', function () {
@@ -645,6 +648,7 @@ test('creates firebird server when only database_names_input is provided', funct
         'name' => 'Test Volume',
         'type' => 'local',
         'config' => ['path' => '/var/backups'],
+        'organization_id' => \App\Models\Organization::first()->id,
     ]);
 
     Livewire::actingAs($user)
@@ -678,6 +682,7 @@ test('firebird cannot be saved with all-databases selection mode', function () {
         'name' => 'Test Volume',
         'type' => 'local',
         'config' => ['path' => '/var/backups'],
+        'organization_id' => \App\Models\Organization::first()->id,
     ]);
 
     Livewire::actingAs($user)
@@ -688,10 +693,10 @@ test('firebird cannot be saved with all-databases selection mode', function () {
         ->set('form.port', 3050)
         ->set('form.username', 'sysdba')
         ->set('form.password', 'masterkey')
-        ->set('form.database_selection_mode', 'all')
-        ->set('form.volume_id', $volume->id)
-        ->set('form.backup_schedule_id', dailySchedule()->id)
-        ->set('form.retention_days', 14)
+        ->set('form.backups.0.database_selection_mode', 'all')
+        ->set('form.backups.0.volume_id', $volume->id)
+        ->set('form.backups.0.backup_schedule_id', dailySchedule()->id)
+        ->set('form.backups.0.retention_days', 14)
         ->call('save')
-        ->assertHasErrors(['form.database_names']);
+        ->assertHasErrors(['form.backups.0.database_names']);
 });

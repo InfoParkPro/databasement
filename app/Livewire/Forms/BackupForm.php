@@ -135,6 +135,11 @@ final class BackupForm
             return;
         }
 
+        if ($serverType === DatabaseType::FIREBIRD) {
+            $entry['database_selection_mode'] = DatabaseSelectionMode::Selected->value;
+            $entry['database_include_pattern'] = null;
+        }
+
         $mode = $entry['database_selection_mode'] ?? null;
 
         if ($mode !== DatabaseSelectionMode::Selected->value) {

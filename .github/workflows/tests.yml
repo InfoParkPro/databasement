@@ -13,7 +13,7 @@ jobs:
   ci:
     runs-on: ubuntu-latest
     container:
-      image: davidcrty/databasement-php:latest
+      image: ghcr.io/infoparkpro/databasement-php:latest
 
     services:
       mysql:
@@ -63,6 +63,13 @@ jobs:
           --health-interval=10s
           --health-timeout=5s
           --health-retries=5
+
+      firebird:
+        image: firebirdsql/firebird
+        env:
+          FIREBIRD_ROOT_PASSWORD: masterkey
+        ports:
+          - 3050:3050
 
       mssql:
         image: mcr.microsoft.com/azure-sql-edge:latest

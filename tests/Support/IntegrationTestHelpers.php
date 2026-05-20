@@ -379,7 +379,7 @@ class IntegrationTestHelpers
             : null;
 
         $parts = [
-            escapeshellcmd('isql'),
+            escapeshellcmd(self::firebirdIsqlBinary()),
             '-user',
             escapeshellarg($server->username),
             '-password',
@@ -404,6 +404,13 @@ class IntegrationTestHelpers
         }
 
         return $joined;
+    }
+
+    private static function firebirdIsqlBinary(): string
+    {
+        exec('command -v isql-fb 2>/dev/null', $output, $exitCode);
+
+        return $exitCode === 0 && isset($output[0]) ? $output[0] : 'isql';
     }
 
     /**
